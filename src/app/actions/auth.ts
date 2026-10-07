@@ -81,7 +81,7 @@ export async function signUpAction(formData: FormData) {
   const origin = headers().get("origin") ?? "http://localhost:3000"
   const locale = language ?? detectLocale()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -109,7 +109,21 @@ export async function signUpAction(formData: FormData) {
     }
   }
 
-  redirect(`/${locale}/login`)
+  const sessionCreated = !!data?.session
+  const redirectTo = sessionCreated ? `/${locale}/dashboard` : `/${locale}/login?registered=true`
+  const finalMessage = sessionCreated
+    ? language === "en-US"
+      ? "Account created! Redirecting..."
+      : "Conta criada! Redirecionando..."
+    : language === "en-US"
+      ? "Account created! Please sign in."
+      : "Conta criada! Faça login."
+
+  return {
+    success: true as const,
+    message: finalMessage,
+    redirectTo,
+  }
 }
 
 export async function forgotPasswordAction(formData: FormData) {

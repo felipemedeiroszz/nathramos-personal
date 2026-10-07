@@ -1,5 +1,3 @@
-"use server"
-
 import { createServiceClientSSR } from "../lib/supabase/server"
 import type {
   PaymentRow,

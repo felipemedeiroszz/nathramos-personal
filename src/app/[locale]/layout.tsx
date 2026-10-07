@@ -36,6 +36,9 @@ export const metadata: Metadata = {
     "hipertrofia",
     "emagrecimento",
   ],
+  icons: {
+    icon: "/logo.png",
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

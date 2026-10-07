@@ -60,10 +60,10 @@ export const signUpSchema = z.object({
     .max(60),
   language: z.enum(["pt-BR", "en-US"]).default("pt-BR"),
   accepts_terms: z
-    .boolean({ required_error: "Você deve aceitar os Termos de Uso." })
+    .coerce.boolean({ required_error: "Você deve aceitar os Termos de Uso." })
     .refine((v) => v === true, { message: "Você deve aceitar os Termos de Uso." }),
   accepts_privacy: z
-    .boolean({ required_error: "Você deve aceitar a Política de Privacidade." })
+    .coerce.boolean({ required_error: "Você deve aceitar a Política de Privacidade." })
     .refine((v) => v === true, { message: "Você deve aceitar a Política de Privacidade." }),
 })
   .refine((data) => data.password === data.confirmPassword, {

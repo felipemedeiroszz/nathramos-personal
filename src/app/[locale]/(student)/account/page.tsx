@@ -30,14 +30,14 @@ export default async function AccountPage({
   const { data: profileData } = await supabase
     .from("profiles")
     .select<string, any>(
-      "id, first_name, last_name, email, phone, birth_date, gender, height_cm, weight_kg, country, language, avatar_url"
+      "id, first_name, last_name, phone, birth_date, gender, height_cm, weight_kg, country, language, avatar_url"
     )
     .eq("id", userId)
     .limit(1)
     .maybeSingle();
 
   const { data: authData } = await supabase.auth.getUser();
-  const email = profileData?.email ?? authData?.user?.email ?? null;
+  const email = authData?.user?.email ?? null;
 
   const sub = await SubscriptionService.getActive(userId);
   const planName = sub?.plan

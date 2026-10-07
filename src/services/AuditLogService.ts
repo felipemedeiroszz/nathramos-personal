@@ -1,5 +1,4 @@
 import { createServiceClientSSR } from "@/lib/supabase/server"
-import { headers } from "next/headers"
 
 export const AuditLogService = {
   async log(params: {
@@ -14,9 +13,8 @@ export const AuditLogService = {
   }): Promise<boolean> {
     try {
       const supabase = await createServiceClientSSR()
-      const h = headers()
-      const ip = params.ip_address ?? h.get("x-forwarded-for") ?? null
-      const ua = params.user_agent ?? h.get("user-agent") ?? null
+      const ip = params.ip_address ?? null
+      const ua = params.user_agent ?? null
 
       const { error } = await supabase.from("audit_logs").insert({
         user_id: params.userId ?? null,

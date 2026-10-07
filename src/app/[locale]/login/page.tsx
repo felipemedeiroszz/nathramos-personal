@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import Image from "next/image";
+import { Dumbbell, Apple, BarChart, Droplets, Target } from "lucide-react";
 
 type LoginFormValues = z.input<typeof loginSchema>;
 
@@ -64,7 +65,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center p-4 md:p-12 relative overflow-hidden">
+    <div className="min-h-dvh flex items-center justify-center md:justify-end p-4 md:pr-12 relative overflow-hidden">
       <div
         className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat hidden md:block"
         style={{ backgroundImage: "url('/login-desktop-fundo.png')", backgroundSize: 'cover' }}
@@ -82,9 +83,9 @@ export default function LoginPage() {
         <LanguageSwitcher />
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-center w-full max-w-7xl gap-8 md:gap-16 relative z-20">
-        <div className="hidden md:flex flex-col items-start text-left max-w-lg animate-slide-up ml-8">
-          <div className="mb-8 h-40 w-40 relative drop-shadow-2xl">
+      <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-7xl gap-8 md:gap-16 relative z-20 px-4 md:px-12">
+        <div className="hidden md:flex flex-col items-start text-left max-w-2xl animate-slide-up flex-1">
+          <div className="mb-8 h-48 w-48 relative drop-shadow-2xl">
             <Image
               src="/logo.png"
               alt="Nath Ramos Logo"
@@ -93,38 +94,38 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-2 drop-shadow-lg">
+          <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-2 drop-shadow-lg">
             {t("heroTitle")}{" "}
             <span className="text-primary drop-shadow-lg">{t("heroTitleHighlight")}</span>
           </h1>
-          <p className="text-base text-white/90 mb-10 font-medium drop-shadow-md">
+          <p className="text-lg text-white/90 mb-10 font-medium drop-shadow-md">
             {t("heroSubtitle")}
           </p>
-          <div className="space-y-4 text-left w-full bg-black/30 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <div className="space-y-5 text-left w-full bg-black/30 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
             <div className="flex items-center gap-4">
-              <div className="text-primary text-2xl">💪</div>
-              <p className="text-white text-lg font-semibold">{t("feature1")}</p>
+              <Dumbbell className="text-primary w-7 h-7" />
+              <p className="text-white text-xl font-semibold">{t("feature1")}</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-primary text-2xl">🥗</div>
-              <p className="text-white text-lg font-semibold">{t("feature2")}</p>
+              <Apple className="text-primary w-7 h-7" />
+              <p className="text-white text-xl font-semibold">{t("feature2")}</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-primary text-2xl">📊</div>
-              <p className="text-white text-lg font-semibold">{t("feature3")}</p>
+              <BarChart className="text-primary w-7 h-7" />
+              <p className="text-white text-xl font-semibold">{t("feature3")}</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-primary text-2xl">💧</div>
-              <p className="text-white text-lg font-semibold">{t("feature4")}</p>
+              <Droplets className="text-primary w-7 h-7" />
+              <p className="text-white text-xl font-semibold">{t("feature4")}</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-primary text-2xl">🎯</div>
-              <p className="text-white text-lg font-semibold">{t("feature5")}</p>
+              <Target className="text-primary w-7 h-7" />
+              <p className="text-white text-xl font-semibold">{t("feature5")}</p>
             </div>
           </div>
         </div>
 
-        <div className="relative w-full max-w-md animate-slide-up z-10">
+        <div className="relative w-full max-w-md animate-slide-up z-10 flex-shrink-0">
           <div className="rounded-2xl border border-border/40 backdrop-blur-xl p-8 shadow-2xl bg-surface/30">
             <div className="flex flex-col items-center text-center mb-8 md:hidden">
               <div className="mb-4 h-16 w-16 relative">
@@ -144,6 +145,15 @@ export default function LoginPage() {
               </p>
             </div>
             <div className="hidden md:flex flex-col items-center text-center mb-8">
+              <div className="mb-4 h-16 w-16 relative">
+                <Image
+                  src="/logo.png"
+                  alt="Nath Ramos Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
               <h1 className="text-2xl font-bold tracking-tight text-text">
                 {t("loginTitle")}
               </h1>

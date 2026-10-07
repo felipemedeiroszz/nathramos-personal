@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import Image from "next/image";
+import { User, Calendar, Scale, MapPin, CheckCircle2 } from "lucide-react";
 
 type SignUpFormValues = z.input<typeof signUpSchema>;
 
@@ -30,6 +31,7 @@ export default function CadastroPage() {
     register,
     handleSubmit,
     setError,
+    trigger,
     formState: { errors },
     watch,
   } = useForm<SignUpFormValues>({
@@ -52,8 +54,70 @@ export default function CadastroPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<SignUpFormValues> = (values) => {
+  const step1Fields = [
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "password",
+    "confirmPassword",
+  ] as const;
+  const step2Fields = [
+    "birth_date",
+    "gender",
+    "height_cm",
+    "weight_kg",
+    "country",
+    "language",
+  ] as const;
+  const step3Fields = ["accepts_terms", "accepts_privacy"] as const;
+
+  const fieldsForStep = (step: number) => {
+    if (step === 1) return [...step1Fields];
+    if (step === 2) return [...step2Fields];
+    if (step === 3) return [...step3Fields];
+    return [];
+  };
+
+  const nextStep = async () => {
+    const ok = await trigger(fieldsForStep(currentStep) as any);
+    if (!ok) return;
+    setCurrentStep((prev) => Math.min(prev + 1, 3));
+  };
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const countries = [
+    { value: "BR", label: locale === "en-US" ? "Brazil" : "Brasil" },
+    { value: "US", label: locale === "en-US" ? "United States" : "EUA" },
+    { value: "OUTRO", label: locale === "en-US" ? "Other" : "Outro" },
+  ];
+
+  const gender = watch("gender");
+  const acceptsTerms = watch("accepts_terms");
+  const acceptsPrivacy = watch("accepts_privacy");
+
+  const onSubmit: SubmitHandler<SignUpFormValues> = async (values) => {
     setServerError(null);
+
+    const allValid = await trigger();
+    if (!allValid) {
+      const errorKeys = Object.keys(errors) as Array<keyof SignUpFormValues>;
+      if (errorKeys.some((k) => step1Fields.includes(k as any))) {
+        setCurrentStep(1);
+      } else if (errorKeys.some((k) => step2Fields.includes(k as any))) {
+        setCurrentStep(2);
+      }
+      setServerError(
+        locale === "en-US"
+          ? "Please review the highlighted fields before continuing."
+          : "Revise os campos destacados antes de continuar."
+      );
+      return;
+    }
+
     startTransition(async () => {
       const formData = new FormData();
       formData.append("first_name", values.first_name);
@@ -64,10 +128,14 @@ export default function CadastroPage() {
       formData.append("confirmPassword", values.confirmPassword);
       formData.append("birth_date", values.birth_date);
       if (values.gender) formData.append("gender", values.gender);
-      if (values.height_cm != null)
-        formData.append("height_cm", String(values.height_cm));
-      if (values.weight_kg != null)
-        formData.append("weight_kg", String(values.weight_kg));
+      formData.append(
+        "height_cm",
+        values.height_cm != null ? String(values.height_cm) : ""
+      );
+      formData.append(
+        "weight_kg",
+        values.weight_kg != null ? String(values.weight_kg) : ""
+      );
       formData.append("country", values.country);
       formData.append("language", values.language ?? (locale === "en-US" ? "en-US" : "pt-BR"));
       formData.append("accepts_terms", values.accepts_terms ? "true" : "false");
@@ -87,34 +155,19 @@ export default function CadastroPage() {
             const msgs = fieldErrors[key];
             if (msgs && msgs.length > 0) {
               setError(key, { message: msgs[0] });
+              if (step1Fields.includes(key as any)) setCurrentStep(1);
+              else if (step2Fields.includes(key as any)) setCurrentStep(2);
             }
           }
         );
-        if (result.message && Object.keys(fieldErrors).length === 0) {
+        if (result.message) {
           setServerError(result.message);
         }
-      } else {
-        router.push(`/${locale}/login?registered=true`);
+      } else if (result && result.success) {
+        const dest = (result as any).redirectTo ?? `/${locale}/login?registered=true`;
+        router.replace(dest);
       }
     });
-  };
-
-  const countries = [
-    { value: "BR", label: locale === "en-US" ? "Brazil" : "Brasil" },
-    { value: "US", label: locale === "en-US" ? "United States" : "EUA" },
-    { value: "OUTRO", label: locale === "en-US" ? "Other" : "Outro" },
-  ];
-
-  const gender = watch("gender");
-  const acceptsTerms = watch("accepts_terms");
-  const acceptsPrivacy = watch("accepts_privacy");
-
-  const nextStep = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, 3));
-  };
-
-  const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   return (
@@ -162,20 +215,41 @@ export default function CadastroPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="flex items-center justify-center gap-3 mb-8">
             {[1, 2, 3].map((step) => (
-              <div
-                key={step}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  step <= currentStep ? "bg-primary" : "bg-border"
-                }`}
-              />
+              <div key={step} className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    step === currentStep
+                      ? "bg-primary text-white scale-110 shadow-lg shadow-primary/30"
+                      : step < currentStep
+                      ? "bg-primary/20 text-primary"
+                      : "bg-border text-text-secondary"
+                  }`}
+                >
+                  {step < currentStep ? <CheckCircle2 className="w-4 h-4" /> : step}
+                </div>
+                {step < 3 && (
+                  <div
+                    className={`w-12 h-0.5 rounded-full transition-colors ${
+                      step < currentStep ? "bg-primary" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
             ))}
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {currentStep === 1 && (
               <div className="space-y-5 animate-fade-in">
+                <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                  <p className="text-sm text-primary font-medium flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    {locale === "en-US" ? "Personal Information" : "Informações Pessoais"}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2">
                     <label
@@ -324,12 +398,20 @@ export default function CadastroPage() {
 
             {currentStep === 2 && (
               <div className="space-y-5 animate-fade-in">
+                <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                  <p className="text-sm text-primary font-medium flex items-center gap-2">
+                    <Scale className="w-4 h-4" />
+                    {locale === "en-US" ? "Physical Information" : "Informações Físicas"}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2">
                     <label
                       htmlFor="birth_date"
-                      className="block text-sm font-medium text-text"
+                      className="block text-sm font-medium text-text flex items-center gap-2"
                     >
+                      <Calendar className="w-4 h-4 text-text-secondary" />
                       {t("birthDate")} <span className="text-red-400">*</span>
                     </label>
                     <Input
@@ -360,10 +442,10 @@ export default function CadastroPage() {
                       ).map((opt) => (
                         <label
                           key={opt.v}
-                          className={`flex items-center justify-center gap-2 h-11 rounded-xl border cursor-pointer transition-colors px-3 ${
+                          className={`flex items-center justify-center gap-2 h-11 rounded-xl border cursor-pointer transition-all px-3 ${
                             gender === opt.v
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-surface text-text-secondary hover:border-primary/50"
+                              ? "border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20"
+                              : "border-border bg-surface text-text-secondary hover:border-primary/50 hover:bg-surface/80"
                           } ${isPending ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <input
@@ -387,8 +469,9 @@ export default function CadastroPage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="height_cm"
-                      className="block text-sm font-medium text-text"
+                      className="block text-sm font-medium text-text flex items-center gap-2"
                     >
+                      <Scale className="w-4 h-4 text-text-secondary" />
                       {t("height")} (cm) <span className="text-red-400">*</span>
                     </label>
                     <Input
@@ -411,8 +494,9 @@ export default function CadastroPage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="weight_kg"
-                      className="block text-sm font-medium text-text"
+                      className="block text-sm font-medium text-text flex items-center gap-2"
                     >
+                      <Scale className="w-4 h-4 text-text-secondary" />
                       {t("weight")} (kg) <span className="text-red-400">*</span>
                     </label>
                     <Input
@@ -437,8 +521,9 @@ export default function CadastroPage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="country"
-                      className="block text-sm font-medium text-text"
+                      className="block text-sm font-medium text-text flex items-center gap-2"
                     >
+                      <MapPin className="w-4 h-4 text-text-secondary" />
                       {t("country")} <span className="text-red-400">*</span>
                     </label>
                     <Select
@@ -504,15 +589,31 @@ export default function CadastroPage() {
 
             {currentStep === 3 && (
               <div className="space-y-5 animate-fade-in">
+                <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                  <p className="text-sm text-primary font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {locale === "en-US" ? "Final Step" : "Passo Final"}
+                  </p>
+                </div>
+
                 <div className="pt-4 space-y-4">
                   <div className="flex items-start gap-3">
-                    <input
-                      id="accepts_terms"
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-border bg-surface text-primary focus:ring-primary"
-                      disabled={isPending}
-                      {...register("accepts_terms")}
-                    />
+                    <div className="relative mt-0.5">
+                      <input
+                        id="accepts_terms"
+                        type="checkbox"
+                        className="sr-only peer"
+                        disabled={isPending}
+                        {...register("accepts_terms")}
+                      />
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                        acceptsTerms
+                          ? "bg-primary border-primary"
+                          : "border-border bg-surface peer-hover:border-primary/50"
+                      } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                        {acceptsTerms && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                    </div>
                     <label
                       htmlFor="accepts_terms"
                       className={`text-sm cursor-pointer select-none leading-relaxed ${
@@ -535,19 +636,28 @@ export default function CadastroPage() {
                     </label>
                   </div>
                   {errors.accepts_terms && (
-                    <p className="text-xs text-red-400 -mt-3 pl-7">
+                    <p className="text-xs text-red-400 -mt-3 pl-8">
                       {errors.accepts_terms.message}
                     </p>
                   )}
 
                   <div className="flex items-start gap-3">
-                    <input
-                      id="accepts_privacy"
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-border bg-surface text-primary focus:ring-primary"
-                      disabled={isPending}
-                      {...register("accepts_privacy")}
-                    />
+                    <div className="relative mt-0.5">
+                      <input
+                        id="accepts_privacy"
+                        type="checkbox"
+                        className="sr-only peer"
+                        disabled={isPending}
+                        {...register("accepts_privacy")}
+                      />
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                        acceptsPrivacy
+                          ? "bg-primary border-primary"
+                          : "border-border bg-surface peer-hover:border-primary/50"
+                      } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                        {acceptsPrivacy && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                    </div>
                     <label
                       htmlFor="accepts_privacy"
                       className={`text-sm cursor-pointer select-none leading-relaxed ${
@@ -570,7 +680,7 @@ export default function CadastroPage() {
                     </label>
                   </div>
                   {errors.accepts_privacy && (
-                    <p className="text-xs text-red-400 -mt-3 pl-7">
+                    <p className="text-xs text-red-400 -mt-3 pl-8">
                       {errors.accepts_privacy.message}
                     </p>
                   )}

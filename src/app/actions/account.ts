@@ -34,7 +34,7 @@ const updateProfileSchema = z.object({
   weight_kg: z.coerce.number().min(20).max(400).optional().or(z.literal("")),
   country: z.string().max(100).optional().or(z.literal("")),
   language: z.string().optional(),
-});
+}).partial();
 
 export async function updateProfileAction(_prev: any, formData: FormData) {
   const userId = await requireAuthenticated();

@@ -291,7 +291,7 @@ on conflict (key) do nothing;
 -- Substitua o e-mail abaixo pelo SEU e-mail de admin ANTES de rodar.
 do $$
 declare
-  v_admin_email text := 'voce@seudominio.com.br';
+  v_admin_email text := 'admin@admin.com';
   v_admin_uuid uuid;
   v_admin_name text := 'Administrador';
 begin

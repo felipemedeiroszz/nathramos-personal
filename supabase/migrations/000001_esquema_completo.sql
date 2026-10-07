@@ -519,10 +519,9 @@ create table if not exists public.exercises (
 
   external_synced_at timestamptz,
   created_at         timestamptz              not null default now(),
-  updated_at         timestamptz              not null default now(),
-
-  unique (external_id, source) where external_id is not null
+  updated_at         timestamptz              not null default now()
 );
+create unique index if not exists exercises_external_id_source_idx on public.exercises (external_id, source) where external_id is not null;
 create index if not exists exercises_muscle_idx     on public.exercises (primary_muscle) where is_published = true and is_deleted = false;
 create index if not exists exercises_equipment_idx  on public.exercises (equipment);
 create index if not exists exercises_diff_idx       on public.exercises (difficulty);
@@ -656,7 +655,7 @@ create table if not exists public.exercise_sets_log (
   logged_at    timestamptz not null default now()
 );
 create index if not exists esl_session_idx on public.exercise_sets_log (session_id, set_number);
-create index if not exists esl_user_ex_idx  on public.exercise_sets_log using btree ((select user_id from public.workout_sessions s where s.id = session_id), exercise_id, logged_at desc);
+create index if not exists esl_exercise_idx on public.exercise_sets_log (exercise_id, logged_at desc);
 
 -- ----------------------------------------------------------------------------
 -- 15. PR (Records pessoais)

@@ -1,5 +1,3 @@
-"use server"
-
 import { addDays, isAfter, parseISO } from "date-fns"
 import { createServiceClientSSR } from "../lib/supabase/server"
 import type {
