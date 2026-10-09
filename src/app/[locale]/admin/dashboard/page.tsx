@@ -19,7 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
-import { createClientSSR } from "@/lib/supabase/server";
+import { AdminMetricsService } from "@/services/AdminMetricsService";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +47,7 @@ export default async function AdminDashboardPage({
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   await requireRole(["admin", "coach"], "/dashboard");
-  void createClientSSR;
 
-  const hasT = async (ns: string, key: string) => {
-    try {
-      const t = await getTranslations(ns);
-      return t.has(key);
-    } catch {
-      return false;
-    }
-  };
   const safe = async (ns: string, key: string, fb: string) => {
     try {
       const t = await getTranslations(ns);
@@ -69,47 +60,95 @@ export default async function AdminDashboardPage({
   const pageSubtitle = await safe("admin", "subtitle", "Visão geral da plataforma, alunos e receita");
   const thisMonth = await safe("admin", "thisMonth", "este mês");
 
-  const metricKeys: Array<{
-    key: keyof typeof metricsStatic;
-    k: string;
-    fb: string;
-  }> = [
-    { key: "totalStudents", k: "totalStudents", fb: "Total de Alunos" },
-    { key: "activeStudents", k: "activeStudents", fb: "Alunos Ativos" },
-    { key: "pendingStudents", k: "pendingStudents", fb: "Pendentes" },
-    { key: "pastDueStudents", k: "pastDueStudents", fb: "Atrasados" },
-    { key: "blockedStudents", k: "blockedStudents", fb: "Bloqueados" },
-    { key: "monthlyRevenue", k: "monthlyRevenue", fb: "Receita do Mês" },
-    { key: "activeSubscriptions", k: "activeSubscriptions", fb: "Assinaturas Ativas" },
-    { key: "monthlyCancellations", k: "monthlyCancellations", fb: "Cancelamentos do Mês" },
+  // Buscar métricas reais do banco
+  const metricsData = await AdminMetricsService.getDashboardMetrics();
+  const revenueData = await AdminMetricsService.getRevenueData(12);
+  const subscriptionStatusData = await AdminMetricsService.getSubscriptionStatusData();
+  const topPlans = await AdminMetricsService.getTopPlans(5);
+  const lastPayments = await AdminMetricsService.getRecentPayments(5);
+
+  const formatCurrency = (cents: number, currency: string) => {
+    const value = cents / 100;
+    return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "en-US", {
+      style: "currency",
+      currency: currency,
+    }).format(value);
+  };
+
+  const metrics: Metric[] = [
+    {
+      labelKey: "totalStudents",
+      fallback: "Total de Alunos",
+      value: metricsData.totalStudents,
+      delta: "0%",
+      deltaPositive: true,
+      deltaGood: true,
+      icon: <Users size={22} />,
+    },
+    {
+      labelKey: "activeStudents",
+      fallback: "Alunos Ativos",
+      value: metricsData.activeStudents,
+      delta: "0%",
+      deltaPositive: true,
+      deltaGood: true,
+      icon: <UserCheck size={22} />,
+    },
+    {
+      labelKey: "pendingStudents",
+      fallback: "Pendentes",
+      value: metricsData.pendingStudents,
+      delta: "0%",
+      deltaPositive: false,
+      deltaGood: true,
+      icon: <Clock size={22} />,
+    },
+    {
+      labelKey: "pastDueStudents",
+      fallback: "Atrasados",
+      value: metricsData.pastDueStudents,
+      delta: "0%",
+      deltaPositive: true,
+      deltaGood: false,
+      icon: <AlertTriangle size={22} />,
+    },
+    {
+      labelKey: "blockedStudents",
+      fallback: "Bloqueados",
+      value: metricsData.blockedStudents,
+      delta: "0%",
+      deltaPositive: false,
+      deltaGood: true,
+      icon: <Ban size={22} />,
+    },
+    {
+      labelKey: "monthlyRevenue",
+      fallback: "Receita do Mês",
+      value: formatCurrency(metricsData.monthlyRevenue, metricsData.currency),
+      delta: "0%",
+      deltaPositive: true,
+      deltaGood: true,
+      icon: <Banknote size={22} />,
+    },
+    {
+      labelKey: "activeSubscriptions",
+      fallback: "Assinaturas Ativas",
+      value: metricsData.activeSubscriptions,
+      delta: "0%",
+      deltaPositive: true,
+      deltaGood: true,
+      icon: <CreditCard size={22} />,
+    },
+    {
+      labelKey: "monthlyCancellations",
+      fallback: "Cancelamentos do Mês",
+      value: metricsData.monthlyCancellations,
+      delta: "0%",
+      deltaPositive: false,
+      deltaGood: true,
+      icon: <UserX size={22} />,
+    },
   ];
-
-  const metricsStatic = {
-    totalStudents: { value: 247, delta: "+12%", dp: true, dg: true, icon: <Users size={22} /> },
-    activeStudents: { value: 189, delta: "+8%", dp: true, dg: true, icon: <UserCheck size={22} /> },
-    pendingStudents: { value: 32, delta: "-3%", dp: false, dg: true, icon: <Clock size={22} /> },
-    pastDueStudents: { value: 18, delta: "+2%", dp: false, dg: false, icon: <AlertTriangle size={22} /> },
-    blockedStudents: { value: 8, delta: "-1%", dp: false, dg: true, icon: <Ban size={22} /> },
-    monthlyRevenue: { value: "R$ 18.450,00", delta: "+15,3%", dp: true, dg: true, icon: <Banknote size={22} /> },
-    activeSubscriptions: { value: 195, delta: "+7%", dp: true, dg: true, icon: <CreditCard size={22} /> },
-    monthlyCancellations: { value: 12, delta: "-4%", dp: false, dg: true, icon: <UserX size={22} /> },
-  } as const;
-
-  const metrics: Metric[] = await Promise.all(
-    metricKeys.map(async ({ key, k, fb }) => {
-      const label = await safe("admin", k, fb);
-      const ms = metricsStatic[key];
-      return {
-        labelKey: k,
-        fallback: fb,
-        value: ms.value,
-        delta: ms.delta,
-        deltaPositive: ms.dp,
-        deltaGood: ms.dg,
-        icon: ms.icon,
-      } as Metric;
-    })
-  );
 
   const revenueTitle = await safe("admin", "revenueChartTitle", "Evolução da Receita (últimos 12 meses)");
   const vsTitle = await safe("admin", "studentsVsCancelsChartTitle", "Novos Alunos vs Cancelamentos (últimos 6 meses)");
@@ -117,49 +156,10 @@ export default async function AdminDashboardPage({
   const topPlansTitle = await safe("admin", "topPlansTitle", "Top 5 Planos Vendidos");
   const lastPaymentsTitle = await safe("admin", "lastPaymentsTitle", "Últimos Pagamentos");
 
-  const revenueData = [
-    { name: "Jan", value: 12000 },
-    { name: "Fev", value: 13000 },
-    { name: "Mar", value: 12500 },
-    { name: "Abr", value: 14000 },
-    { name: "Mai", value: 15200 },
-    { name: "Jun", value: 16000 },
-    { name: "Jul", value: 15800 },
-    { name: "Ago", value: 17000 },
-    { name: "Set", value: 16500 },
-    { name: "Out", value: 17800 },
-    { name: "Nov", value: 18000 },
-    { name: "Dez", value: 18450 },
-  ];
-
-  const subscriptionStatusData = [
-    { name: "Ativas", value: 195 },
-    { name: "Teste", value: 14 },
-    { name: "Atrasadas", value: 18 },
-    { name: "Canceladas", value: 12 },
-    { name: "Bloqueadas", value: 8 },
-  ];
-
-  const topPlans = [
-    { name: "Transformação", value: 97 },
-    { name: "Essencial", value: 63 },
-    { name: "Elite", value: 35 },
-    { name: "Iniciante", value: 30 },
-    { name: "Premium", value: 22 },
-  ];
-
-  const lastPayments = [
-    { name: "Ana Souza", value: "R$ 197,00", status: "paid", date: "02/10" },
-    { name: "Bruno Lima", value: "R$ 97,00", status: "pending", date: "02/10" },
-    { name: "Carla Dias", value: "R$ 497,00", status: "paid", date: "01/10" },
-    { name: "Diego Rocha", value: "R$ 197,00", status: "failed", date: "01/10" },
-    { name: "Elisa Prado", value: "R$ 97,00", status: "paid", date: "30/09" },
-  ];
-
   const statusLabel: Record<string, { label: string; variant: "success" | "warning" | "error" | "default" }> = {
-    paid: { label: "Aprovado", variant: "success" },
-    pending: { label: "Pendente", variant: "warning" },
-    failed: { label: "Falhou", variant: "error" },
+    paid: { label: await safe("admin", "paymentStatusPaid", "Aprovado"), variant: "success" },
+    pending: { label: await safe("admin", "paymentStatusPending", "Pendente"), variant: "warning" },
+    failed: { label: await safe("admin", "paymentStatusFailed", "Falhou"), variant: "error" },
   };
 
   return (

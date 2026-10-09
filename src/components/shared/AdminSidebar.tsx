@@ -22,6 +22,14 @@ import {
   Settings,
   User,
   LogOut,
+  Bell,
+  Calendar,
+  CreditCard,
+  DollarSign,
+  Shield,
+  Menu,
+  Activity,
+  Apple,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -68,8 +76,10 @@ export function AdminSidebar({ locale, onLogout }: AdminSidebarProps) {
         { key: "students", hrefSuffix: "/admin/alunos", fallback: "Alunos", icon: <Users size={20} /> },
         { key: "workouts", hrefSuffix: "/admin/treinos", fallback: "Treinos", icon: <Dumbbell size={20} /> },
         { key: "workoutCategories", hrefSuffix: "/admin/categorias-treino", fallback: "Categorias de Treino", icon: <Tags size={20} /> },
+        { key: "exercises", hrefSuffix: "/admin/exercicios", fallback: "Exercícios", icon: <Activity size={20} /> },
         { key: "diets", hrefSuffix: "/admin/dietas", fallback: "Dietas", icon: <UtensilsCrossed size={20} /> },
         { key: "dietCategories", hrefSuffix: "/admin/categorias-dieta", fallback: "Categorias de Dieta", icon: <ClipboardList size={20} /> },
+        { key: "foods", hrefSuffix: "/admin/alimentos", fallback: "Alimentos", icon: <Apple size={20} /> },
         { key: "supplements", hrefSuffix: "/admin/suplementos", fallback: "Suplementos", icon: <Pill size={20} /> },
         { key: "exams", hrefSuffix: "/admin/exames", fallback: "Exames", icon: <FileText size={20} /> },
         { key: "ebooks", hrefSuffix: "/admin/ebooks", fallback: "Ebooks", icon: <BookOpen size={20} /> },
@@ -85,13 +95,31 @@ export function AdminSidebar({ locale, onLogout }: AdminSidebarProps) {
       ],
     },
     {
-      titleKey: "sectionFinanceMentoring",
-      titleFallback: "Financeiro & Mentoria",
+      titleKey: "sectionRelationship",
+      titleFallback: "Relacionamento",
       items: [
-        { key: "financeiro", hrefSuffix: "/admin/financeiro", fallback: "Financeiro", icon: <Banknote size={20} /> },
         { key: "mentoria", hrefSuffix: "/admin/mentoria", fallback: "Mentoria", icon: <MessageSquare size={20} /> },
+        { key: "meetings", hrefSuffix: "/admin/reunioes", fallback: "Reuniões", icon: <Calendar size={20} /> },
+        { key: "notifications", hrefSuffix: "/admin/notificacoes", fallback: "Notificações", icon: <Bell size={20} /> },
         { key: "social", hrefSuffix: "/admin/redes-sociais", fallback: "Redes Sociais", icon: <Share2 size={20} /> },
+      ],
+    },
+    {
+      titleKey: "sectionFinance",
+      titleFallback: "Financeiro",
+      items: [
+        { key: "plans", hrefSuffix: "/admin/planos", fallback: "Planos", icon: <CreditCard size={20} /> },
+        { key: "subscriptions", hrefSuffix: "/admin/assinaturas", fallback: "Assinaturas", icon: <CreditCard size={20} /> },
+        { key: "payments", hrefSuffix: "/admin/pagamentos", fallback: "Pagamentos", icon: <DollarSign size={20} /> },
+        { key: "financeiro", hrefSuffix: "/admin/financeiro", fallback: "Financeiro", icon: <Banknote size={20} /> },
+      ],
+    },
+    {
+      titleKey: "sectionSystem",
+      titleFallback: "Sistema",
+      items: [
         { key: "settings", hrefSuffix: "/admin/configuracoes", fallback: "Configurações", icon: <Settings size={20} /> },
+        { key: "audit", hrefSuffix: "/admin/auditoria", fallback: "Auditoria", icon: <Shield size={20} /> },
       ],
     },
   ];
