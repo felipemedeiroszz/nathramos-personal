@@ -99,9 +99,11 @@ import type {
   ExerciseSourceT,
   MuscleGroupT,
   EquipmentT,
+  MealTypeT,
   UserRoleT as SupabaseUserRoleT,
   CurrencyT as SupabaseCurrencyT,
 } from "../lib/supabase/types"
+
 
 type UserRoleT = SupabaseUserRoleT
 type CurrencyT = SupabaseCurrencyT
