@@ -126,7 +126,7 @@ export function AdminEbooksClient({
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
@@ -206,12 +206,17 @@ export function AdminEbooksClient({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" title={tCommon("edit")} onClick={() => openEdit(ebook)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title={tCommon("edit")}
+                              onClick={() => openEdit(ebook)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
                               onClick={() => setDeleteConfirm({ id: ebook.id, name: ebook.title_pt })}
