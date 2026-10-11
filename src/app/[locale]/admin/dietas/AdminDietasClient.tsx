@@ -522,7 +522,7 @@ export function AdminDietasClient({
 
         onSubmit={async (data) => {
 
-          await upsertDietProgramAction(data)
+          await upsertDietProgramAction(data as Parameters<typeof upsertDietProgramAction>[0])
 
         }}
 
