@@ -126,7 +126,7 @@ export function AdminSuplementosClient({
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
@@ -201,15 +201,22 @@ export function AdminSuplementosClient({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" title={tCommon("edit")} onClick={() => openEdit(supplement)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title={tCommon("edit")}
+                              onClick={() => openEdit(supplement)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
-                              onClick={() => setDeleteConfirm({ id: supplement.id, name: supplement.name_pt })}
+                              onClick={() =>
+                                setDeleteConfirm({ id: supplement.id, name: supplement.name_pt })
+                              }
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -234,7 +241,9 @@ export function AdminSuplementosClient({
           }}
           supplement={editingSupplement ?? undefined}
           onSubmit={async (data) => {
-            await upsertSupplementAction(data)
+            await upsertSupplementAction(
+              data as Parameters<typeof upsertSupplementAction>[0]
+            )
           }}
           onSaved={onModalSaved}
         />
@@ -253,7 +262,8 @@ export function AdminSuplementosClient({
               <DialogTitle>{t("confirmDelete")}</DialogTitle>
             </div>
             <DialogDescription>
-              {t("confirmDeleteDesc")} <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+              {t("confirmDeleteDesc")}{" "}
+              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
