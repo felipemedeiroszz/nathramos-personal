@@ -16,6 +16,7 @@ import {
   Bell,
   ChevronDown,
   LogOut,
+  Menu,
 } from "lucide-react";
 
 interface AdminHeaderProps {
@@ -26,6 +27,7 @@ interface AdminHeaderProps {
   role: string;
   onLogout: () => Promise<void> | void;
   onLanguageChange?: (newLocale: string) => void;
+  onMenuToggle?: () => void;
 }
 
 export function AdminHeader({
@@ -36,6 +38,7 @@ export function AdminHeader({
   role,
   onLogout,
   onLanguageChange,
+  onMenuToggle,
 }: AdminHeaderProps) {
   const pathname = usePathname();
   const tCommon = useTranslations("common");
@@ -83,9 +86,17 @@ export function AdminHeader({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-      <div className="flex h-16 items-center px-4 md:px-6">
+      <div className="flex h-16 items-center px-4 md:px-6 gap-4">
+        {/* Mobile menu button */}
+        <button
+          onClick={onMenuToggle}
+          className="md:hidden p-2 rounded-lg hover:bg-surface-secondary text-text-secondary shrink-0"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-sm overflow-hidden">
+        <div className="flex items-center gap-2 text-sm overflow-hidden min-w-0">
           {breadcrumbs.length > 1 && (
             <>
               {breadcrumbs.slice(0, -1).map((crumb, idx) => (
@@ -97,7 +108,7 @@ export function AdminHeader({
                   {crumb.label}
                 </Link>
               ))}
-              <span className="text-text-secondary">/</span>
+              <span className="text-text-secondary shrink-0">/</span>
             </>
           )}
           <h1 className="font-semibold text-text truncate">{pageTitle}</h1>

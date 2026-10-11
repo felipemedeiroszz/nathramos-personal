@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { BookOpen } from "lucide-react";
 import { requireRole } from "@/lib/auth/access";
+import { EbookService } from "@/services/EbookService";
+import type { EbookRow } from "@/types";
+import { AdminEbooksClient } from "./AdminEbooksClient";
 
 export const dynamic = "force-dynamic";
 
@@ -13,31 +13,62 @@ export const metadata: Metadata = {
   title: "Admin | Ebooks",
 };
 
+async function safe(t: any, key: string, fb: string) {
+  try {
+    if (t && t.has && t.has(key)) return t(key);
+  } catch {}
+  return fb;
+}
+
 export default async function AdminEbooksPage({
   params: { locale },
+  searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
+  searchParams?: {
+    q?: string;
+    published?: string;
+    free?: string;
+    language?: string;
+  };
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
   const tCommon = await getTranslations("common");
-  await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
 
-  const title = (() => {
-    try {
-      if (tAdminNav.has("ebooks")) return tAdminNav("ebooks");
-    } catch {}
-    return "Ebooks";
-  })();
+  const title = await safe(tAdminNav, "ebooks", "E-books");
+  const subtitle = await safe(
+    tAdmin,
+    "ebooks.subtitle",
+    "Gerencie a biblioteca de e-books"
+  );
 
-  const subtitle = (() => {
-    try {
-      if (tCommon.has("comingSoon")) return tCommon("comingSoon");
-    } catch {}
-    return "Em breve";
-  })();
+  const q = searchParams?.q ?? "";
+  const publishedParam = searchParams?.published;
+  const freeParam = searchParams?.free;
+  const languageParam = searchParams?.language;
+
+  const filters: {
+    search?: string;
+    is_published?: boolean;
+    is_free?: boolean;
+    language?: any;
+    limit?: number;
+  } = { limit: 50 };
+
+  if (q && q.trim().length > 0) filters.search = q.trim();
+  if (publishedParam === "1") filters.is_published = true;
+  if (publishedParam === "0") filters.is_published = false;
+  if (freeParam === "1") filters.is_free = true;
+  if (freeParam === "0") filters.is_free = false;
+  if (languageParam && (languageParam === "pt-BR" || languageParam === "en-US")) {
+    filters.language = languageParam;
+  }
+
+  const ebooks: EbookRow[] = await EbookService.listEbooks(filters);
 
   return (
     <div className="space-y-6 w-full">
@@ -45,27 +76,14 @@ export default async function AdminEbooksPage({
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>{subtitle}</CardDescription>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <BookOpen size={22} />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            className="py-16"
-            icon={<BookOpen size={40} className="text-text-secondary" />}
-            title={title}
-            description={subtitle}
-          />
-        </CardContent>
-      </Card>
+
+      <AdminEbooksClient
+        locale={locale}
+        userId={userId}
+        title={title}
+        ebooks={ebooks}
+        searchValue={q}
+      />
     </div>
   );
 }

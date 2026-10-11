@@ -378,3 +378,166 @@ export const EQUIPMENT_TYPES: EquipmentT[] = [
 export const WORKOUT_STATUSES: WorkoutStatusT[] = ["active", "completed", "paused", "archived"]
 export const EXERCISE_SOURCES: ExerciseSourceT[] = ["exercisedb", "custom"]
 export const DIFFICULTY_LEVELS: DifficultyT[] = ["beginner", "intermediate", "advanced"]
+
+// Diet types
+export interface DietProgramRow {
+  id: string
+  user_id: string
+  assigned_by_id?: string | null
+  assigned_plan_id?: string | null
+  title_pt: string
+  title_en: string
+  daily_calories: number
+  protein_g: number
+  carbs_g: number
+  fats_g: number
+  fiber_g: number
+  sodium_mg: number
+  water_liters: number
+  start_date: string
+  end_date?: string | null
+  is_active: boolean
+  restrictions_pt: string[]
+  restrictions_en: string[]
+  notes_pt?: string | null
+  notes_en?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DietMealRow {
+  id: string
+  diet_id: string
+  meal_type: MealTypeT
+  time_of_day: string
+  order_index: number
+  name_pt: string
+  name_en: string
+  instructions_pt?: string | null
+  instructions_en?: string | null
+  calories_kcal: number
+  protein_g: number
+  carbs_g: number
+  fats_g: number
+  created_at: string
+  updated_at: string
+}
+
+export interface DietMealItemRow {
+  id: string
+  meal_id: string
+  order_index: number
+  name_pt: string
+  name_en: string
+  quantity: number
+  unit: string
+  calories_kcal: number
+  protein_g: number
+  carbs_g: number
+  fats_g: number
+  alternatives_pt: string[]
+  alternatives_en: string[]
+  created_at: string
+}
+
+// Supplement types
+export interface SupplementRow {
+  id: string
+  created_by_id?: string | null
+  name_pt: string
+  name_en: string
+  category_pt: string
+  category_en: string
+  description_pt?: string | null
+  description_en?: string | null
+  serving_size: number
+  serving_unit: string
+  suggested_times_pt: string[]
+  suggested_times_en: string[]
+  contraindications_pt: string[]
+  contraindications_en: string[]
+  benefits_pt: string[]
+  benefits_en: string[]
+  brand?: string | null
+  image_url?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UserSupplementRow {
+  id: string
+  user_id: string
+  supplement_id?: string | null
+  name_pt_snapshot: string
+  dosage: number
+  dosage_unit: string
+  frequency_per_day: number
+  times_of_day: string[]
+  start_date: string
+  end_date?: string | null
+  is_active: boolean
+  assigned_by_id?: string | null
+  notes?: string | null
+  created_at: string
+}
+
+// Exam types
+export interface ExamCategoryRow {
+  id: string
+  name_pt: string
+  name_en: string
+  order_index: number
+  created_at: string
+}
+
+export interface ExamRow {
+  id: string
+  user_id: string
+  category_id?: string | null
+  title: string
+  exam_date: string
+  lab_name?: string | null
+  description?: string | null
+  file_bucket_path?: string | null
+  file_name?: string | null
+  file_size_bytes?: number | null
+  file_mime_type?: string | null
+  results_summary?: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  is_deleted: boolean
+  deleted_at?: string | null
+}
+
+// Ebook types
+export interface EbookRow {
+  id: string
+  title_pt: string
+  title_en: string
+  slug: string
+  summary_pt?: string | null
+  summary_en?: string | null
+  cover_url?: string | null
+  file_bucket_path?: string | null
+  pages_count?: number | null
+  language: LocaleT
+  is_free: boolean
+  min_plan_id?: string | null
+  publish_at?: string | null
+  is_published: boolean
+  categories_pt: string[]
+  categories_en: string[]
+  author?: string | null
+  created_at: string
+  updated_at: string
+  is_deleted: boolean
+}
+
+export interface EbookDownloadRow {
+  id: number
+  user_id: string
+  ebook_id: string
+  downloaded_at: string
+  ip_address?: string | null
+}

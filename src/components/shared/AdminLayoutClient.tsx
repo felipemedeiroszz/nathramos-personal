@@ -38,17 +38,29 @@ export function AdminLayoutClient({
   return (
     <div className="min-h-dvh bg-background">
       <div className="flex flex-col md:flex-row">
-        {/* Sidebar - Desktop */}
-        <div className="hidden md:block">
-          <AdminSidebar locale={locale} onLogout={onLogout} />
-        </div>
-
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 z-50 bg-black/50 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
+        )}
+
+        {/* Sidebar - Desktop (hidden on mobile) */}
+        <div className="hidden md:block">
+          <AdminSidebar locale={locale} onLogout={onLogout} />
+        </div>
+
+        {/* Sidebar - Mobile (drawer) */}
+        {sidebarOpen && (
+          <div className="fixed inset-y-0 left-0 z-50 w-64 md:hidden">
+            <AdminSidebar
+              locale={locale}
+              onLogout={onLogout}
+              isMobile
+              onClose={() => setSidebarOpen(false)}
+            />
+          </div>
         )}
 
         {/* Main content */}
@@ -61,9 +73,10 @@ export function AdminLayoutClient({
             role={role}
             onLogout={onLogout}
             onLanguageChange={handleLanguageChange}
+            onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           />
-          <main className="flex-1">
-            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8 md:py-10">
+          <main className="flex-1 overflow-x-hidden">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 md:py-8 lg:py-10">
               {children}
             </div>
           </main>

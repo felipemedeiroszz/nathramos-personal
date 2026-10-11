@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
@@ -35,6 +36,8 @@ import {
 interface AdminSidebarProps {
   locale: string;
   onLogout?: () => Promise<void> | void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 type NavSection = {
@@ -56,7 +59,7 @@ const accountAndLogout = {
   },
 };
 
-export function AdminSidebar({ locale, onLogout }: AdminSidebarProps) {
+export function AdminSidebar({ locale, onLogout, isMobile, onClose }: AdminSidebarProps) {
   const tNav = useTranslations("adminNav");
   const tCommon = useTranslations("common");
   const pathname = usePathname();
@@ -156,45 +159,95 @@ export function AdminSidebar({ locale, onLogout }: AdminSidebarProps) {
 
   const accountLabel = labelFor("account", accountAndLogout.account.fallback);
 
+  let itemCounter = 0;
+  const nextDelay = (offset = 0) => {
+    const delay = 60 * itemCounter + offset;
+    itemCounter += 1;
+    return `${delay}ms`;
+  };
+
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen bg-surface border-r border-border sticky top-0 overflow-y-auto">
-      <div className="p-6">
-        <Link href={`/${locale}/admin/dashboard`} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.25)]">
-            <Dumbbell size={20} className="text-primary-foreground" />
+    <aside className={cn(
+      "flex flex-col w-64 h-screen bg-surface border-r border-border overflow-y-auto overflow-x-hidden",
+      "relative",
+      isMobile ? "fixed" : "hidden md:flex sticky top-0"
+    )}>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent animate-accent-slide" />
+
+      <div className="p-6 flex items-center justify-between shrink-0 relative">
+        <Link
+          href={`/${locale}/admin/dashboard`}
+          className="flex items-center gap-3 min-w-0 group"
+          onClick={() => isMobile && onClose?.()}
+        >
+          <div className="relative w-20 h-20 shrink-0 animate-logo-float drop-shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
+            <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-glow" />
+            <Image
+              src="/logo.png"
+              alt="Nath Ramos Admin"
+              fill
+              className="object-contain relative z-10"
+              priority
+            />
           </div>
-          <span className="text-lg font-bold text-text">Nath Ramos Admin</span>
         </Link>
+        {isMobile && (
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-surface-secondary text-text-secondary shrink-0 transition-transform hover:scale-110 active:scale-95"
+          >
+            <LogOut size={20} />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 px-4 pb-4">
+      <div className="h-px mx-6 bg-gradient-to-r from-transparent via-border to-transparent relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/60 to-transparent bg-[length:200%_100%] animate-shimmer" />
+      </div>
+
+      <nav className="flex-1 px-4 pb-4 pt-2">
         {sections.map((section, sIdx) => (
-          <div key={sIdx} className={sIdx === 0 ? "" : ""}>
+          <div
+            key={sIdx}
+            className="animate-slide-in-left"
+            style={{ animationDelay: `${sIdx * 80}ms` }}
+          >
             {section.titleKey || sIdx > 0 ? (
-              <div
-                className={cn(
-                  "text-xs uppercase text-text-secondary mb-2 mt-4 px-3 font-semibold tracking-wider"
-                )}
-              >
-                {sectionTitleFor(section.titleKey, section.titleFallback)}
+              <div className="relative mb-2 mt-4 px-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-1 rounded-full bg-primary/70 shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+                  <span className="text-xs uppercase text-text-secondary font-semibold tracking-wider">
+                    {sectionTitleFor(section.titleKey, section.titleFallback)}
+                  </span>
+                </div>
               </div>
             ) : null}
             <ul className="space-y-1">
               {section.items.map((item) => {
                 const active = isActive(item.hrefSuffix);
+                const delay = nextDelay();
                 return (
-                  <li key={item.hrefSuffix}>
+                  <li key={item.hrefSuffix} className="animate-slide-in-left" style={{ animationDelay: delay }}>
                     <Link
                       href={`/${locale}${item.hrefSuffix}`}
+                      onClick={() => isMobile && onClose?.()}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                        "group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out",
                         active
-                          ? "bg-primary text-primary-foreground"
-                          : "text-text-secondary hover:text-text hover:bg-surface-secondary"
+                          ? "bg-primary text-primary-foreground animate-active-glow"
+                          : "text-text-secondary hover:text-text hover:bg-surface-secondary hover:translate-x-1"
                       )}
                     >
-                      {item.icon}
-                      <span className="font-medium text-sm">{labelFor(item.key, item.fallback)}</span>
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
+                      )}
+                      <span className={cn(
+                        "transition-transform duration-300",
+                        active ? "scale-110" : "group-hover:scale-110"
+                      )}>
+                        {item.icon}
+                      </span>
+                      <span className="font-medium text-sm tracking-wide">{labelFor(item.key, item.fallback)}</span>
                     </Link>
                   </li>
                 );
@@ -203,33 +256,52 @@ export function AdminSidebar({ locale, onLogout }: AdminSidebarProps) {
           </div>
         ))}
 
-        <div className="text-xs uppercase text-text-secondary mb-2 mt-6 px-3 font-semibold tracking-wider">
-          {sectionTitleFor("sectionAccount", "Conta")}
+        <div
+          className="relative mb-2 mt-6 px-3 animate-slide-in-left"
+          style={{ animationDelay: `${sections.length * 80}ms` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-1 rounded-full bg-primary/70 shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
+            <span className="text-xs uppercase text-text-secondary font-semibold tracking-wider">
+              {sectionTitleFor("sectionAccount", "Conta")}
+            </span>
+          </div>
         </div>
         <ul className="space-y-1">
-          <li>
+          <li className="animate-slide-in-left" style={{ animationDelay: nextDelay() }}>
             <Link
               href={`/${locale}/account`}
+              onClick={() => isMobile && onClose?.()}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                "group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out",
                 isActive(accountAndLogout.account.hrefSuffix)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-text-secondary hover:text-text hover:bg-surface-secondary"
+                  ? "bg-primary text-primary-foreground animate-active-glow"
+                  : "text-text-secondary hover:text-text hover:bg-surface-secondary hover:translate-x-1"
               )}
             >
-              {accountAndLogout.account.icon}
-              <span className="font-medium text-sm">{accountLabel}</span>
+              {isActive(accountAndLogout.account.hrefSuffix) && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
+              )}
+              <span className="transition-transform duration-300 group-hover:scale-110">
+                {accountAndLogout.account.icon}
+              </span>
+              <span className="font-medium text-sm tracking-wide">{accountLabel}</span>
             </Link>
           </li>
-          <li>
+          <li className="animate-slide-in-left" style={{ animationDelay: nextDelay() }}>
             <button
-              onClick={onLogout}
+              onClick={() => {
+                onLogout?.();
+                onClose?.();
+              }}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-red-500 hover:bg-red-500/10"
+                "group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out text-red-500 hover:bg-red-500/10 hover:translate-x-1"
               )}
             >
-              <LogOut size={20} />
-              <span className="font-medium text-sm">{logoutLabel}</span>
+              <span className="transition-transform duration-300 group-hover:scale-110">
+                <LogOut size={20} />
+              </span>
+              <span className="font-medium text-sm tracking-wide">{logoutLabel}</span>
             </button>
           </li>
         </ul>

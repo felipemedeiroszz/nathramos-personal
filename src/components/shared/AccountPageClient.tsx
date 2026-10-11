@@ -5,13 +5,12 @@ import { useFormState } from "react-dom";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
   updateProfileAction,
   changePasswordAction,
-  deleteAccountAction,
   uploadPhotoAction,
   removePhotoAction,
   logoutAction,
@@ -23,16 +22,13 @@ import {
   Upload,
   X,
   Lock,
-  ShieldAlert,
   CreditCard,
   LogOut,
-  Trash2,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Globe,
   Settings,
-  Bell,
   Mail,
   MapPin,
   Calendar,
@@ -136,13 +132,11 @@ export function AccountPageClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   const [, startTransition] = useTransition();
 
   const [profileState, profileAction] = useFormState(updateProfileAction, null);
   const [passwordState, passwordAction] = useFormState(changePasswordAction, null);
-  const [deleteState, deleteAction] = useFormState(deleteAccountAction, null);
   const [uploadState, uploadAction] = useFormState(uploadPhotoAction, null);
 
   const handleFilePick = () => fileInputRef.current?.click();
@@ -523,14 +517,14 @@ export function AccountPageClient({
         )}
 
         {activeTab === "settings" && (
-          <Card className="border-red-500/20 bg-red-500/[0.02]">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-400">
-                <ShieldAlert size={20} /> {t("dangerZone")}
+              <CardTitle className="flex items-center gap-2">
+                <LogOut size={20} /> {t("logout")}
               </CardTitle>
-              <CardDescription>{t("dangerDesc")}</CardDescription>
+              <CardDescription>Sair da sua conta atual.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
               <form action={logoutAction as any} className="flex flex-wrap gap-4 justify-between items-center p-4 rounded-xl bg-surface-secondary/30 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-surface-secondary">
@@ -545,51 +539,6 @@ export function AccountPageClient({
                   {t("logout")}
                 </Button>
               </form>
-
-              <div className="border-t border-border pt-6 space-y-6">
-                {deleteState?.success === false && deleteState.message && deleteState.message !== "validation" ? (
-                  <AlertLine type="error" text={deleteState.message === "wrong_password" ? common(deleteState.message) : deleteState.message} />
-                ) : null}
-                {!confirmDelete ? (
-                  <div className="flex flex-wrap justify-between items-center gap-4 p-4 rounded-xl bg-red-500/5 border border-red-500/20">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-red-500/10">
-                        <Trash2 size={20} className="text-red-400" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-text">{t("deleteAccount")}</p>
-                        <p className="text-xs text-text-secondary max-w-md">{t("deleteWarning")}</p>
-                      </div>
-                    </div>
-                    <Button type="button" variant="destructive" size="lg" onClick={() => setConfirmDelete(true)}>
-                      {t("deleteAccount")}
-                    </Button>
-                  </div>
-                ) : (
-                  <form action={deleteAction} className="space-y-4">
-                    <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-6 space-y-4">
-                      <div className="flex items-center gap-3 text-red-400">
-                        <ShieldAlert size={24} />
-                        <p className="font-semibold text-lg">{t("deleteConfirm")}</p>
-                      </div>
-                      <p className="text-sm text-text-secondary">{t("deleteWarning")}</p>
-                      <div className="space-y-2 pt-2">
-                        <label className="text-sm font-medium text-text">{t("deletePasswordRequired")}</label>
-                        <Input name="password" type="password" required minLength={6} autoComplete="current-password" placeholder="••••••" />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-3 justify-end">
-                      <Button type="button" variant="ghost" size="lg" onClick={() => setConfirmDelete(false)}>
-                        {common("cancel")}
-                      </Button>
-                      <Button type="submit" variant="destructive" size="lg">
-                        <Trash2 size={18} className="mr-2" />
-                        {t("deleteAccount")}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </div>
             </CardContent>
           </Card>
         )}

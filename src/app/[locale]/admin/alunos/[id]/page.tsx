@@ -57,6 +57,7 @@ import type {
 import { AssignWorkoutKitModal } from "@/components/admin/workout/AssignWorkoutKitModal";
 import { UnassignWorkoutButton } from "@/components/admin/workout/UnassignWorkoutButton";
 import { AssignWorkoutKitModalClient } from "@/components/admin/workout/AssignWorkoutKitModalClient";
+import { StudentPasswordResetForm } from "@/components/admin/StudentPasswordResetForm";
 
 export const dynamic = "force-dynamic";
 
@@ -472,6 +473,11 @@ export default async function AdminAlunoDetalhePage({
           </CardContent>
         </Card>
       </div>
+
+      <StudentPasswordResetForm
+        studentId={id}
+        studentName={`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "aluno"}
+      />
 
       <Tabs defaultValue="workouts">
         <TabsList>

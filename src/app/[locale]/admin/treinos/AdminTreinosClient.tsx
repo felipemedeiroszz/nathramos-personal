@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -94,21 +95,6 @@ function statusBadgeVariant(status: string): "default" | "success" | "warning" |
   }
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case "active":
-      return "Ativo";
-    case "completed":
-      return "Concluido";
-    case "paused":
-      return "Pausado";
-    case "archived":
-      return "Arquivado";
-    default:
-      return status;
-  }
-}
-
 function formatRest(sec?: number | null): string {
   if (!sec) return "-";
   if (sec < 60) return `${sec}s`;
@@ -127,6 +113,8 @@ export function AdminTreinosClient({
   translateDifficulty,
 }: AdminTreinosClientProps) {
   const router = useRouter();
+  const t = useTranslations("adminWorkouts");
+  const tCommon = useTranslations("common");
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -215,10 +203,10 @@ export function AdminTreinosClient({
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
-                <option value="">Todas categorias</option>
+                <option value="">{t("allCategories")}</option>
                 {categoryOptions.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name_pt}
+                    {locale === "pt-BR" ? c.name_pt : c.name_en}
                   </option>
                 ))}
               </Select>
@@ -228,7 +216,7 @@ export function AdminTreinosClient({
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
                 />
                 <Input
-                  placeholder="Buscar programa..."
+                  placeholder={t("searchPlaceholder")}
                   className="pl-10"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -237,19 +225,19 @@ export function AdminTreinosClient({
             </div>
             <Button variant="primary" size="md" className="shrink-0" onClick={openCreateProgram}>
               <Plus size={18} className="mr-2" />
-              Novo Programa
+              {t("newProgram")}
             </Button>
           </div>
 
           {filteredPrograms.length === 0 ? (
             <EmptyState
               icon={<FolderKanban size={28} className="text-text-secondary" />}
-              title="Nenhum programa encontrado"
-              description="Crie seu primeiro programa de treino ou ajuste os filtros."
+              title={t("noPrograms")}
+              description={t("noProgramsDesc")}
               action={
                 <Button variant="primary" size="sm" onClick={openCreateProgram}>
                   <Plus size={16} className="mr-2" />
-                  Novo Programa
+                  {t("newProgram")}
                 </Button>
               }
             />
@@ -258,14 +246,14 @@ export function AdminTreinosClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Titulo pt/en</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Dificuldade</TableHead>
-                    <TableHead>Semanas</TableHead>
-                    <TableHead>Dias/semana</TableHead>
-                    <TableHead>Min/sessao</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Acoes</TableHead>
+                    <TableHead>{t("titlePtEn")}</TableHead>
+                    <TableHead>{t("category")}</TableHead>
+                    <TableHead>{t("difficulty")}</TableHead>
+                    <TableHead>{t("weeks")}</TableHead>
+                    <TableHead>{t("daysPerWeek")}</TableHead>
+                    <TableHead>{t("minSession")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,7 +266,7 @@ export function AdminTreinosClient({
                         </div>
                       </TableCell>
                       <TableCell className="text-text">
-                        {p.category_name_pt || (
+                        {locale === "pt-BR" ? p.category_name_pt : p.category_name_en || (
                           <span className="text-text-secondary">-</span>
                         )}
                       </TableCell>
@@ -290,7 +278,7 @@ export function AdminTreinosClient({
                       <TableCell className="text-text">{p.est_minutes_per_session}</TableCell>
                       <TableCell>
                         <Badge variant={statusBadgeVariant(p.status)}>
-                          {statusLabel(p.status)}
+                          {t(`status${p.status.charAt(0).toUpperCase()}${p.status.slice(1)}`)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -298,7 +286,7 @@ export function AdminTreinosClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Abrir Editor"
+                            title={t("openEditor")}
                             asChild
                           >
                             <Link href={`/${locale}/admin/treinos/${p.id}`}>
@@ -308,7 +296,7 @@ export function AdminTreinosClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Editar"
+                            title={tCommon("edit")}
                             onClick={() => openEditProgram(p)}
                           >
                             <Edit size={16} />
@@ -316,7 +304,7 @@ export function AdminTreinosClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Arquivar"
+                            title={t("archive")}
                             className="text-red-500 hover:text-red-500"
                             onClick={() =>
                               setDeleteConfirm({ id: p.id, name: p.title_pt })
@@ -337,25 +325,25 @@ export function AdminTreinosClient({
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <CardTitle>Montagem de dias e exercicios</CardTitle>
+                  <CardTitle>{t("assemblyTitle")}</CardTitle>
                   <CardDescription>
                     {showcaseProgram ? (
                       <>
-                        Programa:{" "}
+                        {t("assemblyProgram")}{" "}
                         <span className="font-semibold text-text">
                           {showcaseProgram.title_pt}
                         </span>{" "}
-                        · {showcaseDays.length} dia(s) carregado(s)
+                        · {showcaseDays.length} {t("assemblyLoaded")}
                       </>
                     ) : (
-                      "Selecione ou crie um programa para visualizar a montagem."
+                      t("noProgramSelectedDesc")
                     )}
                   </CardDescription>
                 </div>
                 {showcaseProgram && (
                   <Button variant="secondary" size="sm" onClick={() => openCreateDay(showcaseProgram.id)}>
                     <Plus size={16} className="mr-2" />
-                    Novo Dia
+                    {t("newDay")}
                   </Button>
                 )}
               </div>
@@ -364,18 +352,18 @@ export function AdminTreinosClient({
               {!showcaseProgram ? (
                 <EmptyState
                   icon={<CalendarDays size={28} className="text-text-secondary" />}
-                  title="Sem programa para exibir"
-                  description="Crie um programa e adicione dias com exercicios."
+                  title={t("noProgramSelected")}
+                  description={t("noProgramSelectedDesc")}
                 />
               ) : showcaseDays.length === 0 ? (
                 <EmptyState
                   icon={<CalendarDays size={28} className="text-text-secondary" />}
-                  title="Nenhum dia cadastrado"
-                  description="Adicione o primeiro dia de treino para este programa."
+                  title={t("noDays")}
+                  description={t("noDaysDesc")}
                   action={
                     <Button variant="primary" size="sm" onClick={() => openCreateDay(showcaseProgram.id)}>
                       <Plus size={16} className="mr-2" />
-                      Adicionar Dia
+                      {t("addDay")}
                     </Button>
                   }
                 />
@@ -395,7 +383,7 @@ export function AdminTreinosClient({
                             </span>
                           )}
                           <Badge variant="outline" className="ml-1">
-                            Semana {dia.week_number}
+                            {t("week")} {dia.week_number}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
@@ -404,14 +392,13 @@ export function AdminTreinosClient({
                             {dia.est_minutes} min
                           </Badge>
                           <Badge variant="outline">
-                            {dia.exercises.length} exercicio
-                            {dia.exercises.length === 1 ? "" : "s"}
+                            {dia.exercises.length} {dia.exercises.length === 1 ? t("exercisesCount") : t("exercisesCountPlural")}
                           </Badge>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            title="Editar dia"
+                            title={t("editDay")}
                             onClick={() => openEditDay(showcaseProgram.id, dia)}
                           >
                             <Edit size={15} />
@@ -420,7 +407,7 @@ export function AdminTreinosClient({
                       </div>
                       {dia.exercises.length === 0 ? (
                         <div className="px-4 py-6 text-sm text-text-secondary text-center">
-                          Sem exercicios adicionados neste dia.
+                          {t("noExercises")}
                         </div>
                       ) : (
                         <div className="w-full overflow-x-auto">
@@ -428,10 +415,10 @@ export function AdminTreinosClient({
                             <TableHeader>
                               <TableRow>
                                 <TableHead className="w-[50px]">#</TableHead>
-                                <TableHead>Exercicio</TableHead>
-                                <TableHead>Series</TableHead>
-                                <TableHead>Reps</TableHead>
-                                <TableHead>Descanso</TableHead>
+                                <TableHead>{t("exercise")}</TableHead>
+                                <TableHead>{t("sets")}</TableHead>
+                                <TableHead>{t("reps")}</TableHead>
+                                <TableHead>{t("rest")}</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -439,7 +426,7 @@ export function AdminTreinosClient({
                                 const exName =
                                   ex.exercise?.name_pt ||
                                   ex.exercise?.name_en ||
-                                  `Exercicio #${ex.exercise_id}`;
+                                  `Exercise #${ex.exercise_id}`;
                                 return (
                                   <TableRow key={ex.id}>
                                     <TableCell className="text-text-secondary">
@@ -509,12 +496,12 @@ export function AdminTreinosClient({
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>Confirmar arquivamento</DialogTitle>
+              <DialogTitle>{t("confirmArchive")}</DialogTitle>
             </div>
             <DialogDescription>
-              Tem certeza que deseja arquivar o programa{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
-              Ele sera movido para o status Arquivado.
+              {t("confirmArchiveDesc")}{" "}
+              <span className="font-semibold text-text">{deleteConfirm?.name}</span>
+              {t("archiveSuffix")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -523,11 +510,11 @@ export function AdminTreinosClient({
               onClick={() => setDeleteConfirm(null)}
               disabled={deleting}
             >
-              Cancelar
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               <Trash2 size={16} className="mr-2" />
-              {deleting ? "Arquivando..." : "Arquivar"}
+              {deleting ? t("archiving") : t("archive")}
             </Button>
           </DialogFooter>
         </DialogContent>

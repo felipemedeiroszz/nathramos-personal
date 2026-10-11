@@ -58,8 +58,10 @@ export default function LoginPage() {
         if (result.message) {
           setServerError(result.message);
         }
+      } else if (result?.redirectTo) {
+        router.push(result.redirectTo);
       } else {
-        router.push(`/${locale}/dashboard`);
+        router.push(`/${locale}/treinos`);
       }
     });
   };

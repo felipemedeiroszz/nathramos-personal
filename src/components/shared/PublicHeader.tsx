@@ -39,13 +39,12 @@ export function PublicHeader({ locale }: { locale: string }) {
           <div className="relative h-10 w-10">
             <Image
               src="/logo.png"
-              alt="Nath Ramos Logo"
+              alt="Nath Ramos"
               fill
               className="object-contain"
               priority
             />
           </div>
-          <span className="text-base font-bold text-text tracking-tight">Nath Ramos</span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">

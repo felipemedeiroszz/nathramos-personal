@@ -63,7 +63,7 @@ export async function getCurrentRole(): Promise<UserRole | null> {
   const userId = await getCurrentUserId()
   if (!userId) return null
   try {
-    const supabase = await createClientSSR()
+    const supabase = await createServiceClientSSR()
     const { data } = await supabase
       .from("profiles")
       .select<string, { role: UserRole }>("role")

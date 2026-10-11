@@ -1,7 +1,6 @@
 "use server"
 
-import { redirect } from "next/navigation"
-import { createClientSSR } from "@/lib/supabase/server"
+import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server"
 import {
   loginSchema,
   signUpSchema,
@@ -9,6 +8,7 @@ import {
 } from "@/schemas/auth"
 import { headers } from "next/headers"
 import { defaultLocale } from "@/i18n/config"
+import type { UserRole } from "@/types"
 
 function detectLocale(): string {
   const headersList = headers()
@@ -33,7 +33,7 @@ export async function loginAction(formData: FormData) {
 
   const supabase = await createClientSSR()
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
@@ -47,7 +47,50 @@ export async function loginAction(formData: FormData) {
   }
 
   const locale = detectLocale()
-  redirect(`/${locale}/dashboard`)
+
+  // Check user role from database using service role (bypasses RLS)
+  let role: UserRole = "student"
+  let usedMethod = "none"
+
+  try {
+    const serviceSupabase = await createServiceClientSSR()
+    const { data: profile } = await serviceSupabase
+      .from("profiles")
+      .select<string, { role: UserRole }>("role")
+      .eq("id", data.user.id)
+      .limit(1)
+      .maybeSingle()
+
+    console.log("=== LOGIN DEBUG (Service Role) ===")
+    console.log("User ID:", data.user.id)
+    console.log("Profile from DB:", profile)
+    console.log("===================================")
+
+    role = profile?.role ?? "student"
+    usedMethod = "service_role"
+  } catch (error) {
+    console.error("Service role failed:", error)
+    // If service role fails, fallback to checking user_metadata
+    role = (data.user.user_metadata?.role as UserRole) ?? "student"
+    usedMethod = "user_metadata"
+  }
+
+  console.log("=== LOGIN REDIRECT ===")
+  console.log("Method used:", usedMethod)
+  console.log("Role:", role)
+  console.log("Should redirect to admin?", role === "admin" || role === "coach")
+  console.log("======================")
+
+  const redirectTo =
+    role === "admin" || role === "coach"
+      ? `/${locale}/admin/dashboard`
+      : `/${locale}/treinos`
+
+  return {
+    success: true as const,
+    message: "Login realizado com sucesso",
+    redirectTo,
+  }
 }
 
 export async function signUpAction(formData: FormData) {
@@ -110,7 +153,30 @@ export async function signUpAction(formData: FormData) {
   }
 
   const sessionCreated = !!data?.session
-  const redirectTo = sessionCreated ? `/${locale}/dashboard` : `/${locale}/login?registered=true`
+  let redirectTo = sessionCreated ? `/${locale}/treinos` : `/${locale}/login?registered=true`
+
+  // Check user role for admin redirect after signup
+  if (sessionCreated && data?.user) {
+    let role: UserRole = "student"
+    try {
+      const serviceSupabase = await createServiceClientSSR()
+      const { data: profile } = await serviceSupabase
+        .from("profiles")
+        .select<string, { role: UserRole }>("role")
+        .eq("id", data.user.id)
+        .limit(1)
+        .maybeSingle()
+
+      role = profile?.role ?? "student"
+    } catch {
+      role = (data.user.user_metadata?.role as UserRole) ?? "student"
+    }
+
+    if (role === "admin" || role === "coach") {
+      redirectTo = `/${locale}/admin/dashboard`
+    }
+  }
+
   const finalMessage = sessionCreated
     ? language === "en-US"
       ? "Account created! Redirecting..."

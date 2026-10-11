@@ -14,12 +14,11 @@ export function PublicFooter({ locale }: { locale: string }) {
               <div className="relative h-10 w-10">
                 <Image
                   src="/logo.png"
-                  alt="Nath Ramos Logo"
+                  alt="Nath Ramos"
                   fill
                   className="object-contain"
                 />
               </div>
-              <span className="text-base font-bold text-text tracking-tight">Nath Ramos</span>
             </Link>
             <p className="text-sm text-text-secondary max-w-sm">
               Acompanhamento fitness personalizado com treinos, dietas, hidratação, suplementação e mentoria 1:1.
