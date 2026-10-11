@@ -136,7 +136,7 @@ export function AdminExamesClient({
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
@@ -224,12 +224,12 @@ export function AdminExamesClient({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" title={tCommon("edit")} onClick={() => openEdit(exam)}>
+                            <Button variant="ghost" size="sm" title={tCommon("edit")} onClick={() => openEdit(exam)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
                               onClick={() => setDeleteConfirm({ id: exam.id, name: exam.title })}
@@ -259,7 +259,9 @@ export function AdminExamesClient({
           categories={categories}
           studentOptions={studentOptions}
           onSubmit={async (data) => {
-            await upsertExamAction(data)
+            await upsertExamAction(
+              data as Parameters<typeof upsertExamAction>[0]
+            )
           }}
           onSaved={onModalSaved}
         />
