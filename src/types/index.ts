@@ -93,7 +93,9 @@ export type {
   MeetingStatusT,
 } from "../lib/supabase/types"
 
+
 import type {
+  LocaleT,
   DifficultyT,
   WorkoutStatusT,
   ExerciseSourceT,
@@ -103,6 +105,7 @@ import type {
   UserRoleT as SupabaseUserRoleT,
   CurrencyT as SupabaseCurrencyT,
 } from "../lib/supabase/types"
+
 
 
 type UserRoleT = SupabaseUserRoleT
