@@ -55,12 +55,15 @@ export default async function AdminExamesPage({
   } = { limit: 50 };
 
   if (q && q.trim().length > 0) filters.search = q.trim();
-  if (categoryParam && categoryParam.trim().length > 0) filters.category = categoryParam.trim();
+  if (categoryParam && categoryParam.trim().length > 0) {
+    filters.category = categoryParam.trim();
+  }
 
   const exams: ExamRow[] = await ExamService.listExams(filters);
   const categories = await ExamService.listCategories();
 
-  const supabase = createServiceClientSSR();
+  // createServiceClientSSR é assíncrono e precisa ser aguardado antes de usar .from().
+  const supabase = await createServiceClientSSR();
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, full_name, email")
