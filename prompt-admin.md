@@ -593,17 +593,174 @@ Corrigir Sidebar: Adicionar seções e itens faltantes (Exercícios, Alimentos, 
 Implementar Responsividade Mobile: Sidebar colapsável/drawer para dispositivos móveis.
 Corrigir Layout Global: Validar e ajustar espaçamentos, margens, overflow em todas as páginas.
 Prioridade 3 - Médio (Conteúdo e Módulos)
-Implementar Página de Dietas: Listagem real com dados do banco.
-Implementar Página de Suplementos: Listagem real com dados do banco.
-Implementar Página de Exames: Listagem real com dados do banco.
-Implementar Página de E-books: Listagem real com dados do banco.
-Refinar Módulo de Treinos: Corrigir internacionalização e validar UX.
+
+### Treinos e Exercícios
+- Refinar módulo de Treinos: corrigir internacionalização (PT-BR/EN-US) de todos os textos, labels, validações e estados vazios.
+- Validar criação e edição de treinos: categorias, exercícios, séries, repetições, descanso, imagens e vídeos.
+- Implementar ordenação de exercícios dentro do treino (drag-and-drop ou botões de subir/descer).
+- Implementar publicação e arquivamento de treinos com estados visuais consistentes.
+- Implementar atribuição de treino ao aluno respeitando o limite de seis treinos ativos por aluno.
+- Corrigir página de Categorias: listagem, criação, edição e exclusão de categorias de treino com dados reais.
+- Corrigir página de Exercícios: listagem, criação, edição e exclusão com campos bilíngues (nome, descrição, instruções).
+
+### Dietas e Alimentos
+- Implementar página de Dietas: listagem real com dados do banco, busca, filtros por categoria/aluno e paginação.
+- Implementar criação e edição de dietas: refeições, alimentos, quantidades, unidades e valores nutricionais.
+- Manter campos bilíngues (PT-BR/EN-US) para nome e descrição dos alimentos e refeições.
+- Implementar cálculo automático de valores nutricionais totais (calorias, proteínas, carboidratos, gorduras) por refeição e por dieta.
+- Implementar atribuição de dietas aos alunos com validação de limites.
+- Corrigir página de Alimentos: listagem, criação, edição e exclusão com valores nutricionais e traduções.
+
+### Suplementos e Kits
+- Implementar página de Suplementos: listagem real com dados do banco, busca, filtros e paginação.
+- Implementar cadastro de suplementos: nome, descrição, quantidade, unidade, frequência de uso e campos bilíngues.
+- Implementar organização dos Kits de Suplementos: agrupar suplementos, definir quantidades e atribuir aos alunos.
+- Implementar Kits de Treinos: agrupar múltiplos treinos em um kit reutilizável.
+- Implementar Kits de Dietas: agrupar múltiplas dietas em um kit reutilizável.
+- Corrigir a exibição e atribuição de kits nas páginas de alunos.
+
+### Exames
+- Implementar página de Exames: listagem real com dados do banco, filtros por aluno, período e status.
+- Implementar upload de arquivos de exame com validação de tipo e tamanho.
+- Implementar limite de cinco arquivos por aluno por mês com feedback visual claro.
+- Implementar visualização de exames com URLs assinadas para proteção dos arquivos privados.
+- Implementar sistema de comentários nos exames entre admin e aluno.
+- Garantir que apenas o aluno dono do exame e administradores tenham acesso.
+
+### E-books
+- Implementar página de E-books: listagem real com dados do banco, busca, filtros e paginação.
+- Implementar cadastro de e-books: capa (imagem), arquivo PDF, título, descrição e campos bilíngues.
+- Implementar publicação e arquivamento de e-books.
+- Implementar armazenamento seguro no Supabase Storage com URLs assinadas.
+- Implementar permissões de acesso: definir quais alunos ou planos têm acesso a cada e-book.
 Prioridade 4 - Baixo (Refinamento)
-Corrigir Internacionalização Completa: Mover todos os textos hardcoded para i18n.
-Implementar Módulos de Relacionamento: Mentoria, Reuniões, Notificações, Redes Sociais.
-Implementar Página de Configurações: Configurações administrativas reais.
-Implementar Página de Auditoria: Visualização de logs de auditoria.
+
+### Internacionalização Completa
+- Mover todos os textos hardcoded restantes para arquivos de tradução (PT-BR e EN-US).
+- Padronizar formatação de datas, horários e moedas conforme o idioma ativo.
+- Garantir que validações de formulário e mensagens de erro sejam traduzidas.
+- Verificar estados vazios, loadings e toasts em todos os módulos.
+- Respeitar a implementação existente de persistência da preferência de idioma.
+
+### Mentoria
+- Implementar página de Mentoria: listagem de conversas entre admin e alunos.
+- Implementar envio de mensagens com atualização em tempo real (Supabase Realtime).
+- Implementar indicador de mensagens não lidas por conversa.
+- Implementar envio de anexos (imagens e documentos) com validação de tipo e tamanho.
+- Implementar busca de alunos para iniciar nova conversa.
+
+### Reuniões
+- Implementar página de Reuniões: calendário/listagem de reuniões agendadas.
+- Implementar agendamento com seleção de aluno, data, hora e fuso horário (timezone).
+- Implementar status da reunião (agendada, confirmada, cancelada, concluída).
+- Implementar integração com link de videoconferência (Google Meet, Zoom ou similar) quando houver credenciais; manter arquitetura preparada caso não haja.
+- Implementar notificações de lembrete antes da reunião.
+
+### Notificações
+- Implementar página de Notificações: listagem de notificações enviadas aos alunos.
+- Implementar criação de notificações push/e-mail para alunos individuais ou grupos.
+- Implementar tipos de notificação (pagamento, treino, dieta, exame, sistema).
+- Implementar status de leitura e histórico de envio.
+- Integrar notificações com eventos do sistema (novo pagamento, treino atribuído, exame enviado).
+
+### Redes Sociais
+- Implementar página de Redes Sociais: gerenciamento de links e perfis sociais da marca.
+- Implementar cadastro de redes (Instagram, WhatsApp, YouTube, TikTok, etc.) com URL e ícone.
+- Implementar ativação/desativação de cada rede.
+- Implementar ordenação manual de exibição.
+
+### Configurações
+- Implementar página de Configurações com seções organizadas:
+  - **Geral**: nome da plataforma, logo, cores, idioma padrão.
+  - **Pagamentos**: configuração de gateways (Stripe, ASAAS), moeda padrão, tolerância de vencimento.
+  - **E-mails**: templates de e-mail, remetente, configuração SMTP.
+  - **Armazenamento**: limites de upload, tipos permitidos, políticas de retenção.
+  - **Segurança**: políticas de senha, 2FA para administradores, sessões.
+- Garantir validação server-side com Zod para todas as configurações.
+- Garantir que apenas administradores tenham acesso a esta página.
+
+### Auditoria
+- Implementar página de Auditoria: visualização de logs de ações administrativas.
+- Registrar eventos: criação, edição e exclusão de alunos, treinos, dietas, suplementos, exames, e-books, planos e configurações.
+- Exibir: data/hora, usuário responsável, ação executada, entidade afetada e detalhes.
+- Implementar filtros por período, usuário, ação e entidade.
+- Garantir que os logs sejam imutáveis (apenas inserção, sem edição/exclusão).
 Prioridade 5 - Validação
-Validar Segurança: Testar permissões, RLS, proteção de arquivos.
-Executar Testes: Lint, typecheck, validação de funcionalidades.
-Testar Responsividade: Validar em todas as resoluções especificadas.
+
+### Segurança e Permissões
+- Testar proteção server-side de todas as rotas administrativas (`/admin/*`).
+- Testar Supabase Auth: login, logout, recuperação de senha e expiração de sessão.
+- Testar autorização baseada em roles: admin, student e qualquer papel intermediário existente.
+- Validar políticas RLS em todas as tabelas (profiles, subscriptions, payments, workouts, diets, supplements, exams, ebooks, audit_logs).
+- Verificar validação server-side com Zod em todas as Server Actions e endpoints de API.
+- Testar proteção de operações administrativas (criação, edição, exclusão).
+- Validar proteção de uploads: tipo de arquivo, tamanho máximo e sanitização de nomes.
+- Validar URLs assinadas para arquivos privados (exames, e-books, anexos de mentoria).
+- Testar proteção de webhooks (Stripe, ASAAS): validação de assinatura e idempotência.
+- Verificar rate limiting em endpoints sensíveis (login, upload, envio de mensagens).
+- Confirmar que segredos estão apenas em variáveis de ambiente, nunca expostos ao cliente.
+- Validar tabela de auditoria: eventos sendo registrados corretamente e sem possibilidade de edição.
+
+### Casos de Teste de Acesso Indevido
+- Aluno tentando acessar `/admin` deve ser redirecionado ou bloqueado.
+- Usuário sem permissão tentando executar uma ação administrativa deve receber erro 403.
+- Usuário tentando acessar dados de outro aluno deve receber erro 403 ou vazio.
+- Tentativa de acessar exames privados de terceiros deve ser negada.
+- Tentativa de modificar o próprio papel (role) para obter privilégios deve ser bloqueada.
+- Tentativa de acessar e-books sem permissão deve ser negada.
+- Tentativa de ultrapassar o limite de 6 treinos ativos por aluno deve ser bloqueada.
+- Tentativa de ultrapassar o limite de 5 exames por aluno por mês deve ser bloqueada.
+- Todos esses acessos devem ser negados quando não autorizados.
+
+### Qualidade de Código
+- Executar `lint` e corrigir todos os erros e warnings.
+- Executar `typecheck` e corrigir todos os erros de TypeScript.
+- Remover usos de `any`, `@ts-ignore` e desativações de regras do lint sem justificativa.
+- Garantir que não existam variáveis de ambiente não utilizadas ou indefinidas.
+- Verificar que não há dados estáticos ou mocks em páginas de produção.
+- Garantir que não há valores hexadecimais espalhados fora dos tokens de design.
+
+### Testes Automatizados
+- Executar a suíte de testes existente sem erros.
+- Criar testes para os fluxos críticos afetados:
+  - Login e redirecionamento por role.
+  - Criação e atribuição de treino com limite de 6 ativos.
+  - Upload de exame respeitando limite de 5 por mês.
+  - Criação e cálculo nutricional de dietas.
+  - Webhooks de pagamento (Stripe/ASAAS) com validação de assinatura.
+  - Proteção de rotas administrativas.
+- Garantir que todos os testes novos e existentes passam.
+
+### Responsividade
+- Validar a interface nas seguintes larguras: 390px, 412px, 430px, 768px, 1024px, 1280px, 1440px.
+- Verificar sidebar (drawer no mobile, fixa no desktop).
+- Verificar header com breadcrumbs, notificações e avatar.
+- Verificar cards: proporções, espaçamentos e overflow.
+- Verificar gráficos: redimensionamento correto sem cortes.
+- Verificar tabelas: solução responsiva (colunas prioritárias, rolagem controlada ou cards).
+- Verificar filtros e formulários: inputs, selects, botões e modais.
+- Verificar que não há overflow horizontal em nenhuma página.
+
+### Internacionalização
+- Testar todos os textos em PT-BR e EN-US.
+- Verificar formatação de datas, horários e moedas nos dois idiomas.
+- Verificar menus, botões, formulários, validações, estados vazios, loadings e toasts.
+- Confirmar que a preferência de idioma persiste entre sessões.
+- Verificar que não há textos hardcoded restantes.
+
+### Integrações e Funcionalidades
+- Validar Dashboard: todos os indicadores e gráficos com dados reais.
+- Validar Alunos: listagem, busca, filtros, paginação e detalhes.
+- Validar Treinos: criação, edição, publicação, arquivamento e atribuição.
+- Validar Dietas: criação, edição, cálculo nutricional e atribuição.
+- Validar Suplementos e Kits: cadastro, organização e atribuição.
+- Validar Exames: upload, visualização com URL assinada e comentários.
+- Validar E-books: cadastro, publicação e permissões de acesso.
+- Validar Financeiro: planos, assinaturas, pagamentos e webhooks.
+- Validar que integrações existentes não foram quebradas.
+
+### Documentação de Pendências
+- Listar funcionalidades que não puderam ser testadas por falta de credenciais ou ambiente.
+- Documentar integrações pendentes (ex: videoconferência, gateways sem credenciais).
+- Listar erros conhecidos e sua severidade.
+- Descrever passos necessários para concluir integrações pendentes.

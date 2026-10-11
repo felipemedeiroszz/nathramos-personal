@@ -190,3 +190,19 @@ export const logWorkoutSetSchema = z.object({
   failure_at_end: z.boolean().default(false),
 })
 export type LogWorkoutSetInput = z.infer<typeof logWorkoutSetSchema>
+
+export const upsertStudentWorkoutOverrideSchema = z.object({
+  student_id: uuidSchema,
+  assignment_id: uuidSchema.optional().nullable(),
+  workout_exercise_id: uuidSchema,
+  sets: z.coerce.number().int().min(1).max(20).optional().nullable(),
+  reps: z.string().trim().optional().nullable(),
+  weight_kg: z.coerce.number().nonnegative().optional().nullable(),
+  rest_seconds: z.coerce.number().int().nonnegative().optional().nullable(),
+  tempo: z.string().trim().optional().nullable(),
+  notes_pt: z.string().trim().optional().nullable(),
+  notes_en: z.string().trim().optional().nullable(),
+  is_active: z.boolean().default(true),
+  id: uuidSchema.optional(),
+})
+export type UpsertStudentWorkoutOverrideInput = z.infer<typeof upsertStudentWorkoutOverrideSchema>

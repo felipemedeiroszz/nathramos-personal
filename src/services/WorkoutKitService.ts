@@ -279,8 +279,8 @@ export class WorkoutKitService {
 
     void NotificationService.sendInApp(parsed.student_id, {
       type: "workout",
-      title_pt: "Seu treino está disponível",
-      title_en: "Your workout is available",
+      title_pt: "Novo treino atribuído",
+      title_en: "New workout assigned",
       body_pt: "Personal Nath atribuiu um novo treino para você.",
       body_en: "Coach Nath assigned you a new workout.",
       url: "/treino",

@@ -106,9 +106,20 @@ export class ExerciseDBService {
     error?: string
   }> {
     try {
+      const apiKey = process.env.RAPIDAPI_KEY || process.env.EXERCISEDB_API_KEY
+      if (!apiKey) {
+        console.warn("[ExerciseDBService] API key not configured")
+        return {
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          error: "API key não configurada. Configure RAPIDAPI_KEY ou EXERCISEDB_API_KEY no .env.local",
+        }
+      }
+
       const response = await fetch("https://exercisedb.p.rapidapi.com/exercises", {
         headers: {
-          "x-rapidapi-key": "",
+          "x-rapidapi-key": apiKey,
           "x-rapidapi-host": "exercisedb.p.rapidapi.com",
         },
       })

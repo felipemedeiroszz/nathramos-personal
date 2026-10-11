@@ -5,6 +5,7 @@ import type {
   EbookDownloadRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
+import { upsertEbookSchema, type UpsertEbookInput } from "../schemas/ebooks"
 
 export class EbookService {
   private static async getSupabase() {
@@ -62,20 +63,21 @@ export class EbookService {
   }
 
   static async upsertEbook(
-    input: any,
+    input: UpsertEbookInput,
     adminId?: string
   ): Promise<EbookRow | null> {
     try {
+      const parsed = upsertEbookSchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
+      const payload: Record<string, any> = { ...parsed }
       delete payload.id
 
       let q: any
-      if (input.id) {
+      if (parsed.id) {
         q = supabase
           .from("ebooks")
           .update(payload as never)
-          .eq("id", input.id)
+          .eq("id", parsed.id)
       } else {
         q = supabase.from("ebooks").insert(payload as never)
       }
@@ -85,10 +87,10 @@ export class EbookService {
 
       void AuditLogService.log({
         adminId,
-        action: input.id ? "ebook.update" : "ebook.create",
+        action: parsed.id ? "ebook.update" : "ebook.create",
         entity_type: "ebooks",
         entity_id: data.id,
-        details: { title_pt: input.title_pt, title_en: input.title_en },
+        details: { title_pt: parsed.title_pt, title_en: parsed.title_en },
       })
 
       return data as EbookRow

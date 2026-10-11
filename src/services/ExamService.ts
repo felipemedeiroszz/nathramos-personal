@@ -4,6 +4,12 @@ import type {
   ExamRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
+import {
+  upsertExamCategorySchema,
+  upsertExamSchema,
+  type UpsertExamCategoryInput,
+  type UpsertExamInput,
+} from "../schemas/exams"
 
 export class ExamService {
   private static async getSupabase() {
@@ -28,20 +34,21 @@ export class ExamService {
   }
 
   static async upsertCategory(
-    input: any,
+    input: UpsertExamCategoryInput,
     adminId?: string
   ): Promise<ExamCategoryRow | null> {
     try {
+      const parsed = upsertExamCategorySchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
+      const payload: Record<string, any> = { ...parsed }
       delete payload.id
 
       let q: any
-      if (input.id) {
+      if (parsed.id) {
         q = supabase
           .from("exam_categories")
           .update(payload as never)
-          .eq("id", input.id)
+          .eq("id", parsed.id)
       } else {
         q = supabase.from("exam_categories").insert(payload as never)
       }
@@ -51,10 +58,10 @@ export class ExamService {
 
       void AuditLogService.log({
         adminId,
-        action: input.id ? "exam_category.update" : "exam_category.create",
+        action: parsed.id ? "exam_category.update" : "exam_category.create",
         entity_type: "exam_categories",
         entity_id: data.id,
-        details: { name_pt: input.name_pt, name_en: input.name_en },
+        details: { name_pt: parsed.name_pt, name_en: parsed.name_en },
       })
 
       return data as ExamCategoryRow
@@ -129,24 +136,24 @@ export class ExamService {
   }
 
   static async upsertExam(
-    input: any,
+    input: UpsertExamInput,
     userId: string,
     adminId?: string
   ): Promise<ExamRow | null> {
     try {
+      const parsed = upsertExamSchema.parse(input)
       const supabase = await this.getSupabase()
 
-      const payload: Record<string, any> = { ...input }
-      if (!input.id) payload.user_id = userId
-      else payload.user_id = userId
+      const payload: Record<string, any> = { ...parsed }
+      payload.user_id = userId
       delete payload.id
 
       let q: any
-      if (input.id) {
+      if (parsed.id) {
         q = supabase
           .from("exams")
           .update(payload as never)
-          .eq("id", input.id)
+          .eq("id", parsed.id)
       } else {
         q = supabase.from("exams").insert(payload as never)
       }
@@ -156,10 +163,10 @@ export class ExamService {
 
       void AuditLogService.log({
         adminId: adminId ?? userId,
-        action: input.id ? "exam.update" : "exam.create",
+        action: parsed.id ? "exam.update" : "exam.create",
         entity_type: "exams",
         entity_id: data.id,
-        details: { title: input.title, exam_date: input.exam_date },
+        details: { title: parsed.title, exam_date: parsed.exam_date },
       })
 
       return data as ExamRow

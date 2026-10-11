@@ -1,7 +1,9 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -15,8 +17,22 @@ import {
   TableCell,
 } from "@/components/ui/Table"
 import { EmptyState } from "@/components/ui/EmptyState"
-import { UtensilsCrossed, RefreshCw, Plus, Search, Edit, Trash2, Calendar, User } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog"
+import { UtensilsCrossed, RefreshCw, Plus, Search, Edit, Trash2, Calendar, User, AlertTriangle } from "lucide-react"
+import { upsertDietProgramAction, deleteDietProgramAction } from "@/app/actions/content"
 import type { DietProgramRow } from "@/types"
+
+const DietUpsertModal = dynamic(
+  () => import("@/components/admin/content/DietUpsertModal").catch(() => () => null),
+  { ssr: false }
+)
 
 interface AdminDietasClientProps {
   locale: string
@@ -35,8 +51,15 @@ export function AdminDietasClient({
 }: AdminDietasClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations("adminDiets")
+  const tCommon = useTranslations("common")
+
   const [search, setSearch] = useState(searchValue ?? "")
   const [isLoading, setIsLoading] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingProgram, setEditingProgram] = useState<DietProgramRow | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams.toString())
@@ -70,70 +93,105 @@ export function AdminDietasClient({
     return `${value.toFixed(1)}g`
   }
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>Gerencie os programas nutricionais dos alunos</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleRefresh}
-                disabled={isLoading}
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              </Button>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Dieta
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-              <Input
-                placeholder="Buscar por nome..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-10"
-              />
-            </div>
-            <Button onClick={handleSearch}>Buscar</Button>
-          </div>
+  function openCreate() {
+    setEditingProgram(null)
+    setModalOpen(true)
+  }
 
-          {programs.length === 0 ? (
-            <EmptyState
-              icon={<UtensilsCrossed size={40} className="text-text-secondary" />}
-              title="Nenhuma dieta encontrada"
-              description="Comece criando um novo programa nutricional."
-            />
-          ) : (
-            <div className="rounded-md border border-border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Aluno</TableHead>
-                    <TableHead>Calorias</TableHead>
-                    <TableHead>Macros</TableHead>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {programs.map((program) => (
-                    <TableRow key={program.id}>
-                      <TableCell className="font-medium">
+  function openEdit(program: DietProgramRow) {
+    setEditingProgram(program)
+    setModalOpen(true)
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      await deleteDietProgramAction(deleteConfirm.id)
+    } finally {
+      setDeleting(false)
+      setDeleteConfirm(null)
+      router.refresh()
+    }
+  }
+
+  function onModalSaved() {
+    setModalOpen(false)
+    setEditingProgram(null)
+    router.refresh()
+  }
+
+  return (
+    <>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{t("subtitle")}</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                </Button>
+                <Button variant="primary" onClick={openCreate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("newDiet")}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={handleSearch}>{t("search")}</Button>
+            </div>
+
+            {programs.length === 0 ? (
+              <EmptyState
+                icon={<UtensilsCrossed size={40} className="text-text-secondary" />}
+                title={t("noDiets")}
+                description={t("noDietsDesc")}
+                action={
+                  <Button variant="primary" size="sm" onClick={openCreate}>
+                    <Plus size={16} className="mr-2" />
+                    {t("newDiet")}
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="rounded-md border border-border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("title")}</TableHead>
+                      <TableHead>{t("student")}</TableHead>
+                      <TableHead>{t("calories")}</TableHead>
+                      <TableHead>{t("macros")}</TableHead>
+                      <TableHead>{t("period")}</TableHead>
+                      <TableHead>{t("status")}</TableHead>
+                      <TableHead className="text-right">{t("actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {programs.map((program) => (
+                      <TableRow key={program.id}>
+                        <TableCell className="font-medium">
                         {locale === "pt-BR" ? program.title_pt : program.title_en}
                       </TableCell>
                       <TableCell>
@@ -163,17 +221,23 @@ export function AdminDietasClient({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={program.is_active ? "default" : "secondary"}>
-                          {program.is_active ? "Ativo" : "Inativo"}
+                        <Badge variant={program.is_active ? "success" : "outline"}>
+                          {program.is_active ? t("active") : t("inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" title={tCommon("edit")} onClick={() => openEdit(program)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={tCommon("delete")}
+                            className="text-red-500 hover:text-red-500"
+                            onClick={() => setDeleteConfirm({ id: program.id, name: program.title_pt })}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -186,5 +250,53 @@ export function AdminDietasClient({
         </CardContent>
       </Card>
     </div>
+
+    {DietUpsertModal && modalOpen && (
+      <DietUpsertModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false)
+          setEditingProgram(null)
+        }}
+        program={editingProgram ?? undefined}
+        onSubmit={async (data) => {
+          await upsertDietProgramAction(data)
+        }}
+        onSaved={onModalSaved}
+      />
+    )}
+
+    <Dialog
+      isOpen={!!deleteConfirm}
+      onClose={() => !deleting && setDeleteConfirm(null)}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
+              <AlertTriangle size={22} />
+            </div>
+            <DialogTitle>{t("confirmDelete")}</DialogTitle>
+          </div>
+          <DialogDescription>
+            {t("confirmDeleteDesc")} <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteConfirm(null)}
+            disabled={deleting}
+          >
+            {tCommon("cancel")}
+          </Button>
+          <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Trash2 size={16} className="mr-2" />
+            {deleting ? tCommon("loading") : tCommon("delete")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

@@ -4,6 +4,12 @@ import type {
   UserSupplementRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
+import {
+  upsertSupplementSchema,
+  upsertUserSupplementSchema,
+  type UpsertSupplementInput,
+  type UpsertUserSupplementInput,
+} from "../schemas/supplements"
 
 export class SupplementService {
   private static async getSupabase() {
@@ -62,21 +68,22 @@ export class SupplementService {
   }
 
   static async upsertSupplement(
-    input: any,
+    input: UpsertSupplementInput,
     createdById?: string
   ): Promise<SupplementRow | null> {
     try {
+      const parsed = upsertSupplementSchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
-      if (!input.id && createdById) payload.created_by_id = createdById
+      const payload: Record<string, any> = { ...parsed }
+      if (!parsed.id && createdById) payload.created_by_id = createdById
       delete payload.id
 
       let q: any
-      if (input.id) {
+      if (parsed.id) {
         q = supabase
           .from("supplements")
           .update(payload as never)
-          .eq("id", input.id)
+          .eq("id", parsed.id)
       } else {
         q = supabase.from("supplements").insert(payload as never)
       }
@@ -86,10 +93,10 @@ export class SupplementService {
 
       void AuditLogService.log({
         adminId: createdById,
-        action: input.id ? "supplement.update" : "supplement.create",
+        action: parsed.id ? "supplement.update" : "supplement.create",
         entity_type: "supplements",
         entity_id: data.id,
-        details: { name_pt: input.name_pt, name_en: input.name_en },
+        details: { name_pt: parsed.name_pt, name_en: parsed.name_en },
       })
 
       return data as SupplementRow
@@ -137,18 +144,19 @@ export class SupplementService {
   }
 
   static async upsertUserSupplement(
-    input: any,
+    input: UpsertUserSupplementInput,
     assignedById?: string
   ): Promise<UserSupplementRow | null> {
     try {
+      const parsed = upsertUserSupplementSchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
+      const payload: Record<string, any> = { ...parsed }
       if (assignedById) payload.assigned_by_id = assignedById
       delete payload.id
 
       let q: any
-      if (input.id) {
-        q = supabase.from("user_supplements").update(payload as never).eq("id", input.id)
+      if (parsed.id) {
+        q = supabase.from("user_supplements").update(payload as never).eq("id", parsed.id)
       } else {
         q = supabase.from("user_supplements").insert(payload as never)
       }

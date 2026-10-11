@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -78,6 +80,8 @@ export function AdminExerciciosClient({
   exerciseSources,
 }: AdminExerciciosClientProps) {
   const router = useRouter();
+  const t = useTranslations("adminExercises");
+  const tCommon = useTranslations("common");
 
   const [search, setSearch] = useState(searchValue);
   const [source, setSource] = useState(sourceValue);
@@ -87,6 +91,7 @@ export function AdminExerciciosClient({
   const [published, setPublished] = useState(publishedValue);
 
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ created: number; updated: number; skipped: number; error?: string } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<ExerciseRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
@@ -106,11 +111,27 @@ export function AdminExerciciosClient({
 
   async function handleSync() {
     setSyncing(true);
+    setSyncResult(null);
     try {
-      await syncExercisesAction();
+      const result = await syncExercisesAction();
+      if (result.success) {
+        setSyncResult({
+          created: result.created ?? 0,
+          updated: result.updated ?? 0,
+          skipped: result.skipped ?? 0,
+          error: result.error,
+        });
+        router.refresh();
+      } else {
+        setSyncResult({
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          error: result.message,
+        });
+      }
     } finally {
       setSyncing(false);
-      router.refresh();
     }
   }
 
@@ -150,8 +171,8 @@ export function AdminExerciciosClient({
             <div>
               <CardTitle>{title}</CardTitle>
               <CardDescription>
-                Total exibido: <span className="font-semibold text-text">{exercises.length}</span>
-                {exercises.length >= 50 && <span className="ml-2 text-xs">(primeiros 50)</span>}
+                {t("totalDisplayed", { count: exercises.length })}
+                {exercises.length >= 50 && <span className="ml-2 text-xs">({t("firstFifty")})</span>}
               </CardDescription>
             </div>
             <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -167,7 +188,7 @@ export function AdminExerciciosClient({
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
               />
               <Input
-                placeholder="Buscar por nome..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -182,14 +203,35 @@ export function AdminExerciciosClient({
                 disabled={syncing}
               >
                 <RefreshCw size={18} className={`mr-2 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Sincronizando..." : "Sincronizar ExerciseDB"}
+                {syncing ? t("syncing") : t("syncExerciseDB")}
               </Button>
               <Button variant="primary" size="md" onClick={openCreate}>
                 <Plus size={18} className="mr-2" />
-                Novo Exercicio
+                {t("newExercise")}
               </Button>
             </div>
           </div>
+
+          {syncResult && (
+            <div className={cn(
+              "rounded-xl border px-4 py-3 text-sm",
+              syncResult.error
+                ? "border-red-600/40 bg-red-600/15 text-red-300"
+                : "border-green-600/40 bg-green-600/15 text-green-300"
+            )}>
+              {syncResult.error ? (
+                <span>{syncResult.error}</span>
+              ) : (
+                <span>
+                  {t("syncResult", {
+                    created: syncResult.created,
+                    updated: syncResult.updated,
+                    skipped: syncResult.skipped,
+                  })}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <Select
@@ -198,10 +240,10 @@ export function AdminExerciciosClient({
               onChange={(e) => setSource(e.target.value)}
               onBlur={applyFilters}
             >
-              <option value="">Origem: Todos</option>
+              <option value="">{t("filterAllSource")}</option>
               {exerciseSources.map((s) => (
                 <option key={s} value={s}>
-                  Origem: {s === "exercisedb" ? "ExerciseDB" : "Custom"}
+                  {t("sourceLabel", { source: s === "exercisedb" ? "ExerciseDB" : t("sourceCustom") })}
                 </option>
               ))}
             </Select>
@@ -211,10 +253,10 @@ export function AdminExerciciosClient({
               onChange={(e) => setMuscle(e.target.value)}
               onBlur={applyFilters}
             >
-              <option value="">Grupo muscular: Todos</option>
+              <option value="">{t("filterAllMuscle")}</option>
               {muscleGroups.map((m) => (
                 <option key={m} value={m}>
-                  Grupo: {translateMuscle(m)}
+                  {t("muscleLabel", { muscle: translateMuscle(m) })}
                 </option>
               ))}
             </Select>
@@ -224,10 +266,10 @@ export function AdminExerciciosClient({
               onChange={(e) => setEquipment(e.target.value)}
               onBlur={applyFilters}
             >
-              <option value="">Equipamento: Todos</option>
+              <option value="">{t("filterAllEquipment")}</option>
               {equipmentTypes.map((eq) => (
                 <option key={eq} value={eq}>
-                  Equip: {translateEquipment(eq)}
+                  {t("equipmentLabel", { equipment: translateEquipment(eq) })}
                 </option>
               ))}
             </Select>
@@ -237,10 +279,10 @@ export function AdminExerciciosClient({
               onChange={(e) => setDifficulty(e.target.value)}
               onBlur={applyFilters}
             >
-              <option value="">Dificuldade: Todas</option>
+              <option value="">{t("filterAllDifficulty")}</option>
               {difficultyLevels.map((d) => (
                 <option key={d} value={d}>
-                  Dific: {translateDifficulty(d)}
+                  {t("difficultyLabel", { difficulty: translateDifficulty(d) })}
                 </option>
               ))}
             </Select>
@@ -250,21 +292,21 @@ export function AdminExerciciosClient({
               onChange={(e) => setPublished(e.target.value)}
               onBlur={applyFilters}
             >
-              <option value="">Publicacao: Todos</option>
-              <option value="1">Publicado</option>
-              <option value="0">Rascunho</option>
+              <option value="">{t("filterAllPublished")}</option>
+              <option value="1">{t("publishedYes")}</option>
+              <option value="0">{t("publishedDraft")}</option>
             </Select>
           </div>
 
           {exercises.length === 0 ? (
             <EmptyState
               icon={<Dumbbell size={28} className="text-text-secondary" />}
-              title="Nenhum exercicio encontrado"
-              description="Ajuste os filtros ou crie um novo exercicio personalizado."
+              title={t("noExercises")}
+              description={t("noExercisesDesc")}
               action={
                 <Button variant="primary" size="sm" onClick={openCreate}>
                   <Plus size={16} className="mr-2" />
-                  Novo Exercicio
+                  {t("newExercise")}
                 </Button>
               }
             />
@@ -273,14 +315,14 @@ export function AdminExerciciosClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome (pt/en)</TableHead>
-                    <TableHead>Grupo</TableHead>
-                    <TableHead>Equipamento</TableHead>
-                    <TableHead>Origem</TableHead>
-                    <TableHead>Dificuldade</TableHead>
-                    <TableHead>Tr. bloqueado</TableHead>
-                    <TableHead>Publicado</TableHead>
-                    <TableHead className="text-right">Acoes</TableHead>
+                    <TableHead>{t("tableName")}</TableHead>
+                    <TableHead>{t("tableMuscle")}</TableHead>
+                    <TableHead>{t("tableEquipment")}</TableHead>
+                    <TableHead>{t("tableSource")}</TableHead>
+                    <TableHead>{t("tableDifficulty")}</TableHead>
+                    <TableHead>{t("tableLocked")}</TableHead>
+                    <TableHead>{t("tablePublished")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -303,25 +345,25 @@ export function AdminExerciciosClient({
                               : undefined
                           }
                         >
-                          {ex.source === "exercisedb" ? "ExerciseDB" : "Custom"}
+                          {ex.source === "exercisedb" ? "ExerciseDB" : t("sourceCustom")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-text">{translateDifficulty(ex.difficulty)}</TableCell>
                       <TableCell>
                         {ex.translation_locked ? (
-                          <Badge variant="warning">Sim</Badge>
+                          <Badge variant="warning">{tCommon("yes")}</Badge>
                         ) : (
                           <Badge variant="outline" className="text-text-secondary">
-                            Nao
+                            {tCommon("no")}
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell>
                         {ex.is_published ? (
-                          <Badge variant="success">Sim</Badge>
+                          <Badge variant="success">{tCommon("yes")}</Badge>
                         ) : (
                           <Badge variant="outline" className="text-text-secondary">
-                            Nao
+                            {tCommon("no")}
                           </Badge>
                         )}
                       </TableCell>
@@ -330,7 +372,7 @@ export function AdminExerciciosClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Editar"
+                            title={tCommon("edit")}
                             onClick={() => openEdit(ex)}
                           >
                             <Edit size={16} />
@@ -338,7 +380,7 @@ export function AdminExerciciosClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            title="Excluir"
+                            title={tCommon("delete")}
                             className="text-red-500 hover:text-red-500"
                             onClick={() =>
                               setDeleteConfirm({ id: ex.id, name: ex.name_pt })
@@ -380,12 +422,10 @@ export function AdminExerciciosClient({
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>Confirmar exclusao</DialogTitle>
+              <DialogTitle>{tCommon("confirmDelete")}</DialogTitle>
             </div>
             <DialogDescription>
-              Tem certeza que deseja excluir o exercicio{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
-              Esta acao nao pode ser desfeita.
+              {tCommon("confirmDeleteDesc")} <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -394,11 +434,11 @@ export function AdminExerciciosClient({
               onClick={() => setDeleteConfirm(null)}
               disabled={deleting}
             >
-              Cancelar
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               <Trash2 size={16} className="mr-2" />
-              {deleting ? "Excluindo..." : "Excluir"}
+              {deleting ? tCommon("loading") : tCommon("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

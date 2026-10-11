@@ -305,6 +305,24 @@ export interface StudentWorkoutKitRow {
   updated_at: string
 }
 
+export interface StudentWorkoutOverrideRow {
+  id: string
+  student_id: string
+  assignment_id?: string | null
+  workout_exercise_id: string
+  sets?: number | null
+  reps?: string | null
+  weight_kg?: number | null
+  rest_seconds?: number | null
+  tempo?: string | null
+  notes_pt?: string | null
+  notes_en?: string | null
+  is_active: boolean
+  created_by_id?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ProfileRow {
   id: string
   email: string

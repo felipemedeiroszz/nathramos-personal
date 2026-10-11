@@ -6,8 +6,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { TodayWorkoutCard } from "@/components/student/workout/TodayWorkoutCard";
 import {
-  Dumbbell,
   Utensils,
   Droplets,
   Moon,
@@ -60,45 +60,21 @@ export default async function DashboardPage({
     firstName = data?.first_name ?? null;
   } catch {}
 
+  const displayName = firstName?.trim() || nav("greetingDefault").replace(/[.!?]+$/, "");
+
   const greeting = nav(greetingKey(new Date().getHours()));
-  const nameToShow = firstName?.trim() || nav("greetingDefault").replace(/[.!?]+$/, "");
 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">
-          {greeting}, {nameToShow}
+          {greeting}, {displayName}
         </h1>
         <p className="text-sm md:text-base text-text-secondary">{t("subtitle")}</p>
       </header>
 
       <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="md:col-span-2 xl:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{t("todayTraining")}</CardTitle>
-                <CardDescription>{common("today")}</CardDescription>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Dumbbell size={22} />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              className="py-10"
-              icon={<Dumbbell size={32} className="text-text-secondary" />}
-              title={t("todayTrainingEmpty")}
-              description={t("todayTrainingEmptyDesc")}
-              action={
-                <Button variant="secondary" size="sm">
-                  {t("viewAll")} <ChevronRight size={16} className="ml-1" />
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
+        <TodayWorkoutCard locale={locale} userId={userId} key={userId} />
 
         <Card>
           <CardHeader>

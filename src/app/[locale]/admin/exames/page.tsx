@@ -4,6 +4,7 @@ import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/access";
 import { ExamService } from "@/services/ExamService";
+import { createServiceClientSSR } from "@/lib/supabase/server";
 import type { ExamRow } from "@/types";
 import { AdminExamesClient } from "./AdminExamesClient";
 
@@ -57,6 +58,20 @@ export default async function AdminExamesPage({
   if (categoryParam && categoryParam.trim().length > 0) filters.category = categoryParam.trim();
 
   const exams: ExamRow[] = await ExamService.listExams(filters);
+  const categories = await ExamService.listCategories();
+
+  const supabase = createServiceClientSSR();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .order("full_name", { ascending: true })
+    .limit(200);
+
+  const studentOptions = (profiles ?? []).map((p: any) => ({
+    id: p.id,
+    name: p.full_name || p.email,
+    email: p.email,
+  }));
 
   return (
     <div className="space-y-6 w-full">
@@ -71,6 +86,8 @@ export default async function AdminExamesPage({
         title={title}
         exams={exams}
         searchValue={q}
+        categories={categories}
+        studentOptions={studentOptions}
       />
     </div>
   );

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -85,6 +86,8 @@ export function AdminCategoriasClient({
   programCountByCategory,
 }: AdminCategoriasClientProps) {
   const router = useRouter();
+  const t = useTranslations("adminCategories");
+  const tCommon = useTranslations("common");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<WorkoutCategoryRow | null>(null);
@@ -134,7 +137,7 @@ export function AdminCategoriasClient({
               </div>
               <Button variant="primary" size="md" onClick={openCreate}>
                 <Plus size={18} className="mr-2" />
-                Nova Categoria
+                {t("newCategory")}
               </Button>
             </div>
           </div>
@@ -143,12 +146,12 @@ export function AdminCategoriasClient({
           {categories.length === 0 ? (
             <EmptyState
               icon={<Tags size={28} className="text-text-secondary" />}
-              title="Nenhuma categoria"
-              description="Crie sua primeira categoria para organizar os programas e kits de treino."
+              title={t("noCategories")}
+              description={t("noCategoriesDesc")}
               action={
                 <Button variant="primary" size="sm" onClick={openCreate}>
                   <Plus size={16} className="mr-2" />
-                  Nova Categoria
+                  {t("newCategory")}
                 </Button>
               }
             />
@@ -171,7 +174,7 @@ export function AdminCategoriasClient({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            title="Editar"
+                            title={tCommon("edit")}
                             onClick={() => openEdit(cat)}
                           >
                             <Edit size={15} />
@@ -180,7 +183,7 @@ export function AdminCategoriasClient({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
-                            title="Excluir"
+                            title={tCommon("delete")}
                             onClick={() =>
                               setDeleteConfirm({ id: cat.id, name: cat.name_pt })
                             }
@@ -195,26 +198,26 @@ export function AdminCategoriasClient({
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-bold text-text">{cat.name_pt}</h3>
                             <Badge variant="outline" className="text-xs">
-                              {count} programa{count === 1 ? "" : "s"}
+                              {t("programCount", { count })}
                             </Badge>
                           </div>
                           <p className="text-xs text-text-secondary">{cat.name_en}</p>
                         </div>
                         <p className="text-sm text-text-secondary leading-relaxed">
-                          {cat.description_pt || cat.description_en || "Sem descricao."}
+                          {cat.description_pt || cat.description_en || t("noDescription")}
                         </p>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-border">
                         <span className="text-xs text-text-secondary">
-                          Ordem:{" "}
+                          {t("orderLabel")}{" "}
                           <span className="font-semibold text-text">{cat.order_index}</span>
                         </span>
                         {cat.is_active ? (
-                          <Badge variant="success">Ativo</Badge>
+                          <Badge variant="success">{tCommon("active")}</Badge>
                         ) : (
                           <Badge variant="outline" className="text-text-secondary">
-                            Inativo
+                            {tCommon("inactive")}
                           </Badge>
                         )}
                       </div>
@@ -250,12 +253,10 @@ export function AdminCategoriasClient({
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>Confirmar exclusao</DialogTitle>
+              <DialogTitle>{tCommon("confirmDelete")}</DialogTitle>
             </div>
             <DialogDescription>
-              Tem certeza que deseja desativar a categoria{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
-              Programas associados nao serao removidos.
+              {t("confirmDeleteDesc")} <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -264,11 +265,11 @@ export function AdminCategoriasClient({
               onClick={() => setDeleteConfirm(null)}
               disabled={deleting}
             >
-              Cancelar
+              {tCommon("cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               <Trash2 size={16} className="mr-2" />
-              {deleting ? "Excluindo..." : "Desativar"}
+              {deleting ? tCommon("loading") : t("deactivate")}
             </Button>
           </DialogFooter>
         </DialogContent>

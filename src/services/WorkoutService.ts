@@ -14,6 +14,7 @@ import type {
   WorkoutSessionRow,
   ExerciseSetLogRow,
   ExerciseRow,
+  StudentWorkoutOverrideRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
 import {
@@ -22,11 +23,13 @@ import {
   upsertWorkoutDaySchema,
   upsertWorkoutExerciseSchema,
   logWorkoutSetSchema,
+  upsertStudentWorkoutOverrideSchema,
   type UpsertWorkoutCategoryInput,
   type UpsertWorkoutProgramInput,
   type UpsertWorkoutDayInput,
   type UpsertWorkoutExerciseInput,
   type LogWorkoutSetInput,
+  type UpsertStudentWorkoutOverrideInput,
 } from "../schemas/workouts"
 
 function toDateOnly(d: Date | string): string {
@@ -425,10 +428,32 @@ export class WorkoutService {
       const supabase = await this.getSupabase()
       const now = new Date().toISOString()
 
+      // Calcular volume total: soma de (weight_kg * reps_done) de todas as séries
+      let totalVolumeKg: number | null = null
+      try {
+        const { data: setsData } = await supabase
+          .from("exercise_sets_log")
+          .select("weight_kg, reps_done, completed")
+          .eq("session_id", sessionId)
+
+        if (setsData && setsData.length > 0) {
+          const sum = setsData.reduce((acc: number, row: any) => {
+            const w = Number(row.weight_kg ?? 0)
+            const r = Number(row.reps_done ?? 0)
+            if (w > 0 && r > 0) return acc + w * r
+            return acc
+          }, 0)
+          if (sum > 0) totalVolumeKg = Math.round(sum * 100) / 100
+        }
+      } catch {
+        totalVolumeKg = null
+      }
+
       const updatePayload: Record<string, any> = {
         completed_at: now,
         is_paused: false,
       }
+      if (totalVolumeKg != null) updatePayload.total_volume_kg = totalVolumeKg
       if (typeof params?.feeling === "number") updatePayload.feeling_scale = params.feeling
       if (typeof params?.rpe === "number") updatePayload.rpe_avg = params.rpe
       if (typeof params?.notes === "string") updatePayload.notes = params.notes
@@ -515,6 +540,9 @@ export class WorkoutService {
     kit: any
     program: WorkoutProgramRow | null
     day: WorkoutDayRow | null
+    sessionCompletedToday: boolean
+    isRestDay: boolean
+    nextDayLabel: string | null
   } | null> {
     try {
       const supabase = await this.getSupabase()
@@ -557,21 +585,90 @@ export class WorkoutService {
       }
 
       if (!effectiveProgram) {
-        return { assignment, kit, program: null, day: null }
+        return {
+          assignment,
+          kit,
+          program: null,
+          day: null,
+          sessionCompletedToday: false,
+          isRestDay: true,
+          nextDayLabel: null,
+        }
       }
 
-      const dayQ = await supabase
+      // Buscar todos os dias do programa ordenados por order_index
+      const allDaysQ = await supabase
         .from("workout_days")
         .select("*")
         .eq("program_id", effectiveProgram.id)
-        .eq("day_of_week", dow)
-        .order("week_number", { ascending: true })
-        .limit(1)
+        .order("order_index", { ascending: true })
+
+      const allDays: WorkoutDayRow[] = allDaysQ.error ? [] : (allDaysQ.data as WorkoutDayRow[]) ?? []
+
+      if (allDays.length === 0) {
+        return {
+          assignment,
+          kit,
+          program: effectiveProgram,
+          day: null,
+          sessionCompletedToday: false,
+          isRestDay: true,
+          nextDayLabel: null,
+        }
+      }
+
+      // Verificar se já completou treino hoje
+      const sessionQ = await supabase
+        .from("workout_sessions")
+        .select("completed_at, day_id")
+        .eq("user_id", userId)
+        .eq("scheduled_date", today)
+        .not("completed_at", "is", null)
         .maybeSingle()
 
-      const day: WorkoutDayRow | null = !dayQ.error && dayQ.data ? (dayQ.data as WorkoutDayRow) : null
+      const sessionCompletedToday = !sessionQ.error && sessionQ.data !== null
 
-      return { assignment, kit, program: effectiveProgram, day }
+      // Lógica de disponibilidade baseada em conclusão + calendário:
+      // 1. Se há um dia agendado para hoje E não foi concluído → mostre hoje
+      // 2. Se hoje foi concluído → mostre o próximo dia da sequência (avanço)
+      // 3. Se hoje é dia de descanso (sem dia agendado) → mostre o próximo dia com exercícios
+      const todayDay = allDays.find((d) => d.day_of_week === dow) ?? null
+
+      let selectedDay: WorkoutDayRow | null = null
+      let isRestDay = false
+      let nextDayLabel: string | null = null
+
+      if (todayDay && !sessionCompletedToday) {
+        // Caso 1: treino de hoje disponível
+        selectedDay = todayDay
+      } else if (todayDay && sessionCompletedToday) {
+        // Caso 2: hoje concluído → avançar para o próximo dia da sequência
+        const currentIdx = allDays.findIndex((d) => d.id === todayDay.id)
+        const nextIdx = (currentIdx + 1) % allDays.length
+        selectedDay = allDays[nextIdx] ?? null
+        nextDayLabel = selectedDay?.name_pt ?? selectedDay?.name_en ?? null
+      } else if (!todayDay) {
+        // Caso 3: dia de descanso → encontrar próximo dia com exercícios
+        // Ordena os dias pelo day_of_week relativo a hoje
+        const sorted = [...allDays].sort((a, b) => {
+          const diffA = (a.day_of_week - dow + 7) % 7
+          const diffB = (b.day_of_week - dow + 7) % 7
+          return diffA - diffB
+        })
+        selectedDay = sorted[0] ?? null
+        isRestDay = true
+        nextDayLabel = selectedDay?.name_pt ?? selectedDay?.name_en ?? null
+      }
+
+      return {
+        assignment,
+        kit,
+        program: effectiveProgram,
+        day: selectedDay,
+        sessionCompletedToday,
+        isRestDay,
+        nextDayLabel,
+      }
     } catch {
       return null
     }
@@ -591,6 +688,147 @@ export class WorkoutService {
       return (data as WorkoutSessionRow[]) ?? []
     } catch {
       return []
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // STUDENT WORKOUT OVERRIDES (Personalização por aluno — Seção 19)
+  // ---------------------------------------------------------------------
+  static async listStudentOverrides(
+    studentId: string,
+    filters?: { assignment_id?: string; workout_exercise_id?: string; only_active?: boolean }
+  ): Promise<StudentWorkoutOverrideRow[]> {
+    try {
+      const supabase = await this.getSupabase()
+      let q: any = supabase
+        .from("student_workout_overrides")
+        .select("*")
+        .eq("student_id", studentId)
+        .order("created_at", { ascending: false })
+
+      if (filters?.assignment_id) q = q.eq("assignment_id", filters.assignment_id)
+      if (filters?.workout_exercise_id) q = q.eq("workout_exercise_id", filters.workout_exercise_id)
+      if (filters?.only_active) q = q.eq("is_active", true)
+
+      const { data, error } = await q
+      if (error) return []
+      return (data as StudentWorkoutOverrideRow[]) ?? []
+    } catch {
+      return []
+    }
+  }
+
+  static async upsertStudentOverride(
+    input: UpsertStudentWorkoutOverrideInput,
+    adminId?: string
+  ): Promise<StudentWorkoutOverrideRow | null> {
+    try {
+      const parsed = upsertStudentWorkoutOverrideSchema.parse(input)
+      const supabase = await this.getSupabase()
+
+      const payload: Record<string, any> = { ...parsed }
+      if (!parsed.id && adminId) payload.created_by_id = adminId
+      delete payload.id
+
+      let q: any
+      if (parsed.id) {
+        q = supabase
+          .from("student_workout_overrides")
+          .update(payload as never)
+          .eq("id", parsed.id)
+      } else {
+        // Se já existe override ativo para o mesmo aluno + exercício, desativa antes
+        const existingQ = await supabase
+          .from("student_workout_overrides")
+          .select("id")
+          .eq("student_id", parsed.student_id)
+          .eq("workout_exercise_id", parsed.workout_exercise_id)
+          .eq("is_active", true)
+          .maybeSingle()
+
+        if (existingQ.data) {
+          await supabase
+            .from("student_workout_overrides")
+            .update({ is_active: false } as never)
+            .eq("id", (existingQ.data as any).id)
+        }
+        q = supabase.from("student_workout_overrides").insert(payload as never)
+      }
+
+      const { data, error } = await q.select().single()
+      if (error || !data) return null
+
+      void AuditLogService.log({
+        adminId,
+        action: parsed.id ? "student_workout_override.update" : "student_workout_override.create",
+        entity_type: "student_workout_overrides",
+        entity_id: data.id,
+        details: {
+          student_id: parsed.student_id,
+          workout_exercise_id: parsed.workout_exercise_id,
+        },
+      })
+
+      return data as StudentWorkoutOverrideRow
+    } catch {
+      return null
+    }
+  }
+
+  static async deleteStudentOverride(id: string, adminId?: string): Promise<boolean> {
+    try {
+      const supabase = await this.getSupabase()
+      const { error } = await supabase
+        .from("student_workout_overrides")
+        .update({ is_active: false } as never)
+        .eq("id", id)
+      if (error) return false
+      void AuditLogService.log({
+        adminId,
+        action: "student_workout_override.delete",
+        entity_type: "student_workout_overrides",
+        entity_id: id,
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Aplica overrides do aluno a uma lista de workout_exercises.
+   * Retorna uma cópia com os campos sobrescritos onde houver override ativo.
+   */
+  static async applyStudentOverrides(
+    studentId: string,
+    exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>
+  ): Promise<Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>> {
+    if (exercises.length === 0) return exercises
+    try {
+      const overrides = await this.listStudentOverrides(studentId, { only_active: true })
+      if (overrides.length === 0) return exercises
+
+      const overrideMap = new Map<string, StudentWorkoutOverrideRow>()
+      for (const ov of overrides) {
+        overrideMap.set(ov.workout_exercise_id, ov)
+      }
+
+      return exercises.map((wex) => {
+        const ov = overrideMap.get(wex.id)
+        if (!ov) return wex
+        return {
+          ...wex,
+          sets: ov.sets ?? wex.sets,
+          reps: ov.reps ?? wex.reps,
+          weight_kg: ov.weight_kg ?? wex.weight_kg,
+          rest_seconds: ov.rest_seconds ?? wex.rest_seconds,
+          tempo: ov.tempo ?? wex.tempo,
+          notes_pt: ov.notes_pt ?? wex.notes_pt,
+          notes_en: ov.notes_en ?? wex.notes_en,
+        }
+      })
+    } catch {
+      return exercises
     }
   }
 }

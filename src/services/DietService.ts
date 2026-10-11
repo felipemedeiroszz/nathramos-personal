@@ -6,6 +6,21 @@ import type {
   DietMealItemRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
+import {
+  upsertDietProgramSchema,
+  upsertDietMealSchema,
+  upsertDietMealItemSchema,
+  type UpsertDietProgramInput,
+  type UpsertDietMealInput,
+  type UpsertDietMealItemInput,
+} from "../schemas/diets"
+
+export interface DietNutritionTotals {
+  calories_kcal: number
+  protein_g: number
+  carbs_g: number
+  fats_g: number
+}
 
 export class DietService {
   private static async getSupabase() {
@@ -61,24 +76,24 @@ export class DietService {
   }
 
   static async upsertProgram(
-    input: any,
+    input: UpsertDietProgramInput,
     userId: string,
     adminId?: string
   ): Promise<DietProgramRow | null> {
     try {
+      const parsed = upsertDietProgramSchema.parse(input)
       const supabase = await this.getSupabase()
 
-      const payload: Record<string, any> = { ...input }
-      if (!input.id) payload.user_id = userId
-      else payload.user_id = userId
+      const payload: Record<string, any> = { ...parsed }
+      payload.user_id = userId
       delete payload.id
 
       let q: any
-      if (input.id) {
+      if (parsed.id) {
         q = supabase
           .from("diet_programs")
           .update(payload as never)
-          .eq("id", input.id)
+          .eq("id", parsed.id)
       } else {
         q = supabase.from("diet_programs").insert(payload as never)
       }
@@ -88,10 +103,10 @@ export class DietService {
 
       void AuditLogService.log({
         adminId: adminId ?? userId,
-        action: input.id ? "diet_program.update" : "diet_program.create",
+        action: parsed.id ? "diet_program.update" : "diet_program.create",
         entity_type: "diet_programs",
         entity_id: data.id,
-        details: { title_pt: input.title_pt, title_en: input.title_en },
+        details: { title_pt: parsed.title_pt, title_en: parsed.title_en },
       })
 
       return data as DietProgramRow
@@ -138,15 +153,16 @@ export class DietService {
     }
   }
 
-  static async upsertMeal(input: any): Promise<DietMealRow | null> {
+  static async upsertMeal(input: UpsertDietMealInput): Promise<DietMealRow | null> {
     try {
+      const parsed = upsertDietMealSchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
+      const payload: Record<string, any> = { ...parsed }
       delete payload.id
 
       let q: any
-      if (input.id) {
-        q = supabase.from("diet_meals").update(payload as never).eq("id", input.id)
+      if (parsed.id) {
+        q = supabase.from("diet_meals").update(payload as never).eq("id", parsed.id)
       } else {
         q = supabase.from("diet_meals").insert(payload as never)
       }
@@ -188,15 +204,16 @@ export class DietService {
     }
   }
 
-  static async upsertMealItem(input: any): Promise<DietMealItemRow | null> {
+  static async upsertMealItem(input: UpsertDietMealItemInput): Promise<DietMealItemRow | null> {
     try {
+      const parsed = upsertDietMealItemSchema.parse(input)
       const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...input }
+      const payload: Record<string, any> = { ...parsed }
       delete payload.id
 
       let q: any
-      if (input.id) {
-        q = supabase.from("diet_meal_items").update(payload as never).eq("id", input.id)
+      if (parsed.id) {
+        q = supabase.from("diet_meal_items").update(payload as never).eq("id", parsed.id)
       } else {
         q = supabase.from("diet_meal_items").insert(payload as never)
       }
@@ -218,5 +235,48 @@ export class DietService {
     } catch {
       return false
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // NUTRITION CALCULATION
+  // ---------------------------------------------------------------------
+  static calculateItemNutrition(
+    item: { quantity: number; calories_kcal: number; protein_g: number; carbs_g: number; fats_g: number }
+  ): DietNutritionTotals {
+    const qty = item.quantity || 0
+    return {
+      calories_kcal: Math.round(item.calories_kcal * qty),
+      protein_g: +(item.protein_g * qty).toFixed(1),
+      carbs_g: +(item.carbs_g * qty).toFixed(1),
+      fats_g: +(item.fats_g * qty).toFixed(1),
+    }
+  }
+
+  static async getMealNutrition(mealId: string): Promise<DietNutritionTotals> {
+    const items = await this.listMealItems(mealId)
+    return items.reduce<DietNutritionTotals>(
+      (acc, item) => {
+        const n = this.calculateItemNutrition(item)
+        acc.calories_kcal += n.calories_kcal
+        acc.protein_g += n.protein_g
+        acc.carbs_g += n.carbs_g
+        acc.fats_g += n.fats_g
+        return acc
+      },
+      { calories_kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0 }
+    )
+  }
+
+  static async getProgramNutrition(dietId: string): Promise<DietNutritionTotals> {
+    const meals = await this.listMeals(dietId)
+    const totals: DietNutritionTotals = { calories_kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0 }
+    for (const meal of meals) {
+      const mealTotals = await this.getMealNutrition(meal.id)
+      totals.calories_kcal += mealTotals.calories_kcal
+      totals.protein_g += mealTotals.protein_g
+      totals.carbs_g += mealTotals.carbs_g
+      totals.fats_g += mealTotals.fats_g
+    }
+    return totals
   }
 }
