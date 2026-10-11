@@ -244,7 +244,7 @@ export function AdminEbooksClient({
           }}
           ebook={editingEbook ?? undefined}
           onSubmit={async (data) => {
-            await upsertEbookAction(data)
+            await upsertEbookAction(data as Parameters<typeof upsertEbookAction>[0])
           }}
           onSaved={onModalSaved}
         />
