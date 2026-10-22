@@ -16,6 +16,22 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
+  // API routes are not localized: skip intlMiddleware to avoid a redirect to /{locale}/api/...
+  if (url.startsWith('/api')) {
+    const apiResponse = NextResponse.next();
+    try {
+      const sessionResp = await updateSession(request.clone() as NextRequest);
+      for (const cookie of sessionResp.headers.getSetCookie?.() ?? []) {
+        apiResponse.headers.append("set-cookie", cookie);
+      }
+    } catch {}
+    if (!apiResponse.headers.has("x-content-type-options")) apiResponse.headers.set("x-content-type-options", "nosniff");
+    if (!apiResponse.headers.has("x-frame-options")) apiResponse.headers.set("x-frame-options", "DENY");
+    if (!apiResponse.headers.has("referrer-policy")) apiResponse.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+    if (!apiResponse.headers.has("permissions-policy")) apiResponse.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+    return apiResponse;
+  }
+
   // 1. Run intlMiddleware FIRST on the ORIGINAL request, BEFORE updateSession mutates request cookies.
   // This prevents NEXT_LOCALE cookie lookups / auth cookies from interfering with locale detection.
   const response = intlMiddleware(request);

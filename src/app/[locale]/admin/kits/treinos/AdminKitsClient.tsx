@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useLocale } from "next-intl";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -40,24 +41,40 @@ import {
   ArrowDown,
   ArrowUp,
 } from "lucide-react";
-import { deleteKitAction } from "@/app/actions/workouts";
+import {
+  deleteKitAction,
+  saveWorkoutKitAction,
+  removeWorkoutKitItemAction,
+  reorderWorkoutKitItemsAction,
+} from "@/app/actions/workouts";
 import type {
   WorkoutKitRow,
-  WorkoutKitItemRow,
-  WorkoutStatus,
+  WorkoutKitItemWithSource,
 } from "@/types";
+import type { KitExerciseOption, KitProgramOption } from "@/components/admin/workout/KitItemUpsertModal";
 
 const KitUpsertModal = dynamic(
   () => import("@/components/admin/workout/KitUpsertModal").catch(() => () => null),
   { ssr: false }
 );
 
-interface KitWithItems extends WorkoutKitRow {
-  items: Array<WorkoutKitItemRow & { program?: any }>;
-}
+const KitItemUpsertModal = dynamic(
+  () => import("@/components/admin/workout/KitItemUpsertModal").catch(() => () => null),
+  { ssr: false }
+);
 
-interface TranslatorFn {
-  (key: string): string;
+const WEEKDAY_LABELS: Record<number, { pt: string; en: string }> = {
+  1: { pt: "Segunda", en: "Monday" },
+  2: { pt: "Terça", en: "Tuesday" },
+  3: { pt: "Quarta", en: "Wednesday" },
+  4: { pt: "Quinta", en: "Thursday" },
+  5: { pt: "Sexta", en: "Friday" },
+  6: { pt: "Sábado", en: "Saturday" },
+  7: { pt: "Domingo", en: "Sunday" },
+};
+
+interface KitWithItems extends WorkoutKitRow {
+  items: WorkoutKitItemWithSource[];
 }
 
 interface AdminKitsClientProps {
@@ -66,8 +83,9 @@ interface AdminKitsClientProps {
   title: string;
   subtitle: string;
   kits: KitWithItems[];
-  programOptions: { id: string; title_pt: string; title_en: string }[];
-  translateDifficulty: TranslatorFn;
+  programOptions: KitProgramOption[];
+  exerciseOptions: KitExerciseOption[];
+  difficultyLabels: Record<string, string>;
 }
 
 export function AdminKitsClient({
@@ -77,9 +95,12 @@ export function AdminKitsClient({
   subtitle,
   kits,
   programOptions,
-  translateDifficulty,
+  exerciseOptions,
+  difficultyLabels,
 }: AdminKitsClientProps) {
   const router = useRouter();
+  const localeCode = useLocale();
+  const label = (pt: string, en: string) => (localeCode === "pt-BR" ? pt : en);
 
   const [search, setSearch] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("");
@@ -92,8 +113,7 @@ export function AdminKitsClient({
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [addProgramOpenFor, setAddProgramOpenFor] = useState<string | null>(null);
-  const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [itemModalKit, setItemModalKit] = useState<KitWithItems | null>(null);
 
   const filteredKits = kits.filter((k) => {
     const matchSearch =
@@ -143,48 +163,40 @@ export function AdminKitsClient({
     router.refresh();
   }
 
-  function openAddProgram(kitId: string) {
-    setSelectedProgramId("");
-    setAddProgramOpenFor(kitId);
-  }
-
-  async function handleAddProgram() {
-    if (!addProgramOpenFor || !selectedProgramId) return;
-    try {
-      const { WorkoutKitService } = await import("@/services/WorkoutKitService");
-      const kit = kits.find((k) => k.id === addProgramOpenFor);
-      const nextOrder = kit ? kit.items.length + 1 : 1;
-      await WorkoutKitService.upsertKitItem(addProgramOpenFor, selectedProgramId, nextOrder);
-    } catch {
-    } finally {
-      setAddProgramOpenFor(null);
-      setSelectedProgramId("");
-      router.refresh();
-    }
-  }
-
   async function handleRemoveItem(itemId: string) {
     try {
-      const { WorkoutKitService } = await import("@/services/WorkoutKitService");
-      await WorkoutKitService.removeKitItem(itemId);
+      await removeWorkoutKitItemAction(itemId);
     } finally {
       router.refresh();
     }
   }
 
-  async function handleMoveItem(kitId: string, items: any[], index: number, dir: -1 | 1) {
+  async function handleMoveItem(kitId: string, items: WorkoutKitItemWithSource[], index: number, dir: -1 | 1) {
     const target = index + dir;
     if (target < 0 || target >= items.length) return;
     try {
-      const { WorkoutKitService } = await import("@/services/WorkoutKitService");
       const reordered = items.map((it, i) => ({ id: it.id, order_index: i + 1 }));
       const tmp = reordered[index];
       reordered[index] = reordered[target];
       reordered[target] = tmp;
-      await WorkoutKitService.reorderKitItems(kitId, reordered);
+      await reorderWorkoutKitItemsAction(kitId, reordered);
     } finally {
       router.refresh();
     }
+  }
+
+  function itemTitle(item: WorkoutKitItemWithSource): string {
+    if (item.program) {
+      return localeCode === "pt-BR"
+        ? item.program.title_pt
+        : item.program.title_en || item.program.title_pt;
+    }
+    if (item.exercise) {
+      return localeCode === "pt-BR"
+        ? item.exercise.name_pt
+        : item.exercise.name_en || item.exercise.name_pt;
+    }
+    return label("Treino removido", "Removed workout");
   }
 
   return (
@@ -209,28 +221,28 @@ export function AdminKitsClient({
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
               >
-                <option value="">Todas dificuldades</option>
-                <option value="beginner">Iniciante</option>
-                <option value="intermediate">Intermediario</option>
-                <option value="advanced">Avancado</option>
+                <option value="">{label("Todas dificuldades", "All difficulties")}</option>
+                <option value="beginner">{label("Iniciante", "Beginner")}</option>
+                <option value="intermediate">{label("Intermediário", "Intermediate")}</option>
+                <option value="advanced">{label("Avançado", "Advanced")}</option>
               </Select>
               <Select
                 className="w-full sm:max-w-[160px]"
                 value={featuredFilter}
                 onChange={(e) => setFeaturedFilter(e.target.value)}
               >
-                <option value="">Destaque: Todos</option>
-                <option value="1">Sim</option>
-                <option value="0">Nao</option>
+                <option value="">{label("Destaque: Todos", "Featured: All")}</option>
+                <option value="1">{label("Sim", "Yes")}</option>
+                <option value="0">{label("Não", "No")}</option>
               </Select>
               <Select
                 className="w-full sm:max-w-[160px]"
                 value={publishedFilter}
                 onChange={(e) => setPublishedFilter(e.target.value)}
               >
-                <option value="">Publicado: Todos</option>
-                <option value="1">Sim</option>
-                <option value="0">Nao</option>
+                <option value="">{label("Publicado: Todos", "Published: All")}</option>
+                <option value="1">{label("Sim", "Yes")}</option>
+                <option value="0">{label("Não", "No")}</option>
               </Select>
               <div className="relative flex-1 sm:max-w-sm">
                 <Search
@@ -238,7 +250,7 @@ export function AdminKitsClient({
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
                 />
                 <Input
-                  placeholder="Buscar kit..."
+                  placeholder={label("Buscar kit...", "Search kit...")}
                   className="pl-10"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -247,19 +259,22 @@ export function AdminKitsClient({
             </div>
             <Button variant="primary" size="md" className="shrink-0" onClick={openCreate}>
               <Plus size={18} className="mr-2" />
-              Novo Kit
+              {label("Novo Kit", "New Kit")}
             </Button>
           </div>
 
           {filteredKits.length === 0 ? (
             <EmptyState
               icon={<FolderKanban size={28} className="text-text-secondary" />}
-              title="Nenhum kit encontrado"
-              description="Crie seu primeiro kit de treino ou ajuste os filtros."
+              title={label("Nenhum kit encontrado", "No kits found")}
+              description={label(
+                "Crie seu primeiro kit de treino ou ajuste os filtros.",
+                "Create your first workout kit or adjust the filters."
+              )}
               action={
                 <Button variant="primary" size="sm" onClick={openCreate}>
                   <Plus size={16} className="mr-2" />
-                  Novo Kit
+                  {label("Novo Kit", "New Kit")}
                 </Button>
               }
             />
@@ -269,9 +284,7 @@ export function AdminKitsClient({
                 const expanded = expandedKitId === kit.id;
                 return (
                   <div key={kit.id} className="space-y-2">
-                    <Card
-                      className="border border-border hover:border-primary/50 transition-colors flex flex-col"
-                    >
+                    <Card className="border border-border hover:border-primary/50 transition-colors flex flex-col">
                       <CardContent className="p-0 flex flex-col flex-1">
                         <div className="relative aspect-video w-full overflow-hidden rounded-t-xl">
                           {kit.cover_image_url ? (
@@ -294,18 +307,15 @@ export function AdminKitsClient({
                           )}
                           <div className="absolute top-3 left-3 z-10 flex gap-2">
                             {kit.is_featured && (
-                              <Badge
-                                variant="warning"
-                                className="shadow-[0_0_12px_hsl(var(--warning)/0.3)]"
-                              >
+                              <Badge variant="warning" className="shadow-[0_0_12px_hsl(var(--warning)/0.3)]">
                                 <Star size={12} className="mr-1 fill-current" />
-                                Destaque
+                                {label("Destaque", "Featured")}
                               </Badge>
                             )}
                             {kit.is_published ? (
-                              <Badge variant="success">Publicado</Badge>
+                              <Badge variant="success">{label("Publicado", "Published")}</Badge>
                             ) : (
-                              <Badge variant="outline">Rascunho</Badge>
+                              <Badge variant="outline">{label("Rascunho", "Draft")}</Badge>
                             )}
                           </div>
                         </div>
@@ -319,19 +329,23 @@ export function AdminKitsClient({
                           </div>
 
                           <p className="text-sm text-text-secondary leading-relaxed line-clamp-2">
-                            {kit.short_desc_pt || kit.short_desc_en || kit.description_pt || "Sem descricao curta."}
+                            {kit.short_desc_pt ||
+                              kit.short_desc_en ||
+                              kit.description_pt ||
+                              label("Sem descrição curta.", "No short description.")}
                           </p>
 
                           <div className="flex items-center justify-between mt-auto pt-3 border-t border-border">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="outline">
-                                {translateDifficulty(kit.difficulty)}
+                                {difficultyLabels[kit.difficulty] ?? kit.difficulty}
                               </Badge>
                               <Badge variant="outline">
-                                {kit.total_weeks} sem x {kit.days_per_week} dias
+                                {kit.total_weeks} {label("sem", "wk")} x {kit.days_per_week}{" "}
+                                {label("dias", "days")}
                               </Badge>
                               <span className="text-xs text-text-secondary">
-                                {kit.est_minutes_per_session} min/sessao
+                                {kit.est_minutes_per_session} {label("min/sessão", "min/session")}
                               </span>
                             </div>
                             <div className="flex items-center space-x-1 shrink-0 ml-2">
@@ -339,7 +353,7 @@ export function AdminKitsClient({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                title="Editar"
+                                title={label("Editar", "Edit")}
                                 onClick={() => openEdit(kit)}
                               >
                                 <Edit size={15} />
@@ -348,7 +362,7 @@ export function AdminKitsClient({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                title={expanded ? "Recolher editor" : "Abrir editor"}
+                                title={expanded ? label("Recolher editor", "Collapse editor") : label("Abrir editor", "Open editor")}
                                 onClick={() => toggleExpand(kit.id)}
                               >
                                 {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
@@ -357,10 +371,8 @@ export function AdminKitsClient({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
-                                title="Excluir"
-                                onClick={() =>
-                                  setDeleteConfirm({ id: kit.id, name: kit.name_pt })
-                                }
+                                title={label("Excluir", "Delete")}
+                                onClick={() => setDeleteConfirm({ id: kit.id, name: kit.name_pt })}
                               >
                                 <Trash2 size={15} />
                               </Button>
@@ -376,17 +388,18 @@ export function AdminKitsClient({
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div>
                               <CardTitle className="text-base">
-                                Conteudo do Kit
+                                {label("Conteúdo do Kit", "Kit Content")}
                               </CardTitle>
                               <CardDescription className="text-xs">
-                                {kit.items.length} programa
-                                {kit.items.length === 1 ? "" : "s"} associado
-                                {kit.items.length === 1 ? "" : "s"}
+                                {kit.items.length} {label("treino", "workout")}
+                                {kit.items.length === 1 ? "" : label("s", "s")}{" "}
+                                {label("associado", "associated")}
+                                {kit.items.length === 1 ? "" : label("s", "s")}
                               </CardDescription>
                             </div>
-                            <Button variant="secondary" size="sm" onClick={() => openAddProgram(kit.id)}>
+                            <Button variant="secondary" size="sm" onClick={() => setItemModalKit(kit)}>
                               <Plus size={14} className="mr-1" />
-                              Adicionar Programa
+                              {label("Adicionar Treino", "Add Workout")}
                             </Button>
                           </div>
                         </CardHeader>
@@ -394,12 +407,15 @@ export function AdminKitsClient({
                           {kit.items.length === 0 ? (
                             <EmptyState
                               icon={<ArrowUpRight size={22} className="text-text-secondary" />}
-                              title="Sem programas"
-                              description="Adicione programas a este kit para montar uma sequencia."
+                              title={label("Sem treinos", "No workouts")}
+                              description={label(
+                                "Adicione programas ou exercícios para montar este kit.",
+                                "Add programs or exercises to build this kit."
+                              )}
                               action={
-                                <Button variant="primary" size="sm" onClick={() => openAddProgram(kit.id)}>
+                                <Button variant="primary" size="sm" onClick={() => setItemModalKit(kit)}>
                                   <Plus size={14} className="mr-1" />
-                                  Adicionar
+                                  {label("Adicionar", "Add")}
                                 </Button>
                               }
                               className="py-4"
@@ -409,41 +425,57 @@ export function AdminKitsClient({
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead className="w-[80px]">Ordem</TableHead>
-                                    <TableHead>Programa</TableHead>
-                                    <TableHead>Semanas</TableHead>
-                                    <TableHead>Dias/sem</TableHead>
-                                    <TableHead className="w-[120px] text-right">Acoes</TableHead>
+                                    <TableHead className="w-[70px]">{label("Cat.", "Cat.")}</TableHead>
+                                    <TableHead>{label("Treino", "Workout")}</TableHead>
+                                    <TableHead className="w-[140px]">{label("Dia", "Day")}</TableHead>
+                                    <TableHead className="w-[130px]">{label("Origem", "Source")}</TableHead>
+                                    <TableHead className="w-[120px] text-right">
+                                      {label("Ações", "Actions")}
+                                    </TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {kit.items.map((item, i) => {
-                                    const progTitle =
-                                      item.program?.title_pt ||
-                                      item.program?.title_en ||
-                                      programOptions.find((p) => p.id === item.program_id)
-                                        ?.title_pt ||
-                                      `Programa #${item.program_id}`;
+                                    const isExercise = !item.program && !!item.exercise;
+                                    const weekday = item.day_of_week
+                                      ? WEEKDAY_LABELS[item.day_of_week]
+                                      : null;
+                                    const originLabel = item.program
+                                      ? label("Programa", "Program")
+                                      : item.exercise?.source === "exercisedb"
+                                        ? label("Exercício (API)", "Exercise (API)")
+                                        : label("Exercício", "Exercise");
                                     return (
                                       <TableRow key={item.id}>
                                         <TableCell>
-                                          <div className="flex items-center gap-1">
-                                            <Badge
-                                              variant="default"
-                                              className="w-8 h-8 rounded-full flex items-center justify-center p-0 text-sm"
-                                            >
-                                              {i + 1}
-                                            </Badge>
-                                          </div>
+                                          <Badge
+                                            variant="default"
+                                            className="w-8 h-8 rounded-full flex items-center justify-center p-0 text-sm"
+                                          >
+                                            {item.category_label ?? i + 1}
+                                          </Badge>
                                         </TableCell>
                                         <TableCell className="font-semibold text-text">
-                                          {progTitle}
+                                          {itemTitle(item)}
+                                          {isExercise && item.exercise?.primary_muscle && (
+                                            <span className="block text-xs font-normal text-text-secondary capitalize">
+                                              {item.exercise.primary_muscle.replace(/_/g, " ")}
+                                            </span>
+                                          )}
                                         </TableCell>
                                         <TableCell className="text-text">
-                                          {item.program?.total_weeks ?? "-"}
+                                          {weekday ? (
+                                            <Badge variant="outline">
+                                              {label(weekday.pt, weekday.en)}
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-text-secondary text-xs">-</span>
+                                          )}
                                         </TableCell>
-                                        <TableCell className="text-text">
-                                          {item.program?.days_per_week ?? "-"}
+                                        <TableCell>
+                                          <Badge variant="outline" className="text-[11px]">
+                                            {originLabel}
+                                          </Badge>
                                         </TableCell>
                                         <TableCell>
                                           <div className="flex items-center justify-end space-x-1">
@@ -451,11 +483,9 @@ export function AdminKitsClient({
                                               variant="ghost"
                                               size="sm"
                                               className="h-8 w-8 p-0"
-                                              title="Subir"
+                                              title={label("Subir", "Move up")}
                                               disabled={i === 0}
-                                              onClick={() =>
-                                                handleMoveItem(kit.id, kit.items, i, -1)
-                                              }
+                                              onClick={() => handleMoveItem(kit.id, kit.items, i, -1)}
                                             >
                                               <ArrowUp size={14} />
                                             </Button>
@@ -463,11 +493,9 @@ export function AdminKitsClient({
                                               variant="ghost"
                                               size="sm"
                                               className="h-8 w-8 p-0"
-                                              title="Descer"
+                                              title={label("Descer", "Move down")}
                                               disabled={i === kit.items.length - 1}
-                                              onClick={() =>
-                                                handleMoveItem(kit.id, kit.items, i, 1)
-                                              }
+                                              onClick={() => handleMoveItem(kit.id, kit.items, i, 1)}
                                             >
                                               <ArrowDown size={14} />
                                             </Button>
@@ -475,7 +503,7 @@ export function AdminKitsClient({
                                               variant="ghost"
                                               size="sm"
                                               className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
-                                              title="Remover"
+                                              title={label("Remover", "Remove")}
                                               onClick={() => handleRemoveItem(item.id)}
                                             >
                                               <X size={14} />
@@ -489,53 +517,6 @@ export function AdminKitsClient({
                               </Table>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {addProgramOpenFor === kit.id && (
-                      <Card className="border border-primary/60">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">
-                            Adicionar Programa ao Kit
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            Selecione um programa existente para incluir na sequencia.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <Select
-                            value={selectedProgramId}
-                            onChange={(e) => setSelectedProgramId(e.target.value)}
-                          >
-                            <option value="">Selecione um programa...</option>
-                            {programOptions.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.title_pt}
-                              </option>
-                            ))}
-                          </Select>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => {
-                                setAddProgramOpenFor(null);
-                                setSelectedProgramId("");
-                              }}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              disabled={!selectedProgramId}
-                              onClick={handleAddProgram}
-                            >
-                              <Plus size={14} className="mr-1" />
-                              Adicionar
-                            </Button>
-                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -554,41 +535,53 @@ export function AdminKitsClient({
             setModalOpen(false);
             setEditingKit(null);
           }}
+          onSubmit={async (payload) => {
+            await saveWorkoutKitAction(payload);
+          }}
           onSaved={onModalSaved}
           kit={editingKit ?? undefined}
           userId={userId}
         />
       )}
 
-      <Dialog
-        isOpen={!!deleteConfirm}
-        onClose={() => !deleting && setDeleteConfirm(null)}
-      >
+      {KitItemUpsertModal && itemModalKit && (
+        <KitItemUpsertModal
+          isOpen={!!itemModalKit}
+          onClose={() => setItemModalKit(null)}
+          kitId={itemModalKit.id}
+          kitName={itemModalKit.name_pt}
+          nextOrder={itemModalKit.items.length + 1}
+          programOptions={programOptions}
+          exerciseOptions={exerciseOptions}
+          onSaved={() => router.refresh()}
+        />
+      )}
+
+      <Dialog isOpen={!!deleteConfirm} onClose={() => !deleting && setDeleteConfirm(null)}>
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>Confirmar exclusao</DialogTitle>
+              <DialogTitle>{label("Confirmar exclusão", "Confirm deletion")}</DialogTitle>
             </div>
             <DialogDescription>
-              Tem certeza que deseja excluir o kit{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
-              Os programas associados nao serao removidos.
+              {label("Tem certeza que deseja excluir o kit", "Are you sure you want to delete the kit")}{" "}
+              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?{" "}
+              {label(
+                "Os programas associados não serão removidos.",
+                "Associated programs will not be removed."
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="secondary"
-              onClick={() => setDeleteConfirm(null)}
-              disabled={deleting}
-            >
-              Cancelar
+            <Button variant="secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
+              {label("Cancelar", "Cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               <Trash2 size={16} className="mr-2" />
-              {deleting ? "Excluindo..." : "Excluir"}
+              {deleting ? label("Excluindo...", "Deleting...") : label("Excluir", "Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

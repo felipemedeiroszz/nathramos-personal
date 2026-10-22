@@ -5,6 +5,8 @@ import { z } from "zod";
 import { WorkoutService } from "@/services/WorkoutService";
 import { WorkoutKitService } from "@/services/WorkoutKitService";
 import { requireAuthenticated, requireRole } from "@/lib/auth/access";
+import { createClientSSR } from "@/lib/supabase/server";
+import type { ExerciseDbExercise } from "@/lib/exercisedb";
 import { logWorkoutSetSchema, assignStudentWorkoutSchema } from "@/schemas/workouts";
 
 export async function startWorkoutSessionAction(params: {
@@ -123,65 +125,6 @@ export async function assignWorkoutKitToStudentAction(input: {
   }
 }
 
-export async function deleteCategoryAction(categoryId: string) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
-  try {
-    const { WorkoutService } = await import("@/services/WorkoutService");
-    const ok = await WorkoutService.deleteCategory(categoryId, adminId);
-    if (!ok) {
-      return { success: false as const, message: "Falha ao excluir categoria." };
-    }
-    revalidatePath("/[locale]/admin/exercicios", "page");
-    revalidatePath("/[locale]/admin/categorias-treino", "page");
-    revalidatePath("/[locale]/admin/treinos", "page");
-    return { success: true as const };
-  } catch (e: any) {
-    return {
-      success: false as const,
-      message: e?.message ?? "Falha ao excluir categoria.",
-    };
-  }
-}
-
-export async function syncExercisesAction() {
-  await requireRole(["admin", "coach"], "/dashboard");
-  try {
-    const { ExerciseDBService } = await import("@/services/ExerciseDBService");
-    const result = await ExerciseDBService.syncFromExternal();
-    revalidatePath("/[locale]/admin/exercicios", "page");
-    return {
-      success: true as const,
-      created: result.created,
-      updated: result.updated,
-      skipped: result.skipped,
-      error: result.error,
-    };
-  } catch (e: any) {
-    return {
-      success: false as const,
-      message: e?.message ?? "Falha ao sincronizar exercícios.",
-    };
-  }
-}
-
-export async function deleteExerciseAction(exerciseId: string) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
-  try {
-    const { ExerciseDBService } = await import("@/services/ExerciseDBService");
-    const ok = await ExerciseDBService.deleteExercise(exerciseId, adminId);
-    if (!ok) {
-      return { success: false as const, message: "Falha ao excluir exercício." };
-    }
-    revalidatePath("/[locale]/admin/exercicios", "page");
-    return { success: true as const };
-  } catch (e: any) {
-    return {
-      success: false as const,
-      message: e?.message ?? "Falha ao excluir exercício.",
-    };
-  }
-}
-
 export async function deleteKitAction(kitId: string) {
   const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
   try {
@@ -198,6 +141,106 @@ export async function deleteKitAction(kitId: string) {
     return {
       success: false as const,
       message: e?.message ?? "Falha ao excluir kit.",
+    };
+  }
+}
+
+export async function saveWorkoutKitAction(input: Record<string, any>) {
+  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const saved = await WorkoutKitService.upsertKit(input as any, adminId);
+    if (!saved) {
+      return { success: false as const, message: "Falha ao salvar kit de treino." };
+    }
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const, kit: saved };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao salvar kit de treino.",
+    };
+  }
+}
+
+export async function addWorkoutKitItemAction(input: {
+  kit_id: string;
+  category_label?: string | null;
+  day_of_week?: number | null;
+  program_id?: string | null;
+  exercise_id?: string | null;
+  api_exercise?: ExerciseDbExercise | null;
+  order_index?: number;
+}) {
+  await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    let exerciseId = input.exercise_id ?? null;
+
+    // Treino vindo do catálogo da API: garante o exercício no banco antes de vincular.
+    if (!exerciseId && !input.program_id && input.api_exercise) {
+      const { ExerciseDBService } = await import("@/services/ExerciseDBService");
+      const exercise = await ExerciseDBService.ensureFromApiExercise(input.api_exercise);
+      if (!exercise) {
+        return { success: false as const, message: "Falha ao importar exercício da API." };
+      }
+      exerciseId = exercise.id;
+    }
+
+    const item = await WorkoutKitService.upsertKitItem({
+      kit_id: input.kit_id,
+      program_id: input.program_id ?? null,
+      exercise_id: exerciseId,
+      category_label: (input.category_label ?? null) as any,
+      day_of_week: input.day_of_week ?? null,
+      order_index: input.order_index ?? 0,
+    });
+
+    if (!item) {
+      return { success: false as const, message: "Falha ao adicionar treino ao kit." };
+    }
+
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const, item };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao adicionar treino ao kit.",
+    };
+  }
+}
+
+export async function removeWorkoutKitItemAction(itemId: string) {
+  await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const ok = await WorkoutKitService.removeKitItem(itemId);
+    if (!ok) {
+      return { success: false as const, message: "Falha ao remover treino do kit." };
+    }
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao remover treino do kit.",
+    };
+  }
+}
+
+export async function reorderWorkoutKitItemsAction(
+  kitId: string,
+  items: { id: string; order_index: number }[]
+) {
+  await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const ok = await WorkoutKitService.reorderKitItems(kitId, items);
+    if (!ok) {
+      return { success: false as const, message: "Falha ao reordenar treinos do kit." };
+    }
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao reordenar treinos do kit.",
     };
   }
 }
@@ -271,6 +314,105 @@ export async function deleteStudentOverrideAction(overrideId: string) {
     return {
       success: false as const,
       message: e?.message ?? "Falha ao remover personalização.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CATÁLOGO PRÓPRIO DE EXERCÍCIOS (admin)
+// ---------------------------------------------------------------------------
+
+const EXERCISE_ASSETS_BUCKET = "exercise-assets";
+const EXERCISE_ASSET_MAX_BYTES = 20 * 1024 * 1024;
+const EXERCISE_ASSET_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "mp4"];
+const EXERCISE_ASSET_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "video/mp4",
+];
+
+/**
+ * Faz upload de GIF/imagem/vídeo de um exercício próprio para o bucket
+ * `exercise-assets` e devolve a URL pública para ser gravada em `exercises`.
+ */
+export async function uploadExerciseAssetAction(formData: FormData) {
+  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) {
+    return { success: false as const, message: "Selecione um arquivo para enviar." };
+  }
+  if (file.size > EXERCISE_ASSET_MAX_BYTES) {
+    return { success: false as const, message: "O arquivo excede o limite de 20MB." };
+  }
+
+  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+  if (!EXERCISE_ASSET_EXTENSIONS.includes(ext) || !EXERCISE_ASSET_MIME_TYPES.includes(file.type)) {
+    return {
+      success: false as const,
+      message: "Formato inválido. Use GIF, PNG, JPG, WEBP ou MP4.",
+    };
+  }
+
+  try {
+    const supabase = await createClientSSR();
+    const key = `custom/${adminId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from(EXERCISE_ASSETS_BUCKET).upload(key, file, {
+      cacheControl: "31536000",
+      upsert: false,
+      contentType: file.type,
+    });
+    if (error) {
+      return { success: false as const, message: error.message || "Falha ao enviar arquivo." };
+    }
+
+    const { data } = supabase.storage.from(EXERCISE_ASSETS_BUCKET).getPublicUrl(key);
+    return { success: true as const, url: data?.publicUrl ?? null };
+  } catch (e: any) {
+    return { success: false as const, message: e?.message ?? "Falha ao enviar arquivo." };
+  }
+}
+
+export async function saveExerciseAction(input: Record<string, any>) {
+  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const { ExerciseDBService } = await import("@/services/ExerciseDBService");
+    const payload: Record<string, any> = { ...input };
+    // Exercícios criados pela interface pertencem sempre ao catálogo próprio.
+    if (!payload.id) payload.source = "custom";
+
+    const saved = await ExerciseDBService.upsertExercise(payload as any, adminId);
+    if (!saved) {
+      return { success: false as const, message: "Falha ao salvar exercício." };
+    }
+    revalidatePath("/[locale]/admin/treinos", "page");
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const, exercise: saved };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao salvar exercício.",
+    };
+  }
+}
+
+export async function deleteExerciseAction(exerciseId: string) {
+  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const { ExerciseDBService } = await import("@/services/ExerciseDBService");
+    const ok = await ExerciseDBService.deleteExercise(exerciseId, adminId);
+    if (!ok) {
+      return { success: false as const, message: "Falha ao excluir exercício." };
+    }
+    revalidatePath("/[locale]/admin/treinos", "page");
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    return { success: true as const };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao excluir exercício.",
     };
   }
 }

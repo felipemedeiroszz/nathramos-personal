@@ -51,9 +51,12 @@ export function EbookUpsertModal({
     summary_en: ebook?.summary_en ?? "",
     cover_url: ebook?.cover_url ?? "",
     file_bucket_path: ebook?.file_bucket_path ?? "",
+    external_url: ebook?.external_url ?? "",
     pages_count: ebook?.pages_count ?? "",
     language: ebook?.language ?? "pt-BR",
     is_free: ebook?.is_free ?? false,
+    price: ebook?.price_cents ? String(ebook.price_cents / 100) : "",
+    currency: ebook?.currency ?? "BRL",
     is_published: ebook?.is_published ?? false,
     author: ebook?.author ?? "",
     categories_pt: Array.isArray(ebook?.categories_pt) ? ebook!.categories_pt!.join(", ") : "",
@@ -72,9 +75,12 @@ export function EbookUpsertModal({
         summary_en: ebook.summary_en ?? "",
         cover_url: ebook.cover_url ?? "",
         file_bucket_path: ebook.file_bucket_path ?? "",
+        external_url: ebook.external_url ?? "",
         pages_count: ebook.pages_count ?? "",
         language: ebook.language ?? "pt-BR",
         is_free: ebook.is_free ?? false,
+        price: ebook.price_cents ? String(ebook.price_cents / 100) : "",
+        currency: ebook.currency ?? "BRL",
         is_published: ebook.is_published ?? false,
         author: ebook.author ?? "",
         categories_pt: Array.isArray(ebook.categories_pt) ? ebook.categories_pt.join(", ") : "",
@@ -90,9 +96,12 @@ export function EbookUpsertModal({
         summary_en: "",
         cover_url: "",
         file_bucket_path: "",
+        external_url: "",
         pages_count: "",
         language: "pt-BR",
         is_free: false,
+        price: "",
+        currency: "BRL",
         is_published: false,
         author: "",
         categories_pt: "",
@@ -110,15 +119,19 @@ export function EbookUpsertModal({
     startTransition(async () => {
       const splitArr = (s: string) =>
         s.split(",").map((x: string) => x.trim()).filter(Boolean);
+      const parsedPrice = form.is_free ? 0 : Math.round(parseFloat(String(form.price || "0").replace(",", ".")) * 100);
       const payload: Record<string, any> = {
         ...form,
         cover_url: form.cover_url || null,
         file_bucket_path: form.file_bucket_path || null,
+        external_url: form.external_url || null,
         pages_count: form.pages_count ? parseInt(String(form.pages_count), 10) : null,
+        price_cents: Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : 0,
         author: form.author || null,
         categories_pt: splitArr(form.categories_pt),
         categories_en: splitArr(form.categories_en),
       };
+      delete payload.price;
       if (!payload.id) delete payload.id;
       if (onSubmit) await onSubmit(payload);
       onSaved?.();
@@ -264,6 +277,54 @@ export function EbookUpsertModal({
               placeholder="https://..."
             />
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text">
+              {label("URL do e-book (acesso direto)", "E-book URL (direct access)")}
+            </label>
+            <Input
+              type="url"
+              value={form.external_url}
+              onChange={(e) => update("external_url", e.target.value)}
+              placeholder="https://..."
+            />
+            <p className="text-xs text-text-secondary">
+              {label(
+                "Link que o aluno abrirá ao clicar em acessar.",
+                "Link the student opens when clicking access."
+              )}
+            </p>
+          </div>
+
+          {!form.is_free && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-sm font-medium text-text">
+                  {label("Valor", "Price")}
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.price}
+                  onChange={(e) => update("price", e.target.value)}
+                  placeholder="49.90"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text">
+                  {label("Moeda", "Currency")}
+                </label>
+                <Select
+                  value={form.currency}
+                  onChange={(e) => update("currency", e.target.value)}
+                >
+                  <option value="BRL">BRL (R$)</option>
+                  <option value="USD">USD ($)</option>
+                </Select>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">

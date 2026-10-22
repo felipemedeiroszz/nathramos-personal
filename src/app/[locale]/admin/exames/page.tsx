@@ -76,6 +76,12 @@ export default async function AdminExamesPage({
     email: p.email,
   }));
 
+  const studentNames: Record<string, string> = {};
+  for (const p of profiles ?? []) {
+    const row = p as any;
+    studentNames[row.id] = row.full_name || row.email;
+  }
+
   return (
     <div className="space-y-6 w-full">
       <header className="space-y-1">
@@ -91,6 +97,7 @@ export default async function AdminExamesPage({
         searchValue={q}
         categories={categories}
         studentOptions={studentOptions}
+        studentNames={studentNames}
       />
     </div>
   );

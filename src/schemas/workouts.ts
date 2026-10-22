@@ -146,14 +146,35 @@ export const upsertWorkoutKitSchema = z.object({
 })
 export type UpsertWorkoutKitInput = z.infer<typeof upsertWorkoutKitSchema>
 
-export const upsertWorkoutKitItemSchema = z.object({
-  kit_id: uuidSchema,
-  program_id: uuidSchema,
-  order_index: z.coerce.number().int().default(0),
-  notes_pt: z.string().trim().optional().nullable(),
-  notes_en: z.string().trim().optional().nullable(),
-  id: uuidSchema.optional(),
-})
+export const KIT_CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F"] as const
+export type KitCategoryLabel = (typeof KIT_CATEGORY_LABELS)[number]
+
+export const kitCategoryLabelSchema = z.enum(KIT_CATEGORY_LABELS)
+
+/** Dias da semana: 1 = Segunda ... 7 = Domingo (mesma convenção de workout_days). */
+export const kitDayOfWeekSchema = z.coerce.number().int().min(1).max(7)
+
+export const upsertWorkoutKitItemSchema = z
+  .object({
+    kit_id: uuidSchema,
+    program_id: uuidSchema.optional().nullable(),
+    exercise_id: uuidSchema.optional().nullable(),
+    category_label: kitCategoryLabelSchema.optional().nullable(),
+    day_of_week: kitDayOfWeekSchema.optional().nullable(),
+    order_index: z.coerce.number().int().default(0),
+    notes_pt: z.string().trim().optional().nullable(),
+    notes_en: z.string().trim().optional().nullable(),
+    id: uuidSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.program_id && !data.exercise_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "É obrigatório informar um programa ou um exercício.",
+        path: ["program_id"],
+      })
+    }
+  })
 export type UpsertWorkoutKitItemInput = z.infer<typeof upsertWorkoutKitItemSchema>
 
 export const assignStudentWorkoutSchema = z

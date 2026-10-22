@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -53,29 +53,98 @@ export function AdminHeader({
 
   const currentLocale = locales.find((l) => l.code === locale) || locales[0];
 
-  // Generate breadcrumbs from pathname
+  // Mapeia cada segmento de rota para a chave correspondente em `adminNav`.
+  const ROUTE_NAV_KEYS: Record<string, { key: string; fallback: string }> = {
+    dashboard: { key: "dashboard", fallback: "Painel" },
+    alunos: { key: "students", fallback: "Alunos" },
+    treinos: { key: "workouts", fallback: "Treinos" },
+    alimentos: { key: "foods", fallback: "Alimentos" },
+    suplementos: { key: "supplements", fallback: "Suplementos" },
+    exames: { key: "exams", fallback: "Exames" },
+    ebooks: { key: "ebooks", fallback: "E-books" },
+    mentoria: { key: "mentoria", fallback: "Mentoria" },
+    reunioes: { key: "meetings", fallback: "Reuniões" },
+    notificacoes: { key: "notifications", fallback: "Notificações" },
+    "redes-sociais": { key: "social", fallback: "Redes Sociais" },
+    planos: { key: "plans", fallback: "Planos" },
+    assinaturas: { key: "subscriptions", fallback: "Assinaturas" },
+    pagamentos: { key: "payments", fallback: "Pagamentos" },
+    financeiro: { key: "financeiro", fallback: "Financeiro" },
+    configuracoes: { key: "settings", fallback: "Configurações" },
+    auditoria: { key: "audit", fallback: "Auditoria" },
+    conta: { key: "account", fallback: "Minha Conta" },
+  };
+
+  const KIT_NAV_KEYS: Record<string, { key: string; fallback: string }> = {
+    treinos: { key: "workoutKits", fallback: "Kits de Treino" },
+    dietas: { key: "dietKits", fallback: "Kits de Dieta" },
+    suplementos: { key: "supplementKits", fallback: "Kits de Suplementos" },
+  };
+
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  // Resolve o rótulo traduzido com fallback seguro (evita exibir a chave crua).
+  const resolveNavLabel = (key: string, fallback: string): string => {
+    try {
+      const has = (tNav as any).has;
+      if (typeof has === "function") {
+        return has.call(tNav, key) ? tNav(key) : fallback;
+      }
+      const value = tNav(key);
+      if (value && value !== key && value !== `adminNav.${key}`) return value;
+    } catch {}
+    return fallback;
+  };
+
+  const prettifySegment = (segment: string) =>
+    segment
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+  // Gera o caminho (breadcrumb) a partir da URL: Painel / Alimentos / ...
   const generateBreadcrumbs = () => {
     const segments = pathname.split("/").filter(Boolean);
-    if (segments.length < 2 || segments[1] !== "admin") return [];
+    const adminIndex = segments.indexOf("admin");
+    if (adminIndex === -1) return [];
 
     const breadcrumbs = [
-      { label: tNav("dashboard") || "Dashboard", href: `/${locale}/admin/dashboard` },
+      {
+        label: resolveNavLabel("dashboard", "Painel"),
+        href: `/${locale}/admin/dashboard`,
+      },
     ];
 
-    for (let i = 2; i < segments.length; i++) {
-      const segment = segments[i];
-      const href = `/${locale}/${segments.slice(0, i + 1).join("/")}`;
-      
-      // Try to translate the segment
-      let label = segment;
-      try {
-        const translated = tNav(segment);
-        if (translated && translated !== segment) {
-          label = translated;
-        }
-      } catch {}
+    const rest = segments.slice(adminIndex + 1).filter((segment) => segment !== "new");
+    const pathParts: string[] = [];
 
-      breadcrumbs.push({ label, href });
+    for (let i = 0; i < rest.length; i++) {
+      const segment = rest[i];
+
+      // Agrupa subrotas de kits: /admin/kits/treinos -> "Kits de Treino".
+      if (segment === "kits" && rest[i + 1]) {
+        const kitNav = KIT_NAV_KEYS[rest[i + 1]];
+        if (kitNav) {
+          pathParts.push(segment, rest[i + 1]);
+          breadcrumbs.push({
+            label: resolveNavLabel(kitNav.key, kitNav.fallback),
+            href: `/${locale}/admin/${pathParts.join("/")}`,
+          });
+          i++;
+          continue;
+        }
+      }
+
+      pathParts.push(segment);
+      const nav = ROUTE_NAV_KEYS[segment];
+      const label = nav
+        ? resolveNavLabel(nav.key, nav.fallback)
+        : UUID_PATTERN.test(segment)
+          ? "Detalhes"
+          : prettifySegment(segment);
+
+      breadcrumbs.push({ label, href: `/${locale}/admin/${pathParts.join("/")}` });
     }
 
     return breadcrumbs;
@@ -99,16 +168,17 @@ export function AdminHeader({
         <div className="flex items-center gap-2 text-sm overflow-hidden min-w-0">
           {breadcrumbs.length > 1 && (
             <>
-              {breadcrumbs.slice(0, -1).map((crumb, idx) => (
-                <Link
-                  key={crumb.href}
-                  href={crumb.href}
-                  className="text-text-secondary hover:text-text transition-colors truncate"
-                >
-                  {crumb.label}
-                </Link>
+              {breadcrumbs.slice(0, -1).map((crumb) => (
+                <Fragment key={crumb.href}>
+                  <Link
+                    href={crumb.href}
+                    className="text-text-secondary hover:text-text transition-colors truncate"
+                  >
+                    {crumb.label}
+                  </Link>
+                  <span className="text-text-secondary/50 shrink-0">/</span>
+                </Fragment>
               ))}
-              <span className="text-text-secondary shrink-0">/</span>
             </>
           )}
           <h1 className="font-semibold text-text truncate">{pageTitle}</h1>

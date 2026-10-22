@@ -64,3 +64,85 @@ export const upsertDietMealItemSchema = z.object({
   id: uuidSchema.optional(),
 })
 export type UpsertDietMealItemInput = z.infer<typeof upsertDietMealItemSchema>
+
+// ---------------------------------------------------------------------
+// CATÁLOGO DE ALIMENTOS
+// ---------------------------------------------------------------------
+export const upsertDietFoodSchema = z.object({
+  name_pt: z.string().trim().min(1, { message: "Nome em português é obrigatório." }),
+  name_en: z.string().trim().min(1, { message: "Nome em inglês é obrigatório." }),
+  category_pt: z.string().trim().min(1, { message: "Categoria em português é obrigatória." }),
+  category_en: z.string().trim().min(1, { message: "Categoria em inglês é obrigatória." }),
+  description_pt: z.string().trim().optional().nullable(),
+  description_en: z.string().trim().optional().nullable(),
+  serving_size: z.coerce.number().positive({ message: "Tamanho da porção deve ser maior que zero." }).default(100),
+  serving_unit: z.string().trim().min(1, { message: "Unidade da porção é obrigatória." }).default("g"),
+  calories_kcal: z.coerce.number().nonnegative().default(0),
+  protein_g: z.coerce.number().nonnegative().default(0),
+  carbs_g: z.coerce.number().nonnegative().default(0),
+  fats_g: z.coerce.number().nonnegative().default(0),
+  fiber_g: z.coerce.number().nonnegative().default(0),
+  brand: z.string().trim().optional().nullable(),
+  image_url: z.string().url().optional().or(z.literal("")).nullable(),
+  is_active: z.boolean().default(true),
+  id: uuidSchema.optional(),
+})
+export type UpsertDietFoodInput = z.infer<typeof upsertDietFoodSchema>
+
+// ---------------------------------------------------------------------
+// KITS DE DIETA
+// ---------------------------------------------------------------------
+export const upsertDietKitSchema = z.object({
+  name_pt: z.string().trim().min(1, { message: "Nome em português é obrigatório." }),
+  name_en: z.string().trim().min(1, { message: "Nome em inglês é obrigatório." }),
+  slug: z.string().trim().optional().nullable(),
+  description_pt: z.string().trim().optional().nullable(),
+  description_en: z.string().trim().optional().nullable(),
+  short_desc_pt: z.string().trim().optional().nullable(),
+  short_desc_en: z.string().trim().optional().nullable(),
+  cover_image_url: z.string().url().optional().or(z.literal("")).nullable(),
+  goal_pt: z.string().trim().optional().nullable(),
+  goal_en: z.string().trim().optional().nullable(),
+  tags: z.array(z.string()).default([]),
+  is_published: z.boolean().default(true),
+  is_featured: z.boolean().default(false),
+  id: uuidSchema.optional(),
+})
+export type UpsertDietKitInput = z.infer<typeof upsertDietKitSchema>
+
+export const upsertDietKitItemSchema = z.object({
+  food_id: z.string().uuid({ message: "Alimento inválido." }),
+  quantity: z.coerce.number().positive().optional().nullable(),
+  unit: z.string().trim().optional().nullable(),
+  meal_type: mealTypeSchema,
+  time_of_day: z.string().trim().optional().nullable(),
+  notes_pt: z.string().trim().optional().nullable(),
+  notes_en: z.string().trim().optional().nullable(),
+  order_index: z.coerce.number().int().default(0),
+  id: uuidSchema.optional(),
+})
+export type UpsertDietKitItemInput = z.infer<typeof upsertDietKitItemSchema>
+
+export const saveDietKitSchema = z.object({
+  kit: upsertDietKitSchema,
+  items: z.array(upsertDietKitItemSchema).default([]),
+})
+export type SaveDietKitInput = z.infer<typeof saveDietKitSchema>
+
+export const syncDietKitStudentsSchema = z.object({
+  kit_id: z.string().uuid({ message: "Kit inválido." }),
+  student_ids: z.array(z.string().uuid()).default([]),
+  start_date: z.string().trim().optional().nullable(),
+  end_date: z.string().trim().optional().nullable(),
+  notes: z.string().trim().optional().nullable(),
+})
+export type SyncDietKitStudentsInput = z.infer<typeof syncDietKitStudentsSchema>
+
+export const syncStudentDietKitsSchema = z.object({
+  student_id: z.string().uuid({ message: "ID do aluno inválido." }),
+  kit_ids: z.array(z.string().uuid()).default([]),
+  start_date: z.string().trim().optional().nullable(),
+  end_date: z.string().trim().optional().nullable(),
+  notes: z.string().trim().optional().nullable(),
+})
+export type SyncStudentDietKitsInput = z.infer<typeof syncStudentDietKitsSchema>

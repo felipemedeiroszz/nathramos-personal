@@ -6,6 +6,7 @@ import type {
 import type {
   WorkoutKitRow,
   WorkoutKitItemRow,
+  WorkoutKitItemWithSource,
   StudentWorkoutKitRow,
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
@@ -131,51 +132,41 @@ export class WorkoutKitService {
     }
   }
 
-  static async listKitItems(kitId: string): Promise<Array<WorkoutKitItemRow & { program?: any }>> {
+  static async listKitItemsForKits(kitIds: string[]): Promise<WorkoutKitItemWithSource[]> {
+    if (!kitIds.length) return []
     try {
       const supabase = await this.getSupabase()
       const { data, error } = await supabase
         .from("workout_kit_items")
-        .select("*, program:workout_programs(*)")
-        .eq("kit_id", kitId)
+        .select("*, program:workout_programs(*), exercise:exercises(*)")
+        .in("kit_id", kitIds)
         .order("order_index", { ascending: true })
       if (error) return []
-      return (data as Array<WorkoutKitItemRow & { program?: any }>) ?? []
+      return (data as WorkoutKitItemWithSource[]) ?? []
     } catch {
       return []
     }
   }
 
-  static async upsertKitItem(
-    kitId: string,
-    programId: string,
-    order_index: number,
-    notes?: { notes_pt?: string; notes_en?: string }
-  ): Promise<WorkoutKitItemRow | null> {
+  static async upsertKitItem(input: UpsertWorkoutKitItemInput): Promise<WorkoutKitItemRow | null> {
     try {
+      const parsed = upsertWorkoutKitItemSchema.parse(input)
       const supabase = await this.getSupabase()
 
-      const existingQ = await supabase
-        .from("workout_kit_items")
-        .select("id")
-        .eq("kit_id", kitId)
-        .eq("program_id", programId)
-        .maybeSingle()
-
-      const payload = {
-        kit_id: kitId,
-        program_id: programId,
-        order_index,
-        notes_pt: notes?.notes_pt ?? null,
-        notes_en: notes?.notes_en ?? null,
+      const payload: Record<string, any> = {
+        kit_id: parsed.kit_id,
+        program_id: parsed.program_id ?? null,
+        exercise_id: parsed.exercise_id ?? null,
+        category_label: parsed.category_label ?? null,
+        day_of_week: parsed.day_of_week ?? null,
+        order_index: parsed.order_index,
+        notes_pt: parsed.notes_pt ?? null,
+        notes_en: parsed.notes_en ?? null,
       }
 
       let q: any
-      if (existingQ.data) {
-        q = supabase
-          .from("workout_kit_items")
-          .update(payload as never)
-          .eq("id", (existingQ.data as any).id)
+      if (parsed.id) {
+        q = supabase.from("workout_kit_items").update(payload as never).eq("id", parsed.id)
       } else {
         q = supabase.from("workout_kit_items").insert(payload as never)
       }

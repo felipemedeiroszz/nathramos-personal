@@ -20,6 +20,8 @@ import {
   UserCheck,
 } from "lucide-react";
 import { requireAuthenticated } from "@/lib/auth/access";
+import { SupplementService } from "@/services/SupplementService";
+import type { SupplementKitItemWithSupplement, SupplementKitRow } from "@/types";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -123,6 +125,94 @@ const prescriptions: Prescription[] = [
   },
 ];
 
+function KitCard({
+  kit,
+  items,
+  locale,
+}: {
+  kit: SupplementKitRow;
+  items: SupplementKitItemWithSupplement[];
+  locale: string;
+}) {
+  const name = locale === "pt-BR" ? kit.name_pt : kit.name_en;
+  const goal = locale === "pt-BR" ? kit.goal_pt : kit.goal_en;
+  const shortDesc = locale === "pt-BR" ? kit.short_desc_pt : kit.short_desc_en;
+  const description = locale === "pt-BR" ? kit.description_pt : kit.description_en;
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <div className="flex flex-col sm:flex-row">
+        <div className="relative sm:w-40 h-32 sm:h-auto shrink-0 bg-gradient-to-br from-primary/25 via-surface-secondary to-surface">
+          {kit.cover_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={kit.cover_image_url}
+              alt={name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Package size={32} className="text-primary/40" />
+            </div>
+          )}
+        </div>
+        <div className="p-4 space-y-3 flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-bold text-text">{name}</h3>
+            {goal && <Badge variant="outline">{goal}</Badge>}
+            {kit.is_featured && <Badge variant="warning">Destaque</Badge>}
+          </div>
+          {(shortDesc || description) && (
+            <p className="text-sm text-text-secondary">{shortDesc || description}</p>
+          )}
+          {items.length === 0 ? (
+            <p className="text-xs text-text-secondary">
+              Nenhum suplemento neste kit ainda.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {items.map((item) => {
+                const itemName = item.supplement
+                  ? locale === "pt-BR"
+                    ? item.supplement.name_pt
+                    : item.supplement.name_en
+                  : "-";
+                const note = locale === "pt-BR" ? item.notes_pt : item.notes_en;
+                const details = [
+                  item.dosage ? `${item.dosage}${item.dosage_unit ?? ""}` : null,
+                  item.frequency_per_day ? `${item.frequency_per_day}x/dia` : null,
+                  (item.times_of_day ?? []).join(", ") || null,
+                ]
+                  .filter(Boolean)
+                  .join(" • ");
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-2 rounded-lg border border-border bg-surface-secondary/30 p-2.5"
+                  >
+                    <Pill size={14} className="text-primary mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text truncate">
+                        {itemName}
+                      </p>
+                      {details && (
+                        <p className="text-[11px] text-text-secondary">{details}</p>
+                      )}
+                      {note && (
+                        <p className="text-[11px] text-text-secondary">{note}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function SupplementsPage({
   params: { locale },
 }: {
@@ -150,7 +240,30 @@ export default async function SupplementsPage({
     tCommon = () => undefined;
   }
 
-  await requireAuthenticated();
+  const userId = await requireAuthenticated();
+
+  const kits: SupplementKitRow[] = await SupplementService.listKits({
+    is_published: true,
+    limit: 50,
+  });
+  const kitItems = await SupplementService.listKitItemsForKits(kits.map((k) => k.id));
+  const itemsByKit: Record<string, SupplementKitItemWithSupplement[]> = {};
+  for (const kit of kits) {
+    itemsByKit[kit.id] = kitItems.filter((item) => item.kit_id === kit.id);
+  }
+
+  // Kits vinculados especificamente a este aluno
+  const myAssignments = await SupplementService.listStudentKits(userId);
+  const myKits = myAssignments.filter((a) => a.kit);
+  const myKitItems = await SupplementService.listKitItemsForKits(
+    myKits.map((a) => a.kit_id)
+  );
+  const myItemsByKit: Record<string, SupplementKitItemWithSupplement[]> = {};
+  for (const assignment of myKits) {
+    myItemsByKit[assignment.kit_id] = myKitItems.filter(
+      (item) => item.kit_id === assignment.kit_id
+    );
+  }
 
   const title = "Suplementos";
   const subtitle = "Acompanhe sua suplementação diária";
@@ -192,6 +305,66 @@ export default async function SupplementsPage({
           <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
           <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
         </header>
+
+        {myKits.length > 0 && (
+          <Card className="border-primary/40">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <UserCheck size={20} />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Meus kits de suplementos</CardTitle>
+                  <CardDescription>
+                    Kits indicados pelo seu treinador
+                  </CardDescription>
+                </div>
+                <Badge variant="outline">{myKits.length}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {myKits.map((assignment) =>
+                assignment.kit ? (
+                  <KitCard
+                    key={assignment.id}
+                    kit={assignment.kit}
+                    items={myItemsByKit[assignment.kit_id] ?? []}
+                    locale={locale}
+                  />
+                ) : null
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {kits.length > 0 && (
+          <Card className="border-primary/20">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Package size={20} />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Catálogo de kits</CardTitle>
+                  <CardDescription>
+                    Combinações prontas montadas pelo seu treinador
+                  </CardDescription>
+                </div>
+                <Badge variant="outline">{kits.length}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {kits.map((kit) => (
+                <KitCard
+                  key={kit.id}
+                  kit={kit}
+                  items={itemsByKit[kit.id] ?? []}
+                  locale={locale}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="relative overflow-hidden border-primary/20">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-surface to-surface" />

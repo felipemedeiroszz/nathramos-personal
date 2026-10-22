@@ -85,6 +85,20 @@ export function AdminEbooksClient({
     }
   }
 
+  const formatPrice = (ebook: EbookRow) => {
+    if (ebook.is_free || !ebook.price_cents) {
+      return locale === "pt-BR" ? "Grátis" : "Free"
+    }
+    try {
+      return new Intl.NumberFormat(locale === "pt-BR" ? "pt-BR" : "en-US", {
+        style: "currency",
+        currency: ebook.currency || "BRL",
+      }).format(ebook.price_cents / 100)
+    } catch {
+      return `${ebook.currency} ${(ebook.price_cents / 100).toFixed(2)}`
+    }
+  }
+
   function openCreate() {
     setEditingEbook(null)
     setModalOpen(true)
@@ -175,6 +189,7 @@ export function AdminEbooksClient({
                       <TableHead>{t("author")}</TableHead>
                       <TableHead>{t("language")}</TableHead>
                       <TableHead>{t("pages")}</TableHead>
+                      <TableHead>{locale === "pt-BR" ? "Preço" : "Price"}</TableHead>
                       <TableHead>{t("slug")}</TableHead>
                       <TableHead>{t("publishedAt")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
@@ -192,6 +207,11 @@ export function AdminEbooksClient({
                           <Badge variant="outline">{ebook.language}</Badge>
                         </TableCell>
                         <TableCell>{ebook.pages_count || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={ebook.is_free || !ebook.price_cents ? "success" : "default"}>
+                            {formatPrice(ebook)}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{ebook.slug}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm">

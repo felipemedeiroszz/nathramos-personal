@@ -93,6 +93,55 @@ export const StripeProvider = {
     return { sessionId: session.id, url: session.url }
   },
 
+  async createOneTimeCheckoutSession(input: {
+    userId: string
+    customerId?: string
+    customerEmail?: string
+    amountCents: number
+    currency: string
+    productName: string
+    productDescription?: string
+    successUrl: string
+    cancelUrl: string
+    metadata?: Record<string, string>
+  }): Promise<CheckoutSessionResult> {
+    const stripe = getStripeClient()
+    const params: Stripe.Checkout.SessionCreateParams = {
+      mode: "payment",
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      client_reference_id: input.userId,
+      metadata: {
+        user_id: input.userId,
+        ...(input.metadata ?? {}),
+      },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: (input.currency || "BRL").toLowerCase(),
+            unit_amount: input.amountCents,
+            product_data: {
+              name: input.productName,
+              ...(input.productDescription ? { description: input.productDescription } : {}),
+            },
+          },
+        },
+      ],
+      ...(input.customerId
+        ? { customer: input.customerId }
+        : input.customerEmail
+        ? { customer_email: input.customerEmail }
+        : { customer_creation: "always" }),
+    }
+
+    const session = await stripe.checkout.sessions.create(params)
+    if (!session.url) {
+      throw new Error("Stripe não retornou URL de checkout.")
+    }
+    return { sessionId: session.id, url: session.url }
+  },
+
   async cancelSubscription(externalSubscriptionId: string): Promise<void> {
     const stripe = getStripeClient()
     await stripe.subscriptions.update(externalSubscriptionId, {

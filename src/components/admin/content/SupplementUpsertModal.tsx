@@ -14,6 +14,7 @@ import {
   ModalFooter,
 } from "@/components/ui/Modal";
 import type { SupplementRow } from "@/types";
+import { ProductImageField } from "@/components/admin/content/ProductImageField";
 
 interface SupplementUpsertModalProps {
   isOpen: boolean;
@@ -255,17 +256,10 @@ export function SupplementUpsertModal({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">
-              {label("Imagem URL", "Image URL")}
-            </label>
-            <Input
-              type="url"
-              value={form.image_url}
-              onChange={(e) => update("image_url", e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
+          <ProductImageField
+            value={form.image_url}
+            onChange={(url) => update("image_url", url)}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">

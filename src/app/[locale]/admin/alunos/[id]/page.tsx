@@ -42,10 +42,14 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Pill,
+  Utensils,
 } from "lucide-react";
 import { WorkoutKitService } from "@/services/WorkoutKitService";
 import { WorkoutService } from "@/services/WorkoutService";
 import { SubscriptionService } from "@/services/SubscriptionService";
+import { SupplementService } from "@/services/SupplementService";
+import { DietService } from "@/services/DietService";
 import type {
   ProfileRow,
   PlanRow,
@@ -53,11 +57,20 @@ import type {
   WorkoutKitRow,
   WorkoutProgramRow,
   WorkoutSessionRow,
+  StudentSupplementKitWithKit,
+  StudentDietKitWithKit,
+  SupplementKitRow,
+  DietKitRow,
 } from "@/types";
 import { AssignWorkoutKitModal } from "@/components/admin/workout/AssignWorkoutKitModal";
 import { UnassignWorkoutButton } from "@/components/admin/workout/UnassignWorkoutButton";
 import { AssignWorkoutKitModalClient } from "@/components/admin/workout/AssignWorkoutKitModalClient";
 import { StudentPasswordResetForm } from "@/components/admin/StudentPasswordResetForm";
+import {
+  StudentKitsPanel,
+  type StudentKitOption,
+  type StudentKitAssignment,
+} from "@/components/admin/student/StudentKitsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -188,6 +201,7 @@ export default async function AdminAlunoDetalhePage({
   const tPayments = await getTranslations("payments");
   const tWorkout = await getTranslations("workout");
   const tKit = await getTranslations("kit");
+  const tStudentKits = await getTranslations("studentKits");
   const tMuscle = await getTranslations("muscleGroups");
   const tEquip = await getTranslations("equipments");
   const tDiff = await getTranslations("difficultyLevels");
@@ -267,6 +281,63 @@ export default async function AdminAlunoDetalhePage({
   } catch {
     kits = [];
     programs = [];
+  }
+
+  let supplementKitOptions: StudentKitOption[] = [];
+  let supplementAssignments: StudentKitAssignment[] = [];
+  let dietKitOptions: StudentKitOption[] = [];
+  let dietAssignments: StudentKitAssignment[] = [];
+  try {
+    const allSupplementKits: SupplementKitRow[] = await SupplementService.listKits({
+      is_published: true,
+    });
+    supplementKitOptions = allSupplementKits.map((k) => ({
+      id: k.id,
+      namePt: k.name_pt,
+      nameEn: k.name_en,
+    }));
+    const rows: StudentSupplementKitWithKit[] = await SupplementService.listStudentKits(
+      id,
+      "active"
+    );
+    supplementAssignments = rows.map((r) => ({
+      id: r.id,
+      kitId: r.kit_id,
+      namePt: r.kit?.name_pt ?? "Kit",
+      nameEn: r.kit?.name_en ?? "Kit",
+      status: r.status,
+      startDate: r.start_date,
+      endDate: r.end_date ?? null,
+      notes: r.notes ?? null,
+      assignedAt: r.assigned_at,
+    }));
+  } catch {
+    supplementKitOptions = [];
+    supplementAssignments = [];
+  }
+
+  try {
+    const allDietKits: DietKitRow[] = await DietService.listKits({ is_published: true });
+    dietKitOptions = allDietKits.map((k) => ({
+      id: k.id,
+      namePt: k.name_pt,
+      nameEn: k.name_en,
+    }));
+    const rows: StudentDietKitWithKit[] = await DietService.listStudentKits(id, "active");
+    dietAssignments = rows.map((r) => ({
+      id: r.id,
+      kitId: r.kit_id,
+      namePt: r.kit?.name_pt ?? "Kit",
+      nameEn: r.kit?.name_en ?? "Kit",
+      status: r.status,
+      startDate: r.start_date,
+      endDate: r.end_date ?? null,
+      notes: r.notes ?? null,
+      assignedAt: r.assigned_at,
+    }));
+  } catch {
+    dietKitOptions = [];
+    dietAssignments = [];
   }
 
   const activeCount = assignments.filter((a) => a.status === "active").length;
@@ -487,6 +558,12 @@ export default async function AdminAlunoDetalhePage({
           <TabsTrigger value="history">
             <History size={14} className="mr-1.5" /> Historico de sessoes
           </TabsTrigger>
+          <TabsTrigger value="supplements">
+            <Pill size={14} className="mr-1.5" /> {tStudentKits("titleSupplement")}
+          </TabsTrigger>
+          <TabsTrigger value="diets">
+            <Utensils size={14} className="mr-1.5" /> {tStudentKits("titleDiet")}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="workouts" className="mt-4">
@@ -653,6 +730,32 @@ export default async function AdminAlunoDetalhePage({
                   </Table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="supplements" className="mt-4">
+          <Card>
+            <CardContent className="pt-5">
+              <StudentKitsPanel
+                studentId={id}
+                kind="supplement"
+                kits={supplementKitOptions}
+                assignments={supplementAssignments}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="diets" className="mt-4">
+          <Card>
+            <CardContent className="pt-5">
+              <StudentKitsPanel
+                studentId={id}
+                kind="diet"
+                kits={dietKitOptions}
+                assignments={dietAssignments}
+              />
             </CardContent>
           </Card>
         </TabsContent>

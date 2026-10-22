@@ -6,6 +6,7 @@ import type {
   ExerciseSourceT,
 } from "../lib/supabase/types"
 import type { ExerciseRow } from "../types"
+import type { ExerciseDbExercise as ExerciseDbApiExercise } from "../lib/exercisedb"
 import { AuditLogService } from "./AuditLogService"
 import {
   upsertExerciseSchema,
@@ -323,6 +324,68 @@ export class ExerciseDBService {
         details: { name_pt: parsed.name_pt, name_en: parsed.name_en },
       })
 
+      return data as ExerciseRow
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Garante que um exercício vindo da API ExerciseDB exista na tabela `exercises`.
+   * Reutilizado quando um kit de treino referencia um exercício do catálogo da API.
+   */
+  static async ensureFromApiExercise(ex: ExerciseDbApiExercise): Promise<ExerciseRow | null> {
+    try {
+      const externalId = String(ex.exerciseId ?? "").trim()
+      if (!externalId) return null
+
+      const supabase = await this.getSupabase()
+
+      const existingQ = await supabase
+        .from("exercises")
+        .select("*")
+        .eq("external_id", externalId)
+        .eq("source", "exercisedb")
+        .maybeSingle()
+
+      if (!existingQ.error && existingQ.data) return existingQ.data as ExerciseRow
+
+      const nameEn = (ex.name ?? "").trim()
+      const primary = normalizeMuscle(ex.targetMuscles?.[0])
+      const secondary = (ex.secondaryMuscles ?? []).map(normalizeMuscle)
+      const equipment = normalizeEquipment(ex.equipments?.[0])
+      const instructions = Array.isArray(ex.instructions)
+        ? ex.instructions.filter((s) => String(s).trim().length > 0)
+        : []
+
+      const { data, error } = await supabase
+        .from("exercises")
+        .insert({
+          external_id: externalId,
+          source: "exercisedb" as ExerciseSourceT,
+          name_pt: nameEn || "Exercício",
+          name_en: nameEn || "Exercise",
+          description_pt: "",
+          description_en: "",
+          instructions_pt: instructions,
+          instructions_en: instructions,
+          primary_muscle: primary,
+          secondary_muscles: secondary,
+          equipment,
+          difficulty: "intermediate" as DifficultyT,
+          gif_url: ex.gifUrl ?? null,
+          video_url: null,
+          thumbnail_url: null,
+          calories_per_min: null,
+          tags: Array.isArray(ex.bodyParts) ? ex.bodyParts : [],
+          translation_locked: false,
+          is_published: true,
+          external_synced_at: new Date().toISOString(),
+        } as never)
+        .select()
+        .single()
+
+      if (error || !data) return null
       return data as ExerciseRow
     } catch {
       return null

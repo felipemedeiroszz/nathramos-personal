@@ -25,12 +25,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/Dialog"
-import { FileText, RefreshCw, Plus, Search, Edit, Trash2, Calendar, User, AlertTriangle } from "lucide-react"
+import { FileText, RefreshCw, Plus, Search, Edit, Trash2, Calendar, User, AlertTriangle, MessageSquare, CheckCircle, Clock } from "lucide-react"
 import { upsertExamAction, deleteExamAction } from "@/app/actions/content"
 import type { ExamRow, ExamCategoryRow } from "@/types"
 
 const ExamUpsertModal = dynamic(
   () => import("@/components/admin/content/ExamUpsertModal").catch(() => () => null),
+  { ssr: false }
+)
+
+const ExamReviewModal = dynamic(
+  () => import("@/components/admin/content/ExamReviewModal").catch(() => () => null),
   { ssr: false }
 )
 
@@ -42,6 +47,7 @@ interface AdminExamesClientProps {
   searchValue: string
   categories?: ExamCategoryRow[]
   studentOptions?: { id: string; name: string; email: string }[]
+  studentNames?: Record<string, string>
 }
 
 export function AdminExamesClient({
@@ -52,6 +58,7 @@ export function AdminExamesClient({
   searchValue,
   categories = [],
   studentOptions = [],
+  studentNames = {},
 }: AdminExamesClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -62,6 +69,7 @@ export function AdminExamesClient({
   const [isLoading, setIsLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingExam, setEditingExam] = useState<ExamRow | null>(null)
+  const [reviewExam, setReviewExam] = useState<ExamRow | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -197,7 +205,9 @@ export function AdminExamesClient({
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-text-secondary" />
-                            <span className="text-sm">{exam.user_id.slice(0, 8)}...</span>
+                            <span className="text-sm">
+                              {studentNames[exam.user_id] || `${exam.user_id.slice(0, 8)}...`}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>{exam.lab_name || "-"}</TableCell>
@@ -218,12 +228,30 @@ export function AdminExamesClient({
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={exam.is_deleted ? "error" : "success"}>
-                            {exam.is_deleted ? t("deleted") : t("active")}
-                          </Badge>
+                          {exam.is_deleted ? (
+                            <Badge variant="error">{t("deleted")}</Badge>
+                          ) : exam.coach_feedback ? (
+                            <Badge variant="success">
+                              <CheckCircle size={12} className="mr-1" />
+                              {t("reviewed")}
+                            </Badge>
+                          ) : (
+                            <Badge variant="warning">
+                              <Clock size={12} className="mr-1" />
+                              {t("pendingReview")}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title={t("review")}
+                              onClick={() => setReviewExam(exam)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="sm" title={tCommon("edit")} onClick={() => openEdit(exam)}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -264,6 +292,16 @@ export function AdminExamesClient({
             )
           }}
           onSaved={onModalSaved}
+        />
+      )}
+
+      {ExamReviewModal && reviewExam && (
+        <ExamReviewModal
+          isOpen={!!reviewExam}
+          onClose={() => setReviewExam(null)}
+          exam={reviewExam}
+          studentName={studentNames[reviewExam.user_id] ?? ""}
+          onSaved={() => router.refresh()}
         />
       )}
 

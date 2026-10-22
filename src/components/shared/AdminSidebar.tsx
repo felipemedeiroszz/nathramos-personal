@@ -9,9 +9,7 @@ import {
   LayoutDashboard,
   Users,
   Dumbbell,
-  Tags,
   UtensilsCrossed,
-  ClipboardList,
   Pill,
   FileText,
   BookOpen,
@@ -29,7 +27,6 @@ import {
   DollarSign,
   Shield,
   Menu,
-  Activity,
   Apple,
 } from "lucide-react";
 
@@ -78,10 +75,6 @@ export function AdminSidebar({ locale, onLogout, isMobile, onClose }: AdminSideb
       items: [
         { key: "students", hrefSuffix: "/admin/alunos", fallback: "Alunos", icon: <Users size={20} /> },
         { key: "workouts", hrefSuffix: "/admin/treinos", fallback: "Treinos", icon: <Dumbbell size={20} /> },
-        { key: "workoutCategories", hrefSuffix: "/admin/categorias-treino", fallback: "Categorias de Treino", icon: <Tags size={20} /> },
-        { key: "exercises", hrefSuffix: "/admin/exercicios", fallback: "Exercícios", icon: <Activity size={20} /> },
-        { key: "diets", hrefSuffix: "/admin/dietas", fallback: "Dietas", icon: <UtensilsCrossed size={20} /> },
-        { key: "dietCategories", hrefSuffix: "/admin/categorias-dieta", fallback: "Categorias de Dieta", icon: <ClipboardList size={20} /> },
         { key: "foods", hrefSuffix: "/admin/alimentos", fallback: "Alimentos", icon: <Apple size={20} /> },
         { key: "supplements", hrefSuffix: "/admin/suplementos", fallback: "Suplementos", icon: <Pill size={20} /> },
         { key: "exams", hrefSuffix: "/admin/exames", fallback: "Exames", icon: <FileText size={20} /> },

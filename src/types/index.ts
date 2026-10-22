@@ -283,11 +283,24 @@ export interface WorkoutKitRow {
 export interface WorkoutKitItemRow {
   id: string
   kit_id: string
-  program_id: string
+  /** Programa de treino manual (workout_programs). Nulo quando o treino é um exercício. */
+  program_id?: string | null
+  /** Exercício (manual ou sincronizado da API). Nulo quando o treino é um programa. */
+  exercise_id?: string | null
+  /** Letra do treino dentro do kit (A..F). */
+  category_label?: string | null
+  /** Dia da semana do treino: 1 = Segunda ... 7 = Domingo. */
+  day_of_week?: number | null
   order_index: number
   notes_pt?: string | null
   notes_en?: string | null
   created_at: string
+}
+
+/** Item do kit com a origem resolvida (programa de treino ou exercício). */
+export interface WorkoutKitItemWithSource extends WorkoutKitItemRow {
+  program?: WorkoutProgramRow | null
+  exercise?: ExerciseRow | null
 }
 
 export interface StudentWorkoutKitRow {
@@ -505,6 +518,180 @@ export interface UserSupplementRow {
   created_at: string
 }
 
+// Supplement kit types
+export interface SupplementKitRow {
+  id: string
+  created_by_id?: string | null
+  name_pt: string
+  name_en: string
+  slug: string
+  description_pt: string
+  description_en: string
+  short_desc_pt: string
+  short_desc_en: string
+  cover_image_url?: string | null
+  goal_pt?: string | null
+  goal_en?: string | null
+  tags: string[]
+  is_published: boolean
+  is_featured: boolean
+  is_deleted: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SupplementKitItemRow {
+  id: string
+  kit_id: string
+  supplement_id?: string | null
+  dosage?: number | null
+  dosage_unit?: string | null
+  frequency_per_day: number
+  times_of_day: string[]
+  notes_pt?: string | null
+  notes_en?: string | null
+  order_index: number
+  created_at: string
+}
+
+export interface SupplementKitItemWithSupplement extends SupplementKitItemRow {
+  supplement?: {
+    id: string
+    name_pt: string
+    name_en: string
+    category_pt?: string | null
+    category_en?: string | null
+    serving_size?: number | null
+    serving_unit?: string | null
+    image_url?: string | null
+    brand?: string | null
+  } | null
+}
+
+export interface SupplementKitWithItems extends SupplementKitRow {
+  items: SupplementKitItemWithSupplement[]
+}
+
+export type SupplementKitAssignmentStatus = "active" | "archived" | "completed"
+
+export interface StudentSupplementKitRow {
+  id: string
+  student_id: string
+  kit_id: string
+  assigned_by_id?: string | null
+  start_date: string
+  end_date?: string | null
+  status: SupplementKitAssignmentStatus
+  notes?: string | null
+  assigned_at: string
+  updated_at: string
+}
+
+export interface StudentSupplementKitWithKit extends StudentSupplementKitRow {
+  kit?: SupplementKitRow | null
+}
+
+// Diet food types
+export interface DietFoodRow {
+  id: string
+  created_by_id?: string | null
+  name_pt: string
+  name_en: string
+  category_pt: string
+  category_en: string
+  description_pt?: string | null
+  description_en?: string | null
+  serving_size: number
+  serving_unit: string
+  calories_kcal: number
+  protein_g: number
+  carbs_g: number
+  fats_g: number
+  fiber_g: number
+  brand?: string | null
+  image_url?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Diet kit types
+export interface DietKitRow {
+  id: string
+  created_by_id?: string | null
+  name_pt: string
+  name_en: string
+  slug: string
+  description_pt: string
+  description_en: string
+  short_desc_pt: string
+  short_desc_en: string
+  cover_image_url?: string | null
+  goal_pt?: string | null
+  goal_en?: string | null
+  tags: string[]
+  is_published: boolean
+  is_featured: boolean
+  is_deleted: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DietKitItemRow {
+  id: string
+  kit_id: string
+  food_id?: string | null
+  quantity?: number | null
+  unit?: string | null
+  meal_type: MealTypeT
+  time_of_day?: string | null
+  notes_pt?: string | null
+  notes_en?: string | null
+  order_index: number
+  created_at: string
+}
+
+export interface DietKitItemWithFood extends DietKitItemRow {
+  food?: {
+    id: string
+    name_pt: string
+    name_en: string
+    category_pt?: string | null
+    category_en?: string | null
+    serving_size?: number | null
+    serving_unit?: string | null
+    calories_kcal?: number | null
+    protein_g?: number | null
+    carbs_g?: number | null
+    fats_g?: number | null
+    image_url?: string | null
+    brand?: string | null
+  } | null
+}
+
+export interface DietKitWithItems extends DietKitRow {
+  items: DietKitItemWithFood[]
+}
+
+export type DietKitAssignmentStatus = "active" | "archived" | "completed"
+
+export interface StudentDietKitRow {
+  id: string
+  student_id: string
+  kit_id: string
+  assigned_by_id?: string | null
+  start_date: string
+  end_date?: string | null
+  status: DietKitAssignmentStatus
+  notes?: string | null
+  assigned_at: string
+  updated_at: string
+}
+
+export interface StudentDietKitWithKit extends StudentDietKitRow {
+  kit?: DietKitRow | null
+}
+
 // Exam types
 export interface ExamCategoryRow {
   id: string
@@ -527,6 +714,9 @@ export interface ExamRow {
   file_size_bytes?: number | null
   file_mime_type?: string | null
   results_summary?: Record<string, unknown>
+  coach_feedback?: string | null
+  reviewed_by_id?: string | null
+  reviewed_at?: string | null
   created_at: string
   updated_at: string
   is_deleted: boolean
@@ -543,9 +733,12 @@ export interface EbookRow {
   summary_en?: string | null
   cover_url?: string | null
   file_bucket_path?: string | null
+  external_url?: string | null
   pages_count?: number | null
   language: LocaleT
   is_free: boolean
+  price_cents: number
+  currency: Currency
   min_plan_id?: string | null
   publish_at?: string | null
   is_published: boolean
@@ -563,4 +756,25 @@ export interface EbookDownloadRow {
   ebook_id: string
   downloaded_at: string
   ip_address?: string | null
+}
+
+export interface EbookPurchaseRow {
+  id: string
+  user_id: string
+  ebook_id: string
+  provider: PaymentProvider
+  status: PaymentStatus
+  amount_cents: number
+  currency: Currency
+  external_id?: string | null
+  external_event_id?: string | null
+  pix_qr_code?: string | null
+  pix_copy_paste?: string | null
+  pix_expires_at?: string | null
+  paid_at?: string | null
+  failed_at?: string | null
+  refunded_at?: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
 }

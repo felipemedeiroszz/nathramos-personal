@@ -2,16 +2,24 @@ import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Package } from "lucide-react";
 import { requireRole } from "@/lib/auth/access";
+import { createServiceClientSSR } from "@/lib/supabase/server";
+import { SupplementService } from "@/services/SupplementService";
+import type { SupplementKitWithItems, SupplementRow } from "@/types";
+import { AdminSupplementKitsClient } from "./AdminSupplementKitsClient";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin | Kits de Suplemento",
+  title: "Admin | Kits de Suplementos",
 };
+
+async function safe(t: any, key: string, fb: string) {
+  try {
+    if (t && t.has && t.has(key)) return t(key);
+  } catch {}
+  return fb;
+}
 
 export default async function AdminKitsSuplementosPage({
   params: { locale },
@@ -22,22 +30,51 @@ export default async function AdminKitsSuplementosPage({
   setRequestLocale(locale);
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
-  const tCommon = await getTranslations("common");
-  await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
 
-  const title = (() => {
-    try {
-      if (tAdminNav.has("supplementKits")) return tAdminNav("supplementKits");
-    } catch {}
-    return "Kits de Suplemento";
-  })();
+  const title = await safe(tAdminNav, "supplementKits", "Kits de Suplementos");
+  const subtitle = await safe(
+    tAdmin,
+    "supplementKits.subtitle",
+    "Monte kits de suplementos reutilizáveis a partir dos suplementos cadastrados."
+  );
 
-  const subtitle = (() => {
-    try {
-      if (tCommon.has("comingSoon")) return tCommon("comingSoon");
-    } catch {}
-    return "Em breve";
-  })();
+  const kits = await SupplementService.listKits({ limit: 100 });
+  const supplements: SupplementRow[] = await SupplementService.listSupplements({
+    is_active: true,
+    limit: 300,
+  });
+
+  const items = await SupplementService.listKitItemsForKits(kits.map((k) => k.id));
+
+  const kitsWithItems: SupplementKitWithItems[] = kits.map((kit) => ({
+    ...kit,
+    items: items.filter((item) => item.kit_id === kit.id),
+  }));
+
+  // Alunos disponíveis para vincular aos kits
+  const supabase = await createServiceClientSSR();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("role", "student")
+    .eq("is_deleted", false)
+    .order("full_name", { ascending: true })
+    .limit(500);
+
+  const students = (profiles ?? []).map((p: any) => ({
+    id: p.id as string,
+    name: (p.full_name || p.email || "") as string,
+    email: (p.email || "") as string,
+  }));
+
+  // Vínculos ativos agrupados por kit
+  const assignments = await SupplementService.listKitAssignments(kits.map((k) => k.id));
+  const assignedByKit: Record<string, string[]> = {};
+  for (const a of assignments) {
+    if (!assignedByKit[a.kit_id]) assignedByKit[a.kit_id] = [];
+    assignedByKit[a.kit_id].push(a.student_id);
+  }
 
   return (
     <div className="space-y-6 w-full">
@@ -45,27 +82,17 @@ export default async function AdminKitsSuplementosPage({
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>{subtitle}</CardDescription>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <Package size={22} />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            className="py-16"
-            icon={<Package size={40} className="text-text-secondary" />}
-            title={title}
-            description={subtitle}
-          />
-        </CardContent>
-      </Card>
+
+      <AdminSupplementKitsClient
+        locale={locale}
+        userId={userId}
+        title={title}
+        subtitle={subtitle}
+        kits={kitsWithItems}
+        supplements={supplements}
+        students={students}
+        assignedByKit={assignedByKit}
+      />
     </div>
   );
 }

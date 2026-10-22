@@ -96,10 +96,43 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
   if (!userId) throw new Error("checkout.session.completed sem user_id resolvível")
 
   const planId = session.metadata?.plan_id as string | undefined
+  const ebookId = session.metadata?.ebook_id as string | undefined
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id
 
   if (customerId) {
     await ProfileService.setStripeCustomerId(userId, customerId)
+  }
+
+  if (ebookId) {
+    const currency = ((session.currency as string)?.toUpperCase() as Currency) ?? "BRL"
+    const amountCents = session.amount_total ?? 0
+    const externalId = session.payment_intent ? String(session.payment_intent) : `checkout_${session.id}`
+
+    await PaymentService.upsertPayment({
+      userId,
+      provider: "stripe",
+      externalId,
+      externalEventId: event.id,
+      status: "paid",
+      amountCents,
+      currency,
+      method: "credit_card",
+      descriptionPt: "Compra de e-book (Stripe Checkout)",
+      descriptionEn: "E-book purchase (Stripe Checkout)",
+      paidAt: new Date().toISOString(),
+      metadata: { checkout_session_id: session.id, ebook_id: ebookId },
+    })
+
+    const { EbookService } = await import("@/services/EbookService")
+    await EbookService.markPurchasePaid({
+      userId,
+      ebookId,
+      provider: "stripe",
+      amountCents,
+      currency,
+      externalId,
+      externalEventId: event.id,
+    })
   }
 
   if (planId) {

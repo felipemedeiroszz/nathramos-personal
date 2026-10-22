@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/access";
 import { WorkoutKitService } from "@/services/WorkoutKitService";
 import { WorkoutService } from "@/services/WorkoutService";
+import { ExerciseDBService } from "@/services/ExerciseDBService";
 import type {
   WorkoutKitRow,
-  WorkoutKitItemRow,
+  WorkoutKitItemWithSource,
   WorkoutProgramRow,
 } from "@/types";
 import { AdminKitsClient } from "./AdminKitsClient";
@@ -26,7 +27,7 @@ async function safe(t: any, key: string, fb: string) {
 }
 
 interface KitWithItems extends WorkoutKitRow {
-  items: Array<WorkoutKitItemRow & { program?: any }>;
+  items: WorkoutKitItemWithSource[];
 }
 
 export default async function AdminKitsTreinosPage({
@@ -39,14 +40,13 @@ export default async function AdminKitsTreinosPage({
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
   const tDiff = await getTranslations("difficultyLevels");
-  const tCommon = await getTranslations("common");
   const { userId } = await requireRole(["admin", "coach"], "/dashboard");
 
   const title = await safe(tAdminNav, "workoutKits", "Kits de Treino");
   const subtitle = await safe(
     tAdmin,
     "workoutKits.subtitle",
-    "Colecoes reutilizaveis de programas para atribuir rapidamente aos alunos."
+    "Coleções reutilizáveis de treinos (programas e exercícios) para atribuir rapidamente aos alunos."
   );
 
   const kits: WorkoutKitRow[] = await WorkoutKitService.listKits({ limit: 100 });
@@ -54,30 +54,51 @@ export default async function AdminKitsTreinosPage({
     is_template: false,
     limit: 200,
   });
+  const customExercises = await ExerciseDBService.listExercises({
+    source: "custom",
+    limit: 200,
+  });
 
-  const kitsWithItems: KitWithItems[] = [];
-  for (let i = 0; i < kits.length; i++) {
-    const k = kits[i];
-    let items: Array<WorkoutKitItemRow & { program?: any }> = [];
-    if (i === 0) {
-      items = await WorkoutKitService.listKitItems(k.id);
-    }
-    kitsWithItems.push({ ...k, items });
+  // Carrega todos os itens de todos os kits em uma única consulta e agrupa por kit.
+  const allItems = await WorkoutKitService.listKitItemsForKits(kits.map((k) => k.id));
+  const itemsByKit = new Map<string, WorkoutKitItemWithSource[]>();
+  for (const item of allItems) {
+    const list = itemsByKit.get(item.kit_id) ?? [];
+    list.push(item);
+    itemsByKit.set(item.kit_id, list);
   }
 
-  function translateDifficulty(key: string): string {
-    try {
-      return tDiff(key as any);
-    } catch {
-      return key;
-    }
-  }
+  const kitsWithItems: KitWithItems[] = kits.map((kit) => ({
+    ...kit,
+    items: itemsByKit.get(kit.id) ?? [],
+  }));
 
   const programOptions = allPrograms.map((p) => ({
     id: p.id,
     title_pt: p.title_pt,
     title_en: p.title_en,
   }));
+
+  const exerciseOptions = customExercises.map((e) => ({
+    id: e.id,
+    name_pt: e.name_pt,
+    name_en: e.name_en,
+    primary_muscle: e.primary_muscle,
+    source: e.source,
+  }));
+
+  // Pré-calcula os rótulos de dificuldade (props de Client Components devem ser serializáveis).
+  const difficultyLabels: Record<string, string> = {};
+  for (const kit of kitsWithItems) {
+    const key = kit.difficulty;
+    if (key && !(key in difficultyLabels)) {
+      try {
+        difficultyLabels[key] = tDiff(key as any);
+      } catch {
+        difficultyLabels[key] = key;
+      }
+    }
+  }
 
   return (
     <div className="space-y-6 w-full">
@@ -93,7 +114,8 @@ export default async function AdminKitsTreinosPage({
         subtitle={subtitle}
         kits={kitsWithItems}
         programOptions={programOptions}
-        translateDifficulty={translateDifficulty}
+        exerciseOptions={exerciseOptions}
+        difficultyLabels={difficultyLabels}
       />
     </div>
   );

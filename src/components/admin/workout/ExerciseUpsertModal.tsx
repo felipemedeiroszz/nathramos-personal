@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Lock, Unlock } from "lucide-react";
+import { ImageOff, Lock, Unlock, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -15,6 +15,8 @@ import {
   ModalBody,
   ModalFooter,
 } from "@/components/ui/Modal";
+import { uploadExerciseAssetAction } from "@/app/actions/workouts";
+import { getWorkoutLabels } from "@/lib/workoutLabels";
 import type { ExerciseRow } from "@/types";
 import {
   MUSCLE_GROUPS,
@@ -26,54 +28,29 @@ interface ExerciseUpsertModalProps {
   isOpen: boolean;
   onClose: () => void;
   exercise?: ExerciseRow;
-  onSubmit?: (data: Record<string, any>) => void | Promise<void>;
+  onSubmit?: (data: Record<string, any>) => void | Promise<any>;
   onSaved?: () => void;
   userId?: string;
 }
 
-const MUSCLE_LABELS_PT: Record<string, string> = {
-  chest: "Peito", back: "Costas", shoulders: "Ombros", biceps: "Bíceps",
-  triceps: "Tríceps", forearms: "Antebraços", core: "Core", abs: "Abdômen",
-  obliques: "Oblíquos", quads: "Quadríceps", hamstrings: "Posteriores",
-  glutes: "Glúteos", calves: "Panturrilhas", adductors: "Adutores",
-  abductors: "Abductores", lower_back: "Lombar", traps: "Trapézio",
-  full_body: "Corpo Todo", cardio: "Cardio",
-};
-
-const MUSCLE_LABELS_EN: Record<string, string> = {
-  chest: "Chest", back: "Back", shoulders: "Shoulders", biceps: "Biceps",
-  triceps: "Triceps", forearms: "Forearms", core: "Core", abs: "Abs",
-  obliques: "Obliques", quads: "Quads", hamstrings: "Hamstrings",
-  glutes: "Glutes", calves: "Calves", adductors: "Adductors",
-  abductors: "Abductors", lower_back: "Lower Back", traps: "Traps",
-  full_body: "Full Body", cardio: "Cardio",
-};
-
-const EQUIPMENT_LABELS_PT: Record<string, string> = {
-  body_weight: "Peso Corporal", barbell: "Barra", dumbbell: "Halteres",
-  kettlebell: "Kettlebell", cable: "Polia", machine: "Máquina",
-  smith: "Smith", resistance_band: "Elástico", medicine_ball: "Bola Medicinal",
-  bosu_ball: "Bosu", foam_roller: "Rolo de Liberação", treadmill: "Esteira",
-  elliptical: "Elíptico", bike: "Bicicleta", rowing: "Remo",
-  jump_rope: "Corda", bench: "Banco", pull_up_bar: "Barra Fixa", other: "Outro",
-};
-
-const EQUIPMENT_LABELS_EN: Record<string, string> = {
-  body_weight: "Body Weight", barbell: "Barbell", dumbbell: "Dumbbell",
-  kettlebell: "Kettlebell", cable: "Cable", machine: "Machine",
-  smith: "Smith Machine", resistance_band: "Resistance Band",
-  medicine_ball: "Medicine Ball", bosu_ball: "Bosu Ball",
-  foam_roller: "Foam Roller", treadmill: "Treadmill", elliptical: "Elliptical",
-  bike: "Bike", rowing: "Rowing", jump_rope: "Jump Rope", bench: "Bench",
-  pull_up_bar: "Pull Up Bar", other: "Other",
-};
-
-const DIFFICULTY_LABELS_PT: Record<string, string> = {
-  beginner: "Iniciante", intermediate: "Intermediário", advanced: "Avançado",
-};
-
-const DIFFICULTY_LABELS_EN: Record<string, string> = {
-  beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced",
+const EMPTY_FORM = {
+  id: undefined as string | undefined,
+  source: "custom" as "exercisedb" | "custom",
+  name_pt: "",
+  name_en: "",
+  description_pt: "",
+  description_en: "",
+  instructions_pt: "",
+  instructions_en: "",
+  primary_muscle: MUSCLE_GROUPS[0] as string,
+  equipment: EQUIPMENT_TYPES[0] as string,
+  difficulty: DIFFICULTY_LEVELS[0] as string,
+  gif_url: "",
+  video_url: "",
+  thumbnail_url: "",
+  tags: "",
+  translation_locked: false,
+  is_published: true,
 };
 
 export function ExerciseUpsertModal({
@@ -88,38 +65,20 @@ export function ExerciseUpsertModal({
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
 
-  const muscleLabels = locale === "pt-BR" ? MUSCLE_LABELS_PT : MUSCLE_LABELS_EN;
-  const equipmentLabels = locale === "pt-BR" ? EQUIPMENT_LABELS_PT : EQUIPMENT_LABELS_EN;
-  const difficultyLabels = locale === "pt-BR" ? DIFFICULTY_LABELS_PT : DIFFICULTY_LABELS_EN;
+  const { muscle: muscleLabels, equipment: equipmentLabels, difficulty: difficultyLabels } =
+    getWorkoutLabels(locale);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
 
-  const [form, setForm] = useState({
-    id: exercise?.id,
-    source: (exercise?.source ?? "custom") as "exercisedb" | "custom",
-    name_pt: exercise?.name_pt ?? "",
-    name_en: exercise?.name_en ?? "",
-    description_pt: exercise?.description_pt ?? "",
-    description_en: exercise?.description_en ?? "",
-    instructions_pt: Array.isArray(exercise?.instructions_pt)
-      ? exercise!.instructions_pt!.join("\n")
-      : "",
-    instructions_en: Array.isArray(exercise?.instructions_en)
-      ? exercise!.instructions_en!.join("\n")
-      : "",
-    primary_muscle: exercise?.primary_muscle ?? MUSCLE_GROUPS[0],
-    equipment: exercise?.equipment ?? EQUIPMENT_TYPES[0],
-    difficulty: exercise?.difficulty ?? DIFFICULTY_LEVELS[0],
-    gif_url: exercise?.gif_url ?? "",
-    video_url: exercise?.video_url ?? "",
-    thumbnail_url: exercise?.thumbnail_url ?? "",
-    tags: Array.isArray(exercise?.tags) ? exercise!.tags!.join(", ") : "",
-    translation_locked: exercise?.translation_locked ?? false,
-    is_published: exercise?.is_published ?? true,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [uploading, setUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    setErrorMsg(null);
+    setUploading(false);
     if (exercise) {
       setForm({
         id: exercise.id,
@@ -145,25 +104,7 @@ export function ExerciseUpsertModal({
         is_published: exercise.is_published ?? true,
       });
     } else {
-      setForm({
-        id: undefined,
-        source: "custom",
-        name_pt: "",
-        name_en: "",
-        description_pt: "",
-        description_en: "",
-        instructions_pt: "",
-        instructions_en: "",
-        primary_muscle: MUSCLE_GROUPS[0],
-        equipment: EQUIPMENT_TYPES[0],
-        difficulty: DIFFICULTY_LEVELS[0],
-        gif_url: "",
-        video_url: "",
-        thumbnail_url: "",
-        tags: "",
-        translation_locked: false,
-        is_published: true,
-      });
+      setForm(EMPTY_FORM);
     }
   }, [isOpen, exercise]);
 
@@ -171,8 +112,32 @@ export function ExerciseUpsertModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setErrorMsg(null);
+    setUploading(true);
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const result = await uploadExerciseAssetAction(data);
+      if (!result?.success || !result.url) {
+        setErrorMsg(result?.message ?? label("Falha ao enviar arquivo.", "Upload failed."));
+        return;
+      }
+      update("gif_url", result.url);
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? label("Falha ao enviar arquivo.", "Upload failed."));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     startTransition(async () => {
       const payload: Record<string, any> = {
         ...form,
@@ -193,13 +158,21 @@ export function ExerciseUpsertModal({
         thumbnail_url: form.thumbnail_url || null,
       };
       if (!payload.id) delete payload.id;
-      if (onSubmit) await onSubmit(payload);
-      onSaved?.();
+
+      try {
+        const result = onSubmit ? await onSubmit(payload) : undefined;
+        if (result && typeof result === "object" && "success" in result && result.success === false) {
+          setErrorMsg(result.message ?? label("Erro ao salvar exercício.", "Failed to save exercise."));
+          return;
+        }
+        onSaved?.();
+      } catch (err: any) {
+        setErrorMsg(err?.message ?? label("Erro ao salvar exercício.", "Failed to save exercise."));
+      }
     });
   };
 
-  const titlePT = label("Criar Exercicio", "Create Exercise");
-  const titleEN = label("Editar Exercicio", "Edit Exercise");
+  const busy = isPending || uploading;
 
   return (
     <Modal
@@ -208,7 +181,11 @@ export function ExerciseUpsertModal({
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
-        <ModalTitle>{exercise ? titleEN : titlePT}</ModalTitle>
+        <ModalTitle>
+          {exercise
+            ? label("Editar Exercício", "Edit Exercise")
+            : label("Criar Exercício", "Create Exercise")}
+        </ModalTitle>
         <ModalClose onClick={onClose} />
       </ModalHeader>
       <form onSubmit={handleSubmit}>
@@ -216,7 +193,7 @@ export function ExerciseUpsertModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">
-                {label("Nome (PT)", "Name (EN)")}
+                {label("Nome (PT)", "Name (PT)")}
               </label>
               <Input
                 value={form.name_pt}
@@ -238,35 +215,78 @@ export function ExerciseUpsertModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">
-                {label("Descricao (PT)", "Description (PT)")}
-              </label>
-              <Textarea
-                value={form.description_pt}
-                onChange={(e) => update("description_pt", e.target.value)}
-                rows={3}
-                placeholder={label("Exercicio basico para membros inferiores...", "Basic exercise for lower body...")}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text">
+              {label("Mídia (GIF / Imagem)", "Media (GIF / Image)")}
+            </label>
+            <div className="relative flex min-h-[180px] items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-secondary">
+              {form.gif_url ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.gif_url}
+                    alt={label("Pré-visualização do exercício", "Exercise preview")}
+                    className="max-h-64 w-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => update("gif_url", "")}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white transition-colors hover:bg-black/80"
+                    title={label("Remover mídia", "Remove media")}
+                  >
+                    <X size={16} />
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2 p-8 text-text-secondary">
+                  <ImageOff size={28} />
+                  <span className="text-xs">
+                    {label("Nenhuma mídia adicionada", "No media added")}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
+                className="hidden"
+                onChange={handleFileSelected}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={16} className="mr-2" />
+                {uploading
+                  ? label("Enviando...", "Uploading...")
+                  : label("Enviar GIF/Imagem", "Upload GIF/Image")}
+              </Button>
+              <Input
+                type="url"
+                value={form.gif_url}
+                onChange={(e) => update("gif_url", e.target.value)}
+                placeholder={label("ou cole uma URL (https://...)", "or paste a URL (https://...)")}
+                className="flex-1"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">
-                {label("Descricao (EN)", "Description (EN)")}
-              </label>
-              <Textarea
-                value={form.description_en}
-                onChange={(e) => update("description_en", e.target.value)}
-                rows={3}
-                placeholder={label("Exercicio basico para membros inferiores...", "Basic exercise for lower body...")}
-              />
-            </div>
+            <p className="text-xs text-text-secondary">
+              {label(
+                "GIF, PNG, JPG, WEBP ou MP4 · até 20MB.",
+                "GIF, PNG, JPG, WEBP or MP4 · up to 20MB."
+              )}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">
-                {label("Musculo Principal", "Primary Muscle")}
+                {label("Músculo Principal", "Primary Muscle")}
               </label>
               <Select
                 value={form.primary_muscle}
@@ -314,19 +334,72 @@ export function ExerciseUpsertModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">GIF URL</label>
-              <Input
-                type="url"
-                value={form.gif_url}
-                onChange={(e) => update("gif_url", e.target.value)}
-                placeholder="https://..."
+              <label className="text-sm font-medium text-text">
+                {label("Descrição (PT)", "Description (PT)")}
+              </label>
+              <Textarea
+                value={form.description_pt}
+                onChange={(e) => update("description_pt", e.target.value)}
+                rows={3}
+                placeholder={label(
+                  "Exercício básico para membros inferiores...",
+                  "Basic exercise for lower body..."
+                )}
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">
-                {label("Video URL", "Video URL")}
+                {label("Descrição (EN)", "Description (EN)")}
+              </label>
+              <Textarea
+                value={form.description_en}
+                onChange={(e) => update("description_en", e.target.value)}
+                rows={3}
+                placeholder={label(
+                  "Exercício básico para membros inferiores...",
+                  "Basic exercise for lower body..."
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text">
+                {label("Instruções (PT) - uma por linha", "Instructions (PT) - one per line")}
+              </label>
+              <Textarea
+                value={form.instructions_pt}
+                onChange={(e) => update("instructions_pt", e.target.value)}
+                rows={5}
+                placeholder={label(
+                  "Posicione os pés na largura dos ombros\nFlexione os joelhos...",
+                  "Place feet shoulder-width\nBend your knees..."
+                )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text">
+                {label("Instruções (EN) - uma por linha", "Instructions (EN) - one per line")}
+              </label>
+              <Textarea
+                value={form.instructions_en}
+                onChange={(e) => update("instructions_en", e.target.value)}
+                rows={5}
+                placeholder={label(
+                  "Posicione os pés na largura dos ombros\nFlexione os joelhos...",
+                  "Place feet shoulder-width\nBend your knees..."
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-text">
+                {label("Vídeo (URL opcional)", "Video (optional URL)")}
               </label>
               <Input
                 type="url"
@@ -337,60 +410,17 @@ export function ExerciseUpsertModal({
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">
-                {label("Thumbnail URL", "Thumbnail URL")}
+                {label("Tags (separadas por vírgula)", "Tags (comma separated)")}
               </label>
               <Input
-                type="url"
-                value={form.thumbnail_url}
-                onChange={(e) => update("thumbnail_url", e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">
-                {label("Instrucoes (PT) - uma por linha", "Instructions (PT) - one per line")}
-              </label>
-              <Textarea
-                value={form.instructions_pt}
-                onChange={(e) => update("instructions_pt", e.target.value)}
-                rows={5}
+                value={form.tags}
+                onChange={(e) => update("tags", e.target.value)}
                 placeholder={label(
-                  "Posicione os pes na largura dos ombros\nFlexione os joelhos...",
-                  "Place feet shoulder-width\nBend your knees..."
+                  "hipertrofia, pernas, livre",
+                  "hypertrophy, legs, free-weight"
                 )}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">
-                {label("Instrucoes (EN) - uma por linha", "Instructions (EN) - one per line")}
-              </label>
-              <Textarea
-                value={form.instructions_en}
-                onChange={(e) => update("instructions_en", e.target.value)}
-                rows={5}
-                placeholder={label(
-                  "Posicione os pes na largura dos ombros\nFlexione os joelhos...",
-                  "Place feet shoulder-width\nBend your knees..."
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">
-              {label("Tags (separadas por virgula)", "Tags (comma separated)")}
-            </label>
-            <Input
-              value={form.tags}
-              onChange={(e) => update("tags", e.target.value)}
-              placeholder={label(
-                "hipertrofia, pernas, livre",
-                "hypertrophy, legs, free-weight"
-              )}
-            />
           </div>
 
           <div className="flex flex-wrap gap-6 pt-2">
@@ -407,7 +437,7 @@ export function ExerciseUpsertModal({
                 ) : (
                   <Unlock size={14} className="text-text-secondary" />
                 )}
-                {label("Traducao bloqueada", "Translation locked")}
+                {label("Tradução bloqueada", "Translation locked")}
               </span>
             </label>
             <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -422,18 +452,24 @@ export function ExerciseUpsertModal({
               </span>
             </label>
           </div>
+
+          {errorMsg && (
+            <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">
+              {errorMsg}
+            </div>
+          )}
         </ModalBody>
         <ModalFooter>
           <Button
             type="button"
             variant="secondary"
             onClick={onClose}
-            disabled={isPending}
+            disabled={busy}
           >
             {t("cancel")}
           </Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? t("loading") : t("save")}
+          <Button type="submit" disabled={busy}>
+            {busy ? t("loading") : t("save")}
           </Button>
         </ModalFooter>
       </form>

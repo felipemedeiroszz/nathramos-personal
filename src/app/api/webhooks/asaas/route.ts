@@ -230,6 +230,44 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const ebookId = (existingPayment.metadata as Record<string, unknown> | null)?.ebook_id as
+      | string
+      | undefined
+
+    if (ebookId) {
+      const { EbookService } = await import("@/services/EbookService")
+      if (newStatus === "paid") {
+        await EbookService.markPurchasePaid({
+          userId: existingPayment.user_id,
+          ebookId,
+          provider: "asaas",
+          amountCents: existingPayment.amount_cents,
+          currency: existingPayment.currency as Currency,
+          externalId: externalPaymentId,
+          externalEventId: eventId,
+          paidAt,
+        })
+      } else if (newStatus === "refunded") {
+        await EbookService.markPurchaseStatusByExternalId(
+          "asaas",
+          externalPaymentId,
+          "refunded",
+          "refunded_at"
+        )
+      } else if (
+        newStatus === "failed" ||
+        newStatus === "canceled" ||
+        newStatus === "expired"
+      ) {
+        await EbookService.markPurchaseStatusByExternalId(
+          "asaas",
+          externalPaymentId,
+          newStatus,
+          "failed_at"
+        )
+      }
+    }
+
     await mark()
     return NextResponse.json({ ok: true, processed: true, type: eventType, status: newStatus })
   } catch (err: any) {

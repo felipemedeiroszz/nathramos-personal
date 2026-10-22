@@ -5,11 +5,15 @@ import type {
 } from "../types"
 import { AuditLogService } from "./AuditLogService"
 import {
+  reviewExamSchema,
   upsertExamCategorySchema,
   upsertExamSchema,
+  type ReviewExamInput,
   type UpsertExamCategoryInput,
   type UpsertExamInput,
 } from "../schemas/exams"
+
+export const EXAM_FILES_BUCKET = "exam-files"
 
 export class ExamService {
   private static async getSupabase() {
@@ -95,6 +99,7 @@ export class ExamService {
     category_id?: string
     search?: string
     limit?: number
+    only_active?: boolean
   }): Promise<ExamRow[]> {
     try {
       const supabase = await this.getSupabase()
@@ -105,6 +110,7 @@ export class ExamService {
         .order("exam_date", { ascending: false })
         .limit(limit)
 
+      if (filters?.only_active) q = q.eq("is_deleted", false)
       if (filters?.user_id) q = q.eq("user_id", filters.user_id)
       if (filters?.category_id) q = q.eq("category_id", filters.category_id)
       if (filters?.search) {
@@ -190,6 +196,94 @@ export class ExamService {
         entity_id: id,
       })
       return true
+    } catch {
+      return false
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // REVIEW (parecer do professor)
+  // ---------------------------------------------------------------------
+  static async reviewExam(
+    input: ReviewExamInput,
+    reviewerId: string
+  ): Promise<ExamRow | null> {
+    try {
+      const parsed = reviewExamSchema.parse(input)
+      const supabase = await this.getSupabase()
+
+      const feedback = parsed.coach_feedback?.trim() || null
+      const payload: Record<string, any> = {
+        coach_feedback: feedback,
+        reviewed_by_id: feedback ? reviewerId : null,
+        reviewed_at: feedback ? new Date().toISOString() : null,
+      }
+
+      const { data, error } = await supabase
+        .from("exams")
+        .update(payload as never)
+        .eq("id", parsed.id)
+        .select()
+        .single()
+      if (error || !data) return null
+
+      void AuditLogService.log({
+        adminId: reviewerId,
+        action: feedback ? "exam.review" : "exam.review.clear",
+        entity_type: "exams",
+        entity_id: parsed.id,
+      })
+
+      return data as ExamRow
+    } catch {
+      return null
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // ARQUIVOS
+  // ---------------------------------------------------------------------
+  static async getSignedUrl(
+    path: string,
+    expiresInSeconds = 3600
+  ): Promise<string | null> {
+    try {
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase.storage
+        .from(EXAM_FILES_BUCKET)
+        .createSignedUrl(path, expiresInSeconds)
+      if (error || !data) return null
+      return data.signedUrl
+    } catch {
+      return null
+    }
+  }
+
+  static async uploadFile(
+    path: string,
+    file: File
+  ): Promise<{ path: string } | null> {
+    try {
+      const supabase = await this.getSupabase()
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const { error } = await supabase.storage
+        .from(EXAM_FILES_BUCKET)
+        .upload(path, buffer, {
+          contentType: file.type || "application/pdf",
+          upsert: false,
+        })
+      if (error) return null
+      return { path }
+    } catch {
+      return null
+    }
+  }
+
+  static async removeFile(path: string): Promise<boolean> {
+    try {
+      const supabase = await this.getSupabase()
+      const { error } = await supabase.storage.from(EXAM_FILES_BUCKET).remove([path])
+      return !error
     } catch {
       return false
     }

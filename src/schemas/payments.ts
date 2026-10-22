@@ -60,6 +60,19 @@ export type AsaasPixInput = z.infer<typeof asaasPixSchema>
 export { asaasPixSchema as createPixSchema }
 export type CreatePixInput = AsaasPixInput
 
+export const ebookCheckoutSchema = z.object({
+  ebook_id: uuidSchema,
+  locale: z.enum(["pt-BR", "en-US"]).default("pt-BR"),
+  success_path: z.string().trim().min(1).optional(),
+  cancel_path: z.string().trim().min(1).optional(),
+})
+export type EbookCheckoutInput = z.infer<typeof ebookCheckoutSchema>
+
+export const ebookPixSchema = z.object({
+  ebook_id: uuidSchema,
+})
+export type EbookPixInput = z.infer<typeof ebookPixSchema>
+
 export const webhookStripeSchema = z.object({
   signature: z.string({ required_error: "Assinatura Stripe é obrigatória." }).min(1),
 })
