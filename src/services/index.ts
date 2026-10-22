@@ -13,3 +13,13 @@ export { DietService } from "./DietService"
 export { SupplementService } from "./SupplementService"
 export { ExamService } from "./ExamService"
 export { EbookService } from "./EbookService"
+export { SocialLinksService } from "./SocialLinksService"
+export type { SocialLinkRow } from "../types"
+export { PlanService } from "./PlanService"
+export { BillingAdminService } from "./BillingAdminService"
+export type {
+  AdminSubscriptionRow,
+  AdminPaymentRow,
+  FinanceOverview,
+  IntegrationStatus,
+} from "./BillingAdminService"

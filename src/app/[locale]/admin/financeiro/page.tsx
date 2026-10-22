@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Banknote } from "lucide-react";
 import { requireRole } from "@/lib/auth/access";
+import { BillingAdminService } from "@/services/BillingAdminService";
+import { AdminFinanceiroClient } from "@/components/admin/billing/AdminFinanceiroClient";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +19,21 @@ export default async function AdminFinanceiroPage({
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
-  const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
-  const tCommon = await getTranslations("common");
+  const tAdminFinance = await getTranslations("adminFinance");
   await requireRole(["admin", "coach"], "/dashboard");
+
+  const [overview, revenueSeries, statusCounts, providerRevenue, topPlans, recentPayments] =
+    await Promise.all([
+      BillingAdminService.getFinanceOverview(),
+      BillingAdminService.getRevenueSeries(12),
+      BillingAdminService.getStatusCounts(),
+      BillingAdminService.getProviderRevenue(),
+      BillingAdminService.getTopPlans(5),
+      BillingAdminService.listPayments(),
+    ]);
+
+  const integration = BillingAdminService.getIntegrationStatus();
 
   const title = (() => {
     try {
@@ -32,40 +42,22 @@ export default async function AdminFinanceiroPage({
     return "Financeiro";
   })();
 
-  const subtitle = (() => {
-    try {
-      if (tCommon.has("comingSoon")) return tCommon("comingSoon");
-    } catch {}
-    return "Em breve";
-  })();
-
   return (
     <div className="space-y-6 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
+        <p className="text-sm md:text-base text-text-secondary">{tAdminFinance("subtitle")}</p>
       </header>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>{subtitle}</CardDescription>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <Banknote size={22} />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            className="py-16"
-            icon={<Banknote size={40} className="text-text-secondary" />}
-            title={title}
-            description={subtitle}
-          />
-        </CardContent>
-      </Card>
+
+      <AdminFinanceiroClient
+        overview={overview}
+        revenueSeries={revenueSeries}
+        statusCounts={statusCounts}
+        providerRevenue={providerRevenue}
+        topPlans={topPlans}
+        integration={integration}
+        recentPayments={recentPayments.slice(0, 5)}
+      />
     </div>
   );
 }

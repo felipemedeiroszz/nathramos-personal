@@ -778,3 +778,19 @@ export interface EbookPurchaseRow {
   created_at: string
   updated_at: string
 }
+
+// Social media types
+export interface SocialLinkRow {
+  id: string
+  platform: string
+  label_pt?: string | null
+  label_en?: string | null
+  handle?: string | null
+  url: string
+  icon_url?: string | null
+  sort_order: number
+  is_active: boolean
+  created_by_id?: string | null
+  created_at: string
+  updated_at: string
+}
