@@ -779,6 +779,18 @@ export interface EbookPurchaseRow {
   updated_at: string
 }
 
+// Platform settings types
+export interface PlatformSettingRow {
+  key: string
+  value_pt?: string | null
+  value_en?: string | null
+  value_json?: unknown
+  value_num?: number | null
+  updated_by_id?: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Social media types
 export interface SocialLinkRow {
   id: string

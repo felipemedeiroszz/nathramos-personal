@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
-import { MoreHorizontal, LogOut } from "lucide-react";
+import { MoreHorizontal, LogOut, Wrench } from "lucide-react";
+
+interface MaintenanceInfo {
+  active: boolean;
+  until: string | null;
+}
 
 interface StudentLayoutClientProps {
   locale: string;
@@ -13,6 +18,7 @@ interface StudentLayoutClientProps {
   lastName?: string | null;
   photoUrl?: string | null;
   subscriptionAllowed: boolean;
+  maintenance: MaintenanceInfo;
   onLogout: () => Promise<void>;
   children: React.ReactNode;
 }
@@ -23,12 +29,49 @@ export function StudentLayoutClient({
   lastName,
   photoUrl,
   subscriptionAllowed,
+  maintenance,
   onLogout,
   children,
 }: StudentLayoutClientProps) {
   const t = useTranslations("navigation");
+  const localeTag = useLocale();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  if (maintenance.active) {
+    const date = maintenance.until ? new Date(maintenance.until) : null;
+    const untilLabel =
+      date && !Number.isNaN(date.getTime())
+        ? new Intl.DateTimeFormat(localeTag, {
+            dateStyle: "short",
+            timeStyle: "short",
+          }).format(date)
+        : null;
+
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-8 shadow-lg text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <Wrench size={28} />
+          </div>
+          <h1 className="text-2xl font-bold text-text mb-2">{t("maintenanceTitle")}</h1>
+          <p className="text-text-secondary mb-4">{t("maintenanceDescription")}</p>
+          {untilLabel && (
+            <p className="text-sm font-medium text-primary mb-6">
+              {t("maintenanceUntil", { date: untilLabel })}
+            </p>
+          )}
+          <button
+            onClick={onLogout}
+            className="mt-2 w-full h-11 rounded-xl border border-border text-text-secondary hover:text-primary hover:border-primary transition-colors flex items-center justify-center gap-2"
+          >
+            <LogOut size={16} />
+            {t("logout")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!subscriptionAllowed) {
     return (

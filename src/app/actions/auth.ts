@@ -8,6 +8,7 @@ import {
 } from "@/schemas/auth"
 import { headers } from "next/headers"
 import { defaultLocale } from "@/i18n/config"
+import { isSignupOpen } from "@/services/PlatformSettingsService"
 import type { UserRole } from "@/types"
 
 function detectLocale(): string {
@@ -102,6 +103,19 @@ export async function signUpAction(formData: FormData) {
       success: false as const,
       errors: parsed.error.flatten().fieldErrors,
       message: "Erro de validação",
+    }
+  }
+
+  // Cadastros fechados: bloqueia a criação de novas contas.
+  const signupOpen = await isSignupOpen()
+  if (!signupOpen) {
+    const isEnglish = parsed.data.language === "en-US"
+    return {
+      success: false as const,
+      errors: {},
+      message: isEnglish
+        ? "Sign-ups are temporarily closed. Please try again later."
+        : "Os cadastros estão temporariamente fechados. Tente novamente mais tarde.",
     }
   }
 

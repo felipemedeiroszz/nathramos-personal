@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { locales, defaultLocale } from "@/i18n/config";
 import { requireAuthenticated, getCurrentRole, canAccessPlatform } from "@/lib/auth/access";
+import { getMaintenanceStatus } from "@/services/PlatformSettingsService";
 import { createClientSSR } from "@/lib/supabase/server";
 import { StudentLayoutClient } from "@/components/shared/StudentLayoutClient";
 import { logoutAction } from "@/app/actions/account";
@@ -39,6 +40,13 @@ export default async function StudentLayout({
   const isAdmin = role === "admin" || role === "coach";
   const subscriptionAllowed = isAdmin || access.allowed;
 
+  // Modo manutenção: bloqueia apenas alunos (admin/coach continuam com acesso).
+  const maintenanceStatus = await getMaintenanceStatus();
+  const maintenance = {
+    active: !isAdmin && maintenanceStatus.active,
+    until: maintenanceStatus.until,
+  };
+
   let firstName: string | null = null;
   let lastName: string | null = null;
   let photoUrl: string | null = null;
@@ -65,6 +73,7 @@ export default async function StudentLayout({
       lastName={lastName}
       photoUrl={photoUrl}
       subscriptionAllowed={subscriptionAllowed}
+      maintenance={maintenance}
       onLogout={logoutAction}
     >
       {children}
