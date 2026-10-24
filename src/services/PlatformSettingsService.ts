@@ -339,3 +339,20 @@ export const isSignupOpen = cache(async (): Promise<boolean> => {
     return PLATFORM_SETTINGS_DEFAULTS.signup_open
   }
 })
+
+/** WhatsApp de suporte configurado no admin (usado no fluxo de "esqueci minha senha"). */
+export async function getSupportWhatsapp(): Promise<string> {
+  try {
+    const supabase = await createServiceClientSSR()
+    const { data } = await supabase
+      .from("platform_settings")
+      .select("value_pt")
+      .eq("key", "support_whatsapp")
+      .maybeSingle()
+
+    const value = (data as { value_pt?: unknown } | null)?.value_pt
+    return typeof value === "string" ? value : ""
+  } catch {
+    return ""
+  }
+}

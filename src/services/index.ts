@@ -8,7 +8,14 @@ export type { ExerciseDbExercise } from "./ExerciseDBService"
 export { WorkoutService } from "./WorkoutService"
 export { WorkoutKitService } from "./WorkoutKitService"
 export { NotificationService } from "./NotificationService"
-export type { SendInAppPayload, NotificationRow } from "./NotificationService"
+export type {
+  SendInAppPayload,
+  NotificationRow,
+  AdminNotificationRow,
+  NotificationTemplateRow,
+} from "./NotificationService"
+export { PushService } from "./PushService"
+export { NotificationDispatcher } from "./NotificationDispatcher"
 export { DietService } from "./DietService"
 export { SupplementService } from "./SupplementService"
 export { ExamService } from "./ExamService"

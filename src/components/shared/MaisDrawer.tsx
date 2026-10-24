@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   MessageSquare,
   Calendar,
+  Bell,
   User,
   LogOut,
 } from "lucide-react";
@@ -31,6 +32,7 @@ type MenuItemKey =
   | "shoppingList"
   | "mentoring"
   | "meetings"
+  | "notifications"
   | "account";
 
 const routeForKey: Record<MenuItemKey, string> = {
@@ -41,6 +43,7 @@ const routeForKey: Record<MenuItemKey, string> = {
   shoppingList: "/lista-compras",
   mentoring: "/conversas",
   meetings: "/reunioes",
+  notifications: "/notificacoes",
   account: "/account",
 };
 
@@ -58,6 +61,7 @@ export function MaisDrawer({ locale, isOpen, onClose, onLogout }: MaisDrawerProp
     { key: "shoppingList", icon: <ShoppingCart size={20} /> },
     { key: "mentoring", icon: <MessageSquare size={20} /> },
     { key: "meetings", icon: <Calendar size={20} /> },
+    { key: "notifications", icon: <Bell size={20} /> },
     { key: "account", icon: <User size={20} /> },
   ];
 
@@ -70,6 +74,7 @@ export function MaisDrawer({ locale, isOpen, onClose, onLogout }: MaisDrawerProp
       case "shoppingList": return t("shoppingList");
       case "mentoring": return t("mentoring");
       case "meetings": return t("meetings");
+      case "notifications": return t("notifications");
       case "account": return t("account");
     }
   };

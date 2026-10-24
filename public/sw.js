@@ -70,7 +70,21 @@ self.addEventListener("push", (event) => {
       renotify: true,
       vibrate: [100, 50, 100],
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+      Promise.all([
+        self.registration.showNotification(title, options),
+        self.clients
+          .matchAll({ type: "window", includeUncontrolled: true })
+          .then((clients) => {
+            for (const client of clients) {
+              client.postMessage({
+                type: "notification:received",
+                notification_id: options.data.notification_id,
+              });
+            }
+          }),
+      ])
+    );
   } catch (err) {
     console.error("[SW] push error", err);
   }

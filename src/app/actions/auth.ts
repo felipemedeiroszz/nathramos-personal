@@ -39,15 +39,20 @@ export async function loginAction(formData: FormData) {
     password,
   })
 
+  const locale = detectLocale()
+
   if (error) {
+    const isInvalidCredentials = /invalid login credentials/i.test(error.message ?? "")
     return {
       success: false as const,
       errors: {},
-      message: error.message || "Credenciais inválidas",
+      message: isInvalidCredentials
+        ? locale === "en-US"
+          ? "Incorrect email or password"
+          : "Email ou senha incorretos"
+        : error.message || (locale === "en-US" ? "Unable to sign in" : "Não foi possível entrar"),
     }
   }
-
-  const locale = detectLocale()
 
   // Check user role from database using service role (bypasses RLS)
   let role: UserRole = "student"

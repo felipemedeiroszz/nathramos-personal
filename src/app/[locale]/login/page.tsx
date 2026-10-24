@@ -3,17 +3,18 @@
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { z } from "zod";
 import { loginSchema } from "@/schemas/auth";
 import { loginAction } from "@/app/actions/auth";
+import { getSupportWhatsappAction } from "@/app/actions/settings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import Image from "next/image";
-import { Dumbbell, Apple, BarChart, Droplets, Target } from "lucide-react";
+import { Dumbbell, Apple, BarChart, Droplets, Target, MessageCircle, X } from "lucide-react";
 
 type LoginFormValues = z.input<typeof loginSchema>;
 
@@ -24,6 +25,25 @@ export default function LoginPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [supportWhatsapp, setSupportWhatsapp] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getSupportWhatsappAction()
+      .then((result) => {
+        if (active) setSupportWhatsapp(result.whatsapp);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const whatsappDigits = supportWhatsapp.replace(/\D/g, "");
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(t("forgotPasswordRequest"))}`
+    : null;
 
   const {
     register,
@@ -199,12 +219,13 @@ export default function LoginPage() {
                 >
                   {t("password")}
                 </label>
-                <Link
-                  href={`/${locale}/forgot-password`}
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
                   className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
                 >
                   {t("forgotPassword")}
-                </Link>
+                </button>
               </div>
               <Input
                 id="password"
@@ -263,6 +284,54 @@ export default function LoginPage() {
         </div>
         </div>
       </div>
+
+      {forgotOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setForgotOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("forgotPasswordTitle")}
+            className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl animate-slide-up"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <MessageCircle size={20} />
+                </span>
+                <h2 className="text-lg font-bold text-text">{t("forgotPasswordTitle")}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label={t("close")}
+                onClick={() => setForgotOpen(false)}
+                className="text-text-secondary hover:text-text transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm text-text-secondary mb-6">{t("forgotPasswordMessage")}</p>
+
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+              >
+                <MessageCircle size={18} />
+                {t("forgotPasswordCta")}
+              </a>
+            ) : (
+              <p className="text-sm text-amber-400">{t("forgotPasswordUnavailable")}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

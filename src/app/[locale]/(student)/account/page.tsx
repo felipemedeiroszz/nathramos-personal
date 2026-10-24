@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { createClientSSR } from "@/lib/supabase/server";
 import { requireAuthenticated } from "@/lib/auth/access";
 import { SubscriptionService, ProfileService } from "@/lib/payments/services";
+import { NotificationService } from "@/services/NotificationService";
+import { PushService } from "@/services/PushService";
 import { AccountPageClient } from "@/components/shared/AccountPageClient";
 
 export const dynamic = "force-dynamic";
@@ -73,5 +75,21 @@ export default async function AccountPage({
     avatar_url: profileData?.avatar_url ?? null,
   };
 
-  return <AccountPageClient locale={locale} profile={profile} subscription={subscriptionSummary} />;
+  const [notificationPreferences, notificationSettings, notificationDevices] =
+    await Promise.all([
+      NotificationService.getPreferences(userId),
+      NotificationService.getNotifySettings(userId),
+      PushService.countDevices(userId),
+    ]);
+
+  return (
+    <AccountPageClient
+      locale={locale}
+      profile={profile}
+      subscription={subscriptionSummary}
+      notificationPreferences={notificationPreferences}
+      notificationSettings={notificationSettings}
+      notificationDevices={notificationDevices}
+    />
+  );
 }

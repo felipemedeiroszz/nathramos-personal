@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { NotificationBell } from "@/components/shared/NotificationBell";
+import { PushNotificationManager } from "@/components/shared/PushNotificationManager";
 import { MoreHorizontal, LogOut, Wrench } from "lucide-react";
 
 interface MaintenanceInfo {
@@ -102,9 +104,17 @@ export function StudentLayoutClient({
 
   return (
     <div className="min-h-dvh bg-background">
+      <PushNotificationManager />
       <div className="flex">
         <Sidebar locale={locale} />
         <main className="flex-1 min-w-0">
+          <div className="sticky top-0 z-30 flex items-center justify-end border-b border-border bg-background/80 px-4 py-2 backdrop-blur md:px-6">
+            <NotificationBell
+              locale={locale}
+              namespace="studentNotifications"
+              viewAllHref={`/${locale}/notificacoes`}
+            />
+          </div>
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 md:py-10 pb-28 md:pb-10">
             {children}
           </div>

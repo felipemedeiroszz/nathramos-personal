@@ -15,6 +15,8 @@ import {
   removePhotoAction,
   logoutAction,
 } from "@/app/actions/account";
+import { NotificationPreferencesPanel } from "@/components/shared/NotificationPreferencesPanel";
+import type { NotificationPreferences, NotifySettings } from "@/services/NotificationService";
 import { cn } from "@/lib/utils";
 import { locales } from "@/i18n/config";
 import {
@@ -24,6 +26,7 @@ import {
   Lock,
   CreditCard,
   LogOut,
+  Bell,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -84,7 +87,7 @@ function AlertLine({ type, text }: { type: "success" | "error" | "info"; text: s
   );
 }
 
-type TabType = "profile" | "security" | "subscription" | "settings";
+type TabType = "profile" | "security" | "notifications" | "subscription" | "settings";
 
 function TabButton({
   active,
@@ -118,12 +121,19 @@ export function AccountPageClient({
   locale,
   profile,
   subscription,
+  notificationPreferences,
+  notificationSettings,
+  notificationDevices,
 }: {
   locale: LocaleKey;
   profile: ProfileData;
   subscription: SubscriptionSummary | null;
+  notificationPreferences: NotificationPreferences;
+  notificationSettings: NotifySettings;
+  notificationDevices: number;
 }) {
   const t = useTranslations("account");
+  const tn = useTranslations("studentNotifications");
   const s = useTranslations("subscription");
   const p = useTranslations("payments");
   const nav = useTranslations("navigation");
@@ -181,6 +191,7 @@ export function AccountPageClient({
   const tabs: { id: TabType; icon: any; label: string }[] = [
     { id: "profile", icon: User, label: t("profile") },
     { id: "security", icon: Lock, label: t("security") },
+    { id: "notifications", icon: Bell, label: tn("tabLabel") },
     { id: "subscription", icon: CreditCard, label: t("subscription") },
     { id: "settings", icon: Settings, label: t("dangerZone") },
   ];
@@ -439,6 +450,14 @@ export function AccountPageClient({
               </form>
             </CardContent>
           </Card>
+        )}
+
+        {activeTab === "notifications" && (
+          <NotificationPreferencesPanel
+            preferences={notificationPreferences}
+            settings={notificationSettings}
+            devices={notificationDevices}
+          />
         )}
 
         {activeTab === "subscription" && (

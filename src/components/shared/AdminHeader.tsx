@@ -13,11 +13,11 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/DropdownMenu";
 import {
-  Bell,
   ChevronDown,
   LogOut,
   Menu,
 } from "lucide-react";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 interface AdminHeaderProps {
   locale: string;
@@ -216,10 +216,7 @@ export function AdminHeader({
           </DropdownMenu>
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell size={20} />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
-          </Button>
+          <NotificationBell locale={locale} />
 
           {/* User menu - simplified for now */}
           <Button variant="ghost" size="sm" onClick={onLogout} className="gap-2">
