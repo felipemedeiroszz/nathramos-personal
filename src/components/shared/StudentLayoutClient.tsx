@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { PushNotificationManager } from "@/components/shared/PushNotificationManager";
-import { MoreHorizontal, LogOut, Wrench } from "lucide-react";
+import { ShieldAlert, LogOut, Wrench } from "lucide-react";
 
 interface MaintenanceInfo {
   active: boolean;
@@ -79,8 +81,8 @@ export function StudentLayoutClient({
     return (
       <div className="min-h-dvh flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-8 shadow-lg text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center">
-            <MoreHorizontal size={28} />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full border border-border bg-surface-secondary flex items-center justify-center text-primary">
+            <ShieldAlert size={28} />
           </div>
           <h1 className="text-2xl font-bold text-text mb-2">{t("blockedTitle")}</h1>
           <p className="text-text-secondary mb-6">{t("blockedDescription")}</p>
@@ -108,7 +110,10 @@ export function StudentLayoutClient({
       <div className="flex">
         <Sidebar locale={locale} />
         <main className="flex-1 min-w-0">
-          <div className="sticky top-0 z-30 flex items-center justify-end border-b border-border bg-background/80 px-4 py-2 backdrop-blur md:px-6">
+          <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:justify-end md:px-6">
+            <Link href={`/${locale}/dashboard`} className="relative h-9 w-24 md:hidden" aria-label="Nath Ramos">
+              <Image src="/logo.png" alt="Nath Ramos" fill className="object-contain object-left" priority />
+            </Link>
             <NotificationBell
               locale={locale}
               namespace="studentNotifications"

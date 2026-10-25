@@ -7,6 +7,24 @@ export const PLAN_CURRENCIES = ["BRL", "USD"] as const
 const optionalText = (max: number) =>
   z.string().trim().max(max).optional().nullable()
 
+/** Banner exibido na página pública de planos. */
+export const planBannerSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  image_url: z.string().trim().min(1, { message: "Imagem do banner é obrigatória." }).max(2000),
+  title_pt: optionalText(120),
+  title_en: optionalText(120),
+  subtitle_pt: optionalText(240),
+  subtitle_en: optionalText(240),
+  cta_label_pt: optionalText(60),
+  cta_label_en: optionalText(60),
+  cta_href: optionalText(500),
+  badge_pt: optionalText(60),
+  badge_en: optionalText(60),
+  is_active: z.boolean().default(true),
+})
+
+export type PlanBannerInput = z.input<typeof planBannerSchema>
+
 export const upsertPlanSchema = z.object({
   id: z.string().uuid({ message: "ID inválido." }).optional(),
   name_pt: z
@@ -63,6 +81,7 @@ export const upsertPlanSchema = z.object({
   highlight_hex: optionalText(20),
   badge_pt: optionalText(60),
   badge_en: optionalText(60),
+  banners: z.array(planBannerSchema).max(10).default([]),
   is_active: z.boolean().default(true),
 })
 

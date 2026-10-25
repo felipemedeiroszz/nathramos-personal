@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Progress } from "@/components/ui/Progress";
 import { Badge } from "@/components/ui/Badge";
 import { Chart } from "@/components/ui/Chart";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   Activity,
   Dumbbell,
@@ -81,12 +82,11 @@ export default async function ProgressPage({
 
   return (
     <div className="space-y-6 w-full pb-20 md:pb-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">Progresso & Desempenho</h1>
-        <p className="text-sm md:text-base text-text-secondary">
-          Acompanhe sua evolução ao longo do tempo
-        </p>
-      </header>
+      <PageHeader
+        title="Progresso & Desempenho"
+        description="Acompanhe sua evolução ao longo do tempo"
+        icon={<TrendingUp size={22} />}
+      />
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -110,10 +110,10 @@ export default async function ProgressPage({
         <Card>
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className="w-11 h-11 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <Activity size={22} />
               </div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-green-600">
+              <div className="flex items-center gap-1 text-xs font-semibold text-primary">
                 <TrendingUp size={14} />
               </div>
             </div>
@@ -130,7 +130,7 @@ export default async function ProgressPage({
         <Card>
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <Flame size={22} />
               </div>
               <Badge variant="success" className="text-xs">
@@ -151,10 +151,10 @@ export default async function ProgressPage({
         <Card>
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <CalendarIcon size={22} />
               </div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-green-600">
+              <div className="flex items-center gap-1 text-xs font-semibold text-primary">
                 <TrendingUp size={14} />
               </div>
             </div>
@@ -214,7 +214,7 @@ export default async function ProgressPage({
                   {locale === "pt-BR" ? "Por número de séries" : "By set count"}
                 </CardDescription>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <Dumbbell size={22} />
               </div>
             </div>
@@ -257,7 +257,7 @@ export default async function ProgressPage({
                 {locale === "pt-BR" ? "Suas maiores conquistas" : "Your best lifts"}
               </CardDescription>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Trophy size={22} />
             </div>
           </div>
@@ -271,7 +271,7 @@ export default async function ProgressPage({
                   className="flex items-center justify-between p-4 rounded-xl border border-border bg-surface-secondary/30"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-yellow-500/10 text-yellow-500 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <Trophy size={22} />
                     </div>
                     <div className="space-y-1">
@@ -319,7 +319,7 @@ export default async function ProgressPage({
                 {locale === "pt-BR" ? "Últimos 30 dias" : "Last 30 days"}
               </CardDescription>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <ChevronUp size={22} />
             </div>
           </div>

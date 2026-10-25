@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Progress } from "@/components/ui/Progress";
 import { Select } from "@/components/ui/Select";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/utils";
 
 const GLASS_ML = 250;
@@ -102,12 +103,11 @@ export default function HydrationPage() {
 
   return (
     <div className="space-y-6 w-full pb-24 md:pb-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">Hidratação</h1>
-        <p className="text-sm md:text-base text-text-secondary">
-          Beba água regularmente para saúde e desempenho
-        </p>
-      </header>
+      <PageHeader
+        title="Hidratação"
+        description="Beba água regularmente para saúde e desempenho"
+        icon={<Droplets size={22} />}
+      />
 
       <Card className="bg-gradient-to-br from-primary/5 via-surface to-surface border-primary/20">
         <CardHeader>
@@ -234,7 +234,7 @@ export default function HydrationPage() {
               variant="ghost"
               size="lg"
               onClick={resetDay}
-              className="gap-2 text-text-secondary hover:text-red-600 hover:bg-red-600/10"
+              className="gap-2 text-text-secondary hover:text-text hover:bg-text/[0.08]"
             >
               <RotateCcw size={20} />
               Redefinir dia
@@ -295,8 +295,8 @@ export default function HydrationPage() {
                   </div>
                 ))}
                 <div className="relative flex gap-4 pl-10">
-                  <div className="absolute left-2 top-1 w-5 h-5 rounded-full bg-yellow-500 border-4 border-surface shadow-sm animate-pulse" />
-                  <div className="flex-1 flex items-center justify-between bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <div className="absolute left-2 top-1 w-5 h-5 rounded-full bg-primary border-4 border-surface shadow-sm animate-pulse" />
+                  <div className="flex-1 flex items-center justify-between bg-primary/10 border border-primary/30 rounded-lg p-3">
                     <div>
                       <p className="text-sm font-semibold text-text">
                         Próximo copo
@@ -407,7 +407,7 @@ export default function HydrationPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Flame size={22} className="text-orange-500" />
+                  <Flame size={22} className="text-primary" />
                   Dicas de hidratação
                 </CardTitle>
                 <CardDescription>
@@ -483,14 +483,7 @@ export default function HydrationPage() {
                   </div>
                   <div className="relative h-4 w-full rounded-full bg-surface-secondary overflow-hidden">
                     <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        day.excedente
-                          ? "bg-gradient-to-r from-primary to-purple-500"
-                          : pct >= 100
-                          ? "bg-green-500"
-                          : "bg-primary"
-                      )}
+                      className="h-full rounded-full transition-all duration-500 bg-primary"
                       style={{
                         width: `${Math.min(pct, 100)}%`,
                       }}

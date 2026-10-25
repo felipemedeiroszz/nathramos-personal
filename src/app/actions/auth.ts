@@ -172,7 +172,13 @@ export async function signUpAction(formData: FormData) {
   }
 
   const sessionCreated = !!data?.session
+  const next = typeof raw.next === "string" ? raw.next : ""
   let redirectTo = sessionCreated ? `/${locale}/treinos` : `/${locale}/login?registered=true`
+
+  // Quem veio da página de planos volta direto para o checkout.
+  if (sessionCreated && next === "checkout") {
+    redirectTo = `/${locale}/planos?checkout=1`
+  }
 
   // Check user role for admin redirect after signup
   if (sessionCreated && data?.user) {

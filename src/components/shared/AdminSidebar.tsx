@@ -115,6 +115,7 @@ export function AdminSidebar({ locale, onLogout, isMobile, onClose }: AdminSideb
       titleFallback: "Sistema",
       items: [
         { key: "settings", hrefSuffix: "/admin/configuracoes", fallback: "Configurações", icon: <Settings size={20} /> },
+        { key: "pages", hrefSuffix: "/admin/paginas", fallback: "Páginas", icon: <FileText size={20} /> },
         { key: "audit", hrefSuffix: "/admin/auditoria", fallback: "Auditoria", icon: <Shield size={20} /> },
       ],
     },

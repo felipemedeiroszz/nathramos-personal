@@ -175,7 +175,7 @@ export function RestTimerDisplay({
           <span
             className={cn(
               "text-lg font-bold tabular-nums leading-none",
-              urgent ? "text-red-400 animate-pulse" : "text-text",
+              urgent ? "text-text animate-pulse" : "text-text",
               finished && "text-primary"
             )}
           >
@@ -256,7 +256,7 @@ export function RestTimerDisplay({
             <span
               className={cn(
                 "text-2xl sm:text-3xl font-bold tabular-nums",
-                urgent ? "text-red-400 animate-pulse" : "text-text",
+                urgent ? "text-text animate-pulse" : "text-text",
                 finished && "text-primary"
               )}
             >

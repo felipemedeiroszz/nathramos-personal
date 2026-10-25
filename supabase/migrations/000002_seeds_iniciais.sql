@@ -174,7 +174,7 @@ insert into public.notification_templates (
     '20000000-0000-0000-0000-000000000002',
     'workout_reminder',
     'workout',
-    'Hora do treino! 💪',
+    'Hora do treino!',
     'Workout time!',
     'Seu treino de hoje está aguardando você. Não pule!',
     'Your workout for today is ready. Do not skip it!',

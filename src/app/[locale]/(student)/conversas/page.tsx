@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { MentorChat, type ChatMessageItem } from "@/components/mentoring/MentorChat";
 import { requireAuthenticated } from "@/lib/auth/access";
@@ -51,10 +52,11 @@ export default async function ConversationsPage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">{nav("mentoring")}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{t("subtitle")}</p>
-      </header>
+      <PageHeader
+        title={nav("mentoring")}
+        description={t("subtitle")}
+        icon={<MessageSquare size={22} />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         <Card className="p-0 overflow-hidden">

@@ -73,6 +73,17 @@ export const ebookPixSchema = z.object({
 })
 export type EbookPixInput = z.infer<typeof ebookPixSchema>
 
+export const checkoutIntentSchema = z.object({
+  plan_id: uuidSchema,
+})
+export type CheckoutIntentInput = z.infer<typeof checkoutIntentSchema>
+
+export const checkoutSubscribeSchema = z.object({
+  plan_id: uuidSchema,
+  payment_method_id: z.string({ required_error: "Método de pagamento é obrigatório." }).min(3),
+})
+export type CheckoutSubscribeInput = z.infer<typeof checkoutSubscribeSchema>
+
 export const webhookStripeSchema = z.object({
   signature: z.string({ required_error: "Assinatura Stripe é obrigatória." }).min(1),
 })

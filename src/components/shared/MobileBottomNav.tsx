@@ -23,7 +23,7 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  type NavItemKey = "dashboard" | "training" | "diet" | "performance" | "more";
+  type NavItemKey = "dashboard" | "diet" | "training" | "performance" | "more";
 
   const navItems: {
     key: NavItemKey;
@@ -32,8 +32,8 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
     isDrawer?: boolean;
   }[] = [
     { key: "dashboard", href: `/${locale}/dashboard`, icon: <LayoutDashboard size={20} /> },
-    { key: "training", href: `/${locale}/treino`, icon: <Dumbbell size={20} /> },
     { key: "diet", href: `/${locale}/dieta`, icon: <UtensilsCrossed size={20} /> },
+    { key: "training", href: `/${locale}/treino`, icon: <Dumbbell size={20} /> },
     { key: "performance", href: `/${locale}/progresso`, icon: <TrendingUp size={20} /> },
     { key: "more", href: `/${locale}/mais`, icon: <MoreHorizontal size={20} />, isDrawer: true },
   ];
@@ -41,18 +41,20 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
   const labelForKey = (key: NavItemKey) => {
     switch (key) {
       case "dashboard": return t("dashboard");
-      case "training": return t("training");
       case "diet": return t("diet");
+      case "training": return t("training");
       case "performance": return t("performance");
       case "more": return t("more");
     }
   };
 
-  const activeIndex = navItems.findIndex((item) =>
-    item.href.endsWith("/dashboard")
-      ? pathname === item.href
-      : pathname.includes(item.href.slice(`/${locale}`.length))
-  );
+  const isItemActive = (href: string) => {
+    const rest = href.slice(`/${locale}`.length);
+    if (rest === "/dashboard") return pathname === href || pathname === `${href}/`;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const activeIndex = navItems.findIndex((item) => isItemActive(item.href));
 
   return (
     <>
@@ -60,11 +62,10 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
         <div className="relative flex items-center justify-around h-16 px-2">
           {navItems.map((item, index) => {
             const isActive = index === activeIndex;
-            const isClickable = !item.isDrawer;
             const content = (
               <div
                 className={cn(
-                  "relative flex flex-col items-center justify-center flex-1 h-full transition-colors w-full",
+                  "relative flex flex-col items-center justify-center flex-1 h-full w-full transition-colors",
                   isActive ? "text-primary" : "text-text-secondary"
                 )}
               >
@@ -85,6 +86,7 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
                   key={item.href}
                   type="button"
                   onClick={() => setIsDrawerOpen(true)}
+                  aria-label={labelForKey(item.key)}
                   className="flex-1 h-full flex items-center justify-center"
                 >
                   {content}
@@ -92,7 +94,12 @@ export function MobileBottomNav({ locale }: MobileBottomNavProps) {
               );
             }
             return (
-              <Link key={item.href} href={item.href} className="flex-1 h-full flex items-center justify-center">
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className="flex-1 h-full flex items-center justify-center"
+              >
                 {content}
               </Link>
             );

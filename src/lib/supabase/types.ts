@@ -114,6 +114,21 @@ export interface ProfileRow {
   updated_at: string
 }
 
+export interface PlanBanner {
+  id: string
+  image_url: string
+  title_pt?: string | null
+  title_en?: string | null
+  subtitle_pt?: string | null
+  subtitle_en?: string | null
+  cta_label_pt?: string | null
+  cta_label_en?: string | null
+  cta_href?: string | null
+  badge_pt?: string | null
+  badge_en?: string | null
+  is_active?: boolean
+}
+
 export interface PlanRow {
   id: string
   order_index: number
@@ -148,6 +163,7 @@ export interface PlanRow {
   highlight_hex?: string | null
   badge_pt?: string | null
   badge_en?: string | null
+  banners?: PlanBanner[] | null
   is_deleted: boolean
   deleted_at?: string | null
   created_at: string

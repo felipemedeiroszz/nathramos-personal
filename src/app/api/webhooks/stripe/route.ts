@@ -165,19 +165,21 @@ async function handleSubscriptionCreatedOrUpdated(event: Stripe.Event, _type: "c
     (await resolveUserIdFromEvent(event, sub))
   if (!userId) throw new Error(`${event.type} sem user_id resolvível`)
 
-  const planId = sub.metadata?.plan_id as string | undefined
-  if (!planId) {
-    const existing = await SubscriptionService.findByExternalId("stripe", sub.id)
-    if (existing) return { userId, planId: existing.plan_id }
-    return null
-  }
+  const existingLocal = await SubscriptionService.findByExternalId("stripe", sub.id)
+  const planId = (sub.metadata?.plan_id as string | undefined) ?? existingLocal?.plan_id
+  if (!planId) return null
 
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id
   if (customerId) {
     try { await ProfileService.setStripeCustomerId(userId, customerId) } catch { /* noop */ }
   }
 
-  const status = STRIPE_STATUS_MAP[sub.status as string] ?? "inactive"
+  let status = STRIPE_STATUS_MAP[sub.status as string] ?? "inactive"
+  // Nunca concede tolerância (past_due) a uma assinatura que nunca foi paga
+  // (ex.: primeira cobrança recusada por falta de saldo). Mantém o acesso bloqueado.
+  if (status === "past_due" && !existingLocal?.last_paid_at) {
+    status = "inactive"
+  }
   const item = sub.items?.data?.[0]
   const price = item?.price
   const unitAmount =
@@ -325,13 +327,23 @@ async function handleInvoicePaymentFailed(event: Stripe.Event) {
   const existingSub = subId ? await SubscriptionService.findByExternalId("stripe", subId) : null
   const now = new Date().toISOString()
   if (existingSub) {
+    // Só aplica tolerância (past_due) se a assinatura já foi paga antes.
+    // Falha na PRIMEIRA cobrança (ex.: cartão sem saldo) mantém o acesso bloqueado.
+    const wasPaid =
+      !!existingSub.last_paid_at ||
+      existingSub.status === "active" ||
+      existingSub.status === "trialing"
+    const nextStatus: SubscriptionStatus = wasPaid
+      ? "past_due"
+      : (existingSub.status as SubscriptionStatus)
+
     await SubscriptionService.upsertSubscription({
       userId,
       planId: existingSub.plan_id,
       externalId: existingSub.external_id ?? subId ?? undefined,
       provider: "stripe",
-      externalStatus: "past_due",
-      status: "past_due",
+      externalStatus: nextStatus,
+      status: nextStatus,
       currency: existingSub.currency as Currency,
       unitAmountCents: existingSub.unit_amount_cents,
       billingCycleDays: existingSub.billing_cycle_days,

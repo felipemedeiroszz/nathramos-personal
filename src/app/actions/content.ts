@@ -7,6 +7,7 @@ import { DietService } from "@/services/DietService";
 import { SupplementService } from "@/services/SupplementService";
 import { ExamService } from "@/services/ExamService";
 import { EbookService } from "@/services/EbookService";
+import { ContentPageService } from "@/services/ContentPageService";
 import { createServiceClientSSR } from "@/lib/supabase/server";
 import type {
   UpsertDietFoodInput,
@@ -17,6 +18,7 @@ import type {
 import type { UpsertSupplementInput, SaveSupplementKitInput, SyncSupplementKitStudentsInput, SyncStudentSupplementKitsInput } from "@/schemas/supplements";
 import type { UpsertExamInput, ReviewExamInput } from "@/schemas/exams";
 import type { UpsertEbookInput } from "@/schemas/ebooks";
+import type { UpsertContentPageInput } from "@/schemas/contentPages";
 
 // ---------------------------------------------------------------------
 // ALIMENTOS (CATÁLOGO)
@@ -340,6 +342,29 @@ export async function deleteEbookAction(id: string) {
     return {
       success: false as const,
       message: e?.message ?? "Falha ao excluir e-book.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------
+// PÁGINAS INSTITUCIONAIS (TERMOS / PRIVACIDADE / FAQ)
+// ---------------------------------------------------------------------
+export async function upsertContentPageAction(input: UpsertContentPageInput) {
+  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const saved = await ContentPageService.upsert(input, adminId);
+    if (!saved) {
+      return { success: false as const, message: "Falha ao salvar a página." };
+    }
+    revalidatePath("/[locale]/admin/paginas", "page");
+    revalidatePath("/[locale]/termos", "page");
+    revalidatePath("/[locale]/privacidade", "page");
+    revalidatePath("/[locale]/faq", "page");
+    return { success: true as const, data: saved };
+  } catch (e: any) {
+    return {
+      success: false as const,
+      message: e?.message ?? "Falha ao salvar a página.",
     };
   }
 }

@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/Progress";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   Pill,
   CalendarDays,
@@ -73,11 +74,11 @@ interface Prescription {
 }
 
 const summarySupplements: SupplementSummary[] = [
-  { id: 1, name: "Whey", time: "07:30 / 18:00", dosage: "30g", taken: true, color: "bg-blue-500/10 text-blue-500" },
-  { id: 2, name: "Creatina", time: "14:00", dosage: "5g", taken: false, color: "bg-purple-500/10 text-purple-500" },
-  { id: 3, name: "Ômega3", time: "12:00 / 20:30", dosage: "1g", taken: true, color: "bg-amber-500/10 text-amber-500" },
-  { id: 4, name: "Multivitamínico", time: "08:00", dosage: "1 comp", taken: true, color: "bg-green-500/10 text-green-500" },
-  { id: 5, name: "Cafeína", time: "10:00", dosage: "200mg", taken: true, color: "bg-orange-500/10 text-orange-500" },
+  { id: 1, name: "Whey", time: "07:30 / 18:00", dosage: "30g", taken: true, color: "bg-surface-secondary text-text-secondary" },
+  { id: 2, name: "Creatina", time: "14:00", dosage: "5g", taken: false, color: "bg-surface-secondary text-text-secondary" },
+  { id: 3, name: "Ômega3", time: "12:00 / 20:30", dosage: "1g", taken: true, color: "bg-primary/10 text-primary" },
+  { id: 4, name: "Multivitamínico", time: "08:00", dosage: "1 comp", taken: true, color: "bg-primary/10 text-primary" },
+  { id: 5, name: "Cafeína", time: "10:00", dosage: "200mg", taken: true, color: "bg-primary/10 text-primary" },
 ];
 
 const timeline: TimelineItem[] = [
@@ -275,24 +276,24 @@ export default async function SupplementsPage({
   const stockColorClass = (color: StockItem["color"]) => {
     switch (color) {
       case "orange":
-        return "[&>div]:bg-orange-500";
+        return "[&>div]:bg-primary";
       case "green":
-        return "[&>div]:bg-green-500";
+        return "[&>div]:bg-primary";
       case "amber":
-        return "[&>div]:bg-amber-500";
+        return "[&>div]:bg-primary";
       case "red":
-        return "[&>div]:bg-red-500";
+        return "[&>div]:bg-text/[0.08]";
     }
   };
 
   const dayStatusClass = (status: HistoryDay["status"]) => {
     switch (status) {
       case "ok":
-        return "bg-green-500 text-white border-green-500";
+        return "bg-primary text-primary-foreground border-primary";
       case "fail":
-        return "bg-red-500 text-white border-red-500";
+        return "bg-text/[0.08] text-text border-text/25";
       case "partial":
-        return "bg-yellow-500 text-white border-yellow-500";
+        return "bg-primary text-primary-foreground border-primary";
       case "pending":
         return "bg-surface-secondary text-text-secondary border-border";
     }
@@ -301,10 +302,11 @@ export default async function SupplementsPage({
   return (
     <div className="w-full px-4 sm:px-6 py-8 pb-safe space-y-6">
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-          <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
-        </header>
+        <PageHeader
+          title={title}
+          description={subtitle}
+          icon={<Pill size={22} />}
+        />
 
         {myKits.length > 0 && (
           <Card className="border-primary/40">
@@ -399,7 +401,7 @@ export default async function SupplementsPage({
                   key={sup.id}
                   className={cn(
                     "rounded-xl border p-3 space-y-2 transition-colors",
-                    sup.taken ? "border-green-500/30 bg-green-500/5" : "border-border bg-surface/60"
+                    sup.taken ? "border-primary/30 bg-primary/5" : "border-border bg-surface/60"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -453,9 +455,9 @@ export default async function SupplementsPage({
                 {timeline.map((item) => {
                   const dotColor =
                     item.status === "taken"
-                      ? "bg-green-500 border-green-500"
+                      ? "bg-primary border-primary"
                       : item.status === "now"
-                      ? "bg-yellow-500 border-yellow-500 animate-pulse"
+                      ? "bg-primary border-primary animate-pulse"
                       : "bg-surface border-border";
                   return (
                     <div key={item.id} className="relative flex gap-4 pl-10">
@@ -469,9 +471,9 @@ export default async function SupplementsPage({
                         className={cn(
                           "flex-1 rounded-xl border p-4 flex flex-wrap items-center gap-3",
                           item.status === "taken"
-                            ? "border-green-500/30 bg-green-500/5"
+                            ? "border-primary/30 bg-primary/5"
                             : item.status === "now"
-                            ? "border-yellow-500/30 bg-yellow-500/5"
+                            ? "border-primary/30 bg-primary/5"
                             : "border-border bg-surface/50"
                         )}
                       >
@@ -479,9 +481,9 @@ export default async function SupplementsPage({
                           className={cn(
                             "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
                             item.status === "taken"
-                              ? "bg-green-500/10 text-green-600"
+                              ? "bg-primary/10 text-primary"
                               : item.status === "now"
-                              ? "bg-yellow-500/10 text-yellow-600"
+                              ? "bg-primary/10 text-primary"
                               : "bg-surface-secondary text-text-secondary"
                           )}
                         >
@@ -536,7 +538,7 @@ export default async function SupplementsPage({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <Package size={20} />
               </div>
               <div className="flex-1">
@@ -555,7 +557,7 @@ export default async function SupplementsPage({
                   key={item.id}
                   className={cn(
                     "rounded-xl border p-4 space-y-3",
-                    item.urgent ? "border-red-500/30 bg-red-500/5" : "border-border"
+                    item.urgent ? "border-text/25 bg-text/[0.08]" : "border-border"
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -563,10 +565,10 @@ export default async function SupplementsPage({
                       <div
                         className={cn(
                           "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                          item.color === "orange" && "bg-orange-500/10 text-orange-500",
-                          item.color === "green" && "bg-green-500/10 text-green-500",
-                          item.color === "amber" && "bg-amber-500/10 text-amber-500",
-                          item.color === "red" && "bg-red-500/10 text-red-500"
+                          item.color === "orange" && "bg-primary/10 text-primary",
+                          item.color === "green" && "bg-primary/10 text-primary",
+                          item.color === "amber" && "bg-primary/10 text-primary",
+                          item.color === "red" && "bg-text/[0.08] text-text"
                         )}
                       >
                         {item.urgent ? <AlertTriangle size={20} /> : <Package size={20} />}
@@ -579,10 +581,10 @@ export default async function SupplementsPage({
                     <span
                       className={cn(
                         "text-sm font-bold tabular-nums shrink-0",
-                        item.color === "orange" && "text-orange-500",
-                        item.color === "green" && "text-green-500",
-                        item.color === "amber" && "text-amber-500",
-                        item.color === "red" && "text-red-500"
+                        item.color === "orange" && "text-primary",
+                        item.color === "green" && "text-primary",
+                        item.color === "amber" && "text-primary",
+                        item.color === "red" && "text-text"
                       )}
                     >
                       {item.remaining}%
@@ -597,7 +599,7 @@ export default async function SupplementsPage({
                     <span
                       className={cn(
                         "text-xs font-medium",
-                        item.urgent ? "text-red-500" : "text-text-secondary"
+                        item.urgent ? "text-text" : "text-text-secondary"
                       )}
                     >
                       {item.urgent && <AlertTriangle size={12} className="inline mr-1" />}
@@ -613,7 +615,7 @@ export default async function SupplementsPage({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <CalendarDays size={20} />
               </div>
               <div className="flex-1">
@@ -668,8 +670,8 @@ export default async function SupplementsPage({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Progress value={adherenceRate} max={100} className="w-32 h-2 [&>div]:bg-green-500" />
-                <span className="text-lg font-bold text-green-500 tabular-nums">{adherenceRate}%</span>
+                <Progress value={adherenceRate} max={100} className="w-32 h-2 [&>div]:bg-primary" />
+                <span className="text-lg font-bold text-primary tabular-nums">{adherenceRate}%</span>
               </div>
             </div>
           </CardContent>
@@ -678,7 +680,7 @@ export default async function SupplementsPage({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <FileText size={20} />
               </div>
               <div className="flex-1">
@@ -696,7 +698,7 @@ export default async function SupplementsPage({
                 key={p.id}
                 className="rounded-xl border border-border p-4 flex flex-wrap items-start gap-4"
               >
-                <div className="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center shrink-0">
                   <FileText size={24} />
                 </div>
                 <div className="flex-1 min-w-0 space-y-1">

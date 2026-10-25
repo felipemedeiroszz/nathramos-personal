@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Progress } from "@/components/ui/Progress";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   UtensilsCrossed,
   Flame,
@@ -416,10 +417,11 @@ export default async function DietPage({
   return (
     <div className="w-full px-4 sm:px-6 py-8 pb-safe space-y-6">
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-          <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
-        </header>
+        <PageHeader
+          title={title}
+          description={subtitle}
+          icon={<UtensilsCrossed size={22} />}
+        />
 
         {myKits.length > 0 && (
           <Card className="border-primary/40">
@@ -470,7 +472,7 @@ export default async function DietPage({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-text">
-                    <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                       <Flame size={18} />
                     </div>
                     Calorias
@@ -491,7 +493,7 @@ export default async function DietPage({
                 <div className="space-y-2 rounded-xl border border-border bg-surface/60 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-secondary text-xs font-semibold">
-                      <div className="w-7 h-7 rounded-md bg-red-500/10 text-red-500 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-md bg-text/[0.08] text-text flex items-center justify-center">
                         <Beef size={14} />
                       </div>
                       Proteínas
@@ -507,7 +509,7 @@ export default async function DietPage({
                 <div className="space-y-2 rounded-xl border border-border bg-surface/60 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-secondary text-xs font-semibold">
-                      <div className="w-7 h-7 rounded-md bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                         <Wheat size={14} />
                       </div>
                       Carboidratos
@@ -523,7 +525,7 @@ export default async function DietPage({
                 <div className="space-y-2 rounded-xl border border-border bg-surface/60 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-secondary text-xs font-semibold">
-                      <div className="w-7 h-7 rounded-md bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-md bg-surface-secondary text-text-secondary flex items-center justify-center">
                         <Droplet size={14} />
                       </div>
                       Gorduras
@@ -563,7 +565,7 @@ export default async function DietPage({
                 key={meal.id}
                 className={
                   "rounded-xl border " +
-                  (meal.done ? "border-green-500/30 bg-green-500/5" : "border-border") +
+                  (meal.done ? "border-primary/30 bg-primary/5" : "border-border") +
                   " overflow-hidden"
                 }
               >
@@ -572,14 +574,14 @@ export default async function DietPage({
                     className={
                       "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 " +
                       (meal.period === "morning"
-                        ? "bg-yellow-500/10 text-yellow-500"
+                        ? "bg-primary/10 text-primary"
                         : meal.period === "noon"
-                        ? "bg-orange-500/10 text-orange-500"
+                        ? "bg-primary/10 text-primary"
                         : meal.period === "afternoon"
-                        ? "bg-amber-500/10 text-amber-500"
+                        ? "bg-primary/10 text-primary"
                         : meal.period === "night"
-                        ? "bg-indigo-500/10 text-indigo-500"
-                        : "bg-purple-500/10 text-purple-500")
+                        ? "bg-surface-secondary text-text-secondary"
+                        : "bg-surface-secondary text-text-secondary")
                     }
                   >
                     {meal.period === "late" ? <Moon size={20} /> : <Sun size={20} />}
@@ -612,7 +614,7 @@ export default async function DietPage({
                         className={
                           "w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors " +
                           (food.done
-                            ? "border-green-600 bg-green-600 text-white"
+                            ? "border-primary bg-primary text-primary-foreground"
                             : "border-border")
                         }
                       >
@@ -631,7 +633,7 @@ export default async function DietPage({
                         size="sm"
                         className={
                           "h-9 text-xs shrink-0 " +
-                          (food.done ? "text-green-600 bg-green-500/10 hover:bg-green-500/15" : "")
+                          (food.done ? "text-primary bg-primary/10 hover:bg-primary/15" : "")
                         }
                       >
                         <Check size={14} className="mr-1" />
@@ -648,7 +650,7 @@ export default async function DietPage({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <ShoppingCart size={20} />
               </div>
               <div className="flex-1">
@@ -689,7 +691,7 @@ export default async function DietPage({
                         className={
                           "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors " +
                           (item.bought
-                            ? "border-green-500/30 bg-green-500/5"
+                            ? "border-primary/30 bg-primary/5"
                             : "border-border hover:border-primary/50")
                         }
                       >
@@ -697,7 +699,7 @@ export default async function DietPage({
                           className={
                             "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 " +
                             (item.bought
-                              ? "border-green-600 bg-green-600 text-white"
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-border")
                           }
                         >
@@ -723,7 +725,7 @@ export default async function DietPage({
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <Pill size={20} />
               </div>
               <div className="flex-1">
@@ -747,7 +749,7 @@ export default async function DietPage({
                     className={
                       "flex items-center gap-3 p-4 rounded-xl border transition-colors " +
                       (sup.taken
-                        ? "border-green-500/30 bg-green-500/5"
+                        ? "border-primary/30 bg-primary/5"
                         : "border-border")
                     }
                   >
@@ -755,8 +757,8 @@ export default async function DietPage({
                       className={
                         "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 " +
                         (sup.taken
-                          ? "bg-green-500/10 text-green-600"
-                          : "bg-violet-500/10 text-violet-500")
+                          ? "bg-primary/10 text-primary"
+                          : "bg-surface-secondary text-text-secondary")
                       }
                     >
                       {sup.taken ? <Check size={20} /> : <Pill size={20} />}
@@ -789,7 +791,7 @@ export default async function DietPage({
                       size="sm"
                       className={
                         "h-9 text-xs shrink-0 " +
-                        (sup.taken ? "text-green-600 bg-green-500/10 hover:bg-green-500/15" : "")
+                        (sup.taken ? "text-primary bg-primary/10 hover:bg-primary/15" : "")
                       }
                     >
                       <Check size={14} className="mr-1" />

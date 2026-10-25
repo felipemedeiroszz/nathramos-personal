@@ -3,8 +3,8 @@ import { setRequestLocale, getTranslations, unstable_setRequestLocale } from "ne
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { createClientSSR } from "@/lib/supabase/server";
-import { requireAuthenticated } from "@/lib/auth/access";
-import { SubscriptionService, ProfileService } from "@/lib/payments/services";
+import { requireAuthenticated, canAccessPlatform } from "@/lib/auth/access";
+import { SubscriptionService, PaymentService } from "@/lib/payments/services";
 import { NotificationService } from "@/services/NotificationService";
 import { PushService } from "@/services/PushService";
 import { AccountPageClient } from "@/components/shared/AccountPageClient";
@@ -49,16 +49,53 @@ export default async function AccountPage({
     : null;
 
   const subAny = sub as any;
+  const plan = subAny?.plan ?? null;
+
+  // Histórico de pagamentos alimenta a lista e também a forma de pagamento (último cartão)
+  const paymentHistory = await PaymentService.getUserPaymentHistory(userId, 50);
+  const latestCard = paymentHistory.find((pay) => !!pay.card_last4) ?? null;
+
   const subscriptionSummary = sub
     ? {
+        id: subAny.id as string,
         status: subAny.status ?? "inactive",
         plan_name: planName,
+        current_period_start: subAny.current_period_start ?? null,
         current_period_end: subAny.current_period_end ?? null,
-        payment_method: subAny.payment_method ?? subAny.external_provider ?? null,
-        amount_cents: (subAny.plan as any)?.amount_cents ?? null,
-        billing_cycle_days: (subAny.plan as any)?.billing_cycle_days ?? null,
+        trial_ends_at: subAny.trial_ends_at ?? null,
+        cancel_at_period_end: !!subAny.cancel_at_period_end,
+        canceled_at: subAny.canceled_at ?? null,
+        last_paid_at: subAny.last_paid_at ?? null,
+        last_failed_at: subAny.last_failed_at ?? null,
+        billing_cycle_days: plan?.billing_cycle_days ?? subAny.billing_cycle_days ?? null,
+        amount_cents: plan?.price_cents ?? subAny.unit_amount_cents ?? null,
+        currency: subAny.currency ?? plan?.currency ?? null,
+        provider: subAny.provider ?? null,
+        payment_method: subAny.payment_method_pref ?? latestCard?.method ?? null,
+        card_last4: latestCard?.card_last4 ?? null,
+        card_brand: latestCard?.card_brand ?? null,
+        grace_days: plan?.grace_days ?? null,
       }
     : null;
+
+  const payments = paymentHistory.map((pay) => ({
+    id: pay.id,
+    status: pay.status,
+    amount_cents: pay.amount_cents,
+    currency: pay.currency,
+    method: pay.method,
+    created_at: pay.created_at,
+    paid_at: pay.paid_at ?? null,
+    due_at: pay.due_at ?? null,
+    failed_at: pay.failed_at ?? null,
+    pix_copy_paste: pay.pix_copy_paste ?? null,
+    card_last4: pay.card_last4 ?? null,
+    card_brand: pay.card_brand ?? null,
+    description_pt: pay.description_pt ?? null,
+    description_en: pay.description_en ?? null,
+  }));
+
+  const access = await canAccessPlatform(userId);
 
   const profile = {
     id: userId,
@@ -87,6 +124,8 @@ export default async function AccountPage({
       locale={locale}
       profile={profile}
       subscription={subscriptionSummary}
+      payments={payments}
+      access={access}
       notificationPreferences={notificationPreferences}
       notificationSettings={notificationSettings}
       notificationDevices={notificationDevices}

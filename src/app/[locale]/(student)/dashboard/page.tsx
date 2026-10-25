@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { TodayWorkoutCard } from "@/components/student/workout/TodayWorkoutCard";
 import {
   Utensils,
@@ -16,6 +17,7 @@ import {
   MessageSquare,
   Bell,
   ChevronRight,
+  LayoutDashboard,
 } from "lucide-react";
 import { createClientSSR } from "@/lib/supabase/server";
 import { requireAuthenticated } from "@/lib/auth/access";
@@ -66,12 +68,11 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">
-          {greeting}, {displayName}
-        </h1>
-        <p className="text-sm md:text-base text-text-secondary">{t("subtitle")}</p>
-      </header>
+      <PageHeader
+        title={`${greeting}, ${displayName}`}
+        description={t("subtitle")}
+        icon={<LayoutDashboard size={22} />}
+      />
 
       <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <TodayWorkoutCard locale={locale} userId={userId} key={userId} />

@@ -124,7 +124,7 @@ export function PixDisplay({
           <p className="text-sm text-text-secondary">{t.instructions}</p>
         </div>
         <div className="inline-flex items-center gap-1.5 text-xs text-text-secondary bg-surface-secondary border border-border rounded-full px-3 py-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
           {t.secure}
         </div>
       </div>
@@ -148,10 +148,10 @@ export function PixDisplay({
               </div>
             )}
             {expired && (
-              <div className="absolute inset-0 rounded-2xl bg-black/70 flex items-center justify-center p-4">
+              <div className="absolute inset-0 rounded-2xl bg-background/80 flex items-center justify-center p-4">
                 <div className="text-center space-y-2">
-                  <Clock className="w-8 h-8 text-red-400 mx-auto" aria-hidden="true" />
-                  <p className="text-white font-semibold">{t.expired}</p>
+                  <Clock className="w-8 h-8 text-text mx-auto" aria-hidden="true" />
+                  <p className="text-text font-semibold">{t.expired}</p>
                   {onRefresh && (
                     <Button
                       variant="primary"
@@ -181,7 +181,7 @@ export function PixDisplay({
                 className={cn(
                   "rounded-xl border p-4",
                   expired
-                    ? "bg-red-500/10 border-red-500/40"
+                    ? "bg-text/[0.08] border-text/25"
                     : "bg-surface-secondary border-border"
                 )}
               >
@@ -189,12 +189,7 @@ export function PixDisplay({
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   {t.expires}
                 </div>
-                <p
-                  className={cn(
-                    "text-sm font-semibold",
-                    expired ? "text-red-400" : "text-text"
-                  )}
-                >
+                <p className="text-sm font-semibold text-text">
                   {formatDateTime(expiresAt, locale)}
                 </p>
               </div>
@@ -223,8 +218,8 @@ export function PixDisplay({
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : copied ? (
                   <>
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                    <span className="text-emerald-400">{t.copied}</span>
+                    <ShieldCheck className="w-4 h-4 text-primary" aria-hidden="true" />
+                    <span className="text-primary">{t.copied}</span>
                   </>
                 ) : (
                   <>
@@ -243,7 +238,7 @@ export function PixDisplay({
           )}
 
           {copied && (
-            <p className="text-center text-xs text-emerald-400 font-medium animate-fade-in">
+            <p className="text-center text-xs text-primary font-medium animate-fade-in">
               {t.copied} - {t.copiedSubtitle}
             </p>
           )}

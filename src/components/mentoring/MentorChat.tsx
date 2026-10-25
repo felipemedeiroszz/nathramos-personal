@@ -313,7 +313,7 @@ export function MentorChat({
       {/* Composer */}
       <div className="p-4 border-t border-border space-y-2 shrink-0">
         {errorMsg && (
-          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-2.5 text-xs text-red-400">
+          <div className="rounded-xl border border-text/25 bg-text/[0.08] p-2.5 text-xs text-text">
             {errorMsg}
           </div>
         )}

@@ -791,6 +791,39 @@ export interface PlatformSettingRow {
   updated_at: string
 }
 
+// Institutional content pages (Termos, Privacidade, FAQ)
+export interface ContentPageBlock {
+  id: string
+  title_pt?: string | null
+  title_en?: string | null
+  subtitle_pt?: string | null
+  subtitle_en?: string | null
+  text_pt?: string | null
+  text_en?: string | null
+  image_url?: string | null
+  button_label_pt?: string | null
+  button_label_en?: string | null
+  button_url?: string | null
+}
+
+export interface ContentPageRow {
+  id: string
+  slug: string
+  title_pt?: string | null
+  title_en?: string | null
+  subtitle_pt?: string | null
+  subtitle_en?: string | null
+  image_url?: string | null
+  cta_label_pt?: string | null
+  cta_label_en?: string | null
+  cta_url?: string | null
+  blocks: ContentPageBlock[]
+  is_active: boolean
+  updated_by_id?: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Social media types
 export interface SocialLinkRow {
   id: string

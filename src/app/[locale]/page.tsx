@@ -14,6 +14,7 @@ import {
   MessageSquare,
   TrendingUp,
   ChevronDown,
+  ArrowRight,
 } from "lucide-react";
 import { HowItWorksCarousel } from "@/components/shared/HowItWorksCarousel";
 
@@ -68,13 +69,26 @@ export default async function HomePage({
             style={{ backgroundImage: `url('${heroImages.mobile}')`, backgroundSize: 'cover' }}
           />
           <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-6 h-full min-h-dvh flex flex-col justify-end pb-20 md:pb-32">
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3">
-              <Button asChild size="lg">
-                <Link href={`/${locale}/cadastro`}>{t("primaryCta")}</Link>
-              </Button>
-              <Button asChild variant="secondary" size="lg">
-                <Link href={`/${locale}/cadastro`}>{t("secondaryCta")}</Link>
-              </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 sm:gap-5">
+              <div className="w-full sm:w-auto animate-slide-up [animation-delay:120ms] [animation-fill-mode:both]">
+                <Link
+                  href={`/${locale}/cadastro`}
+                  className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary px-8 h-13 text-base font-semibold text-primary-foreground shadow-[0_0_35px_hsl(var(--primary)/0.35)] transition-all duration-300 hover:shadow-[0_0_65px_hsl(var(--primary)/0.6)] hover:scale-[1.04] hover:-translate-y-1 active:scale-[0.99] md:h-14 md:px-10 md:text-lg lg:h-16 lg:px-12 lg:text-xl"
+                >
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <span className="relative">{t("primaryCta")}</span>
+                  <ArrowRight className="relative h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5" />
+                </Link>
+              </div>
+              <div className="w-full sm:w-auto animate-slide-up [animation-delay:240ms] [animation-fill-mode:both]">
+                <Link
+                  href={`/${locale}/planos`}
+                  className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border/60 bg-background/30 px-8 h-13 text-base font-semibold text-text backdrop-blur-md transition-all duration-300 hover:border-primary/60 hover:bg-background/50 hover:text-primary hover:scale-[1.04] hover:-translate-y-1 active:scale-[0.99] md:h-14 md:px-10 md:text-lg lg:h-16 lg:px-12 lg:text-xl"
+                >
+                  <span>{t("secondaryCta")}</span>
+                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1.5" />
+                </Link>
+              </div>
             </div>
           </div>
         </section>

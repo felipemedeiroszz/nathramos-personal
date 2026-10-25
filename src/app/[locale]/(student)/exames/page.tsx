@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
+import { FlaskConical } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAuthenticated } from "@/lib/auth/access";
 import { ExamService } from "@/services/ExamService";
 import type { ExamCategoryRow, ExamRow } from "@/types";
@@ -32,12 +34,11 @@ export default async function ExamsPage({
 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">Exames Médicos</h1>
-        <p className="text-sm md:text-base text-text-secondary">
-          Envie seus exames e receba o parecer do seu treinador
-        </p>
-      </header>
+      <PageHeader
+        title="Exames Médicos"
+        description="Envie seus exames e receba o parecer do seu treinador"
+        icon={<FlaskConical size={22} />}
+      />
 
       <StudentExamsClient locale={locale} exams={exams} categories={categories} />
     </div>

@@ -195,8 +195,8 @@ export function StudentWorkoutExecutionClient({
           className={cn(
             "fixed top-4 right-4 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg animate-fade-in",
             toast.type === "ok"
-              ? "border-green-600/40 bg-green-600/15 text-green-300"
-              : "border-red-600/40 bg-red-600/15 text-red-300"
+              ? "border-primary/40 bg-primary/15 text-primary"
+              : "border-text/25 bg-text/[0.08] text-text"
           )}
         >
           {toast.msg}

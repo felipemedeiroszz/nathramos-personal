@@ -275,6 +275,39 @@ export const SubscriptionService = {
       .eq("user_id", userId)
   },
 
+  /** Ativa a assinatura após confirmação de pagamento (ex.: PIX pago). */
+  async markPaid(subscriptionId: string, paidAt?: string) {
+    const supabase = await createServiceClientSSR()
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("id", subscriptionId)
+      .limit(1)
+      .maybeSingle()
+    const sub = data as SubscriptionRow | null
+    if (!sub) return null
+
+    const now = paidAt ? new Date(paidAt) : new Date()
+    const end = new Date(now.getTime() + (sub.billing_cycle_days || 30) * 86400_000)
+
+    const { data: updated } = await supabase
+      .from("subscriptions")
+      .update({
+        status: "active",
+        current_period_start: now.toISOString(),
+        current_period_end: end.toISOString(),
+        last_paid_at: now.toISOString(),
+        cancel_at_period_end: false,
+        ended_at: null,
+      } as never)
+      .eq("id", subscriptionId)
+      .select()
+      .limit(1)
+      .maybeSingle()
+
+    return (updated as SubscriptionRow | null) ?? sub
+  },
+
   async cancel(userId: string) {
     const sub = await this.getActive(userId)
     if (!sub || !sub.external_id || !sub.provider) {

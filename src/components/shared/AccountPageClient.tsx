@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useFormState } from "react-dom";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,12 @@ import {
   logoutAction,
 } from "@/app/actions/account";
 import { NotificationPreferencesPanel } from "@/components/shared/NotificationPreferencesPanel";
+import {
+  MembershipPanel,
+  type MembershipSubscription,
+  type MembershipPayment,
+  type MembershipAccess,
+} from "@/components/shared/MembershipPanel";
 import type { NotificationPreferences, NotifySettings } from "@/services/NotificationService";
 import { cn } from "@/lib/utils";
 import { locales } from "@/i18n/config";
@@ -29,6 +35,7 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
+  Info,
   Loader2,
   Globe,
   Settings,
@@ -57,15 +64,6 @@ interface ProfileData {
   avatar_url: string | null;
 }
 
-interface SubscriptionSummary {
-  status: string;
-  plan_name: string | null;
-  current_period_end: string | null;
-  payment_method: string | null;
-  amount_cents: number | null;
-  billing_cycle_days: number | null;
-}
-
 function initialsOf(firstName: string | null, lastName: string | null): string {
   const first = (firstName ?? "").trim()[0];
   const last = (lastName ?? "").trim()[0];
@@ -74,11 +72,11 @@ function initialsOf(firstName: string | null, lastName: string | null): string {
 
 function AlertLine({ type, text }: { type: "success" | "error" | "info"; text: string }) {
   const styles = {
-    success: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
-    error: "bg-red-500/10 border-red-500/30 text-red-400",
-    info: "bg-primary/10 border-primary/30 text-primary",
+    success: "bg-primary/10 border-primary/30 text-primary",
+    error: "bg-text/[0.08] border-text/25 text-text",
+    info: "bg-surface-secondary border-border text-text-secondary",
   } as const;
-  const Icon = type === "success" ? CheckCircle2 : type === "error" ? AlertCircle : CheckCircle2;
+  const Icon = type === "success" ? CheckCircle2 : type === "error" ? AlertCircle : Info;
   return (
     <div className={cn("rounded-xl border px-4 py-3 flex items-start gap-3 text-sm animate-in slide-in-from-top-2 fade-in duration-300", styles[type])}>
       <Icon size={18} className="mt-0.5 shrink-0" />
@@ -88,6 +86,12 @@ function AlertLine({ type, text }: { type: "success" | "error" | "info"; text: s
 }
 
 type TabType = "profile" | "security" | "notifications" | "subscription" | "settings";
+
+const TAB_IDS: TabType[] = ["profile", "security", "notifications", "subscription", "settings"];
+
+function isTabType(value: string | null): value is TabType {
+  return !!value && (TAB_IDS as string[]).includes(value);
+}
 
 function TabButton({
   active,
@@ -121,29 +125,41 @@ export function AccountPageClient({
   locale,
   profile,
   subscription,
+  payments,
+  access,
   notificationPreferences,
   notificationSettings,
   notificationDevices,
 }: {
   locale: LocaleKey;
   profile: ProfileData;
-  subscription: SubscriptionSummary | null;
+  subscription: MembershipSubscription | null;
+  payments: MembershipPayment[];
+  access: MembershipAccess;
   notificationPreferences: NotificationPreferences;
   notificationSettings: NotifySettings;
   notificationDevices: number;
 }) {
   const t = useTranslations("account");
   const tn = useTranslations("studentNotifications");
-  const s = useTranslations("subscription");
-  const p = useTranslations("payments");
   const nav = useTranslations("navigation");
   const common = useTranslations("common");
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("profile");
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<TabType>(isTabType(tabParam) ? tabParam : "profile");
   const [, startTransition] = useTransition();
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const [profileState, profileAction] = useFormState(updateProfileAction, null);
   const [passwordState, passwordAction] = useFormState(changePasswordAction, null);
@@ -192,7 +208,7 @@ export function AccountPageClient({
     { id: "profile", icon: User, label: t("profile") },
     { id: "security", icon: Lock, label: t("security") },
     { id: "notifications", icon: Bell, label: tn("tabLabel") },
-    { id: "subscription", icon: CreditCard, label: t("subscription") },
+    { id: "subscription", icon: CreditCard, label: nav("membership") },
     { id: "settings", icon: Settings, label: t("dangerZone") },
   ];
 
@@ -221,7 +237,7 @@ export function AccountPageClient({
           <TabButton
             key={tab.id}
             active={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             icon={tab.icon}
             label={tab.label}
           />
@@ -461,78 +477,13 @@ export function AccountPageClient({
         )}
 
         {activeTab === "subscription" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard size={20} /> {t("subscription")}
-              </CardTitle>
-              <CardDescription>{t("subscriptionDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-2xl border border-border bg-gradient-to-br from-surface-secondary/50 to-surface-secondary/30 p-6 space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-border">
-                  <div>
-                    <p className="text-sm text-text-secondary mb-1">{s("plan")}</p>
-                    <p className="text-xl font-bold text-text">
-                      {subscription?.plan_name || "Sem plano ativo"}
-                    </p>
-                  </div>
-                  <span className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold",
-                    subscription?.status === "active"
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                  )}>
-                    <span className="w-2 h-2 rounded-full animate-pulse bg-current" />
-                    {subscription?.status ? p(`status${subscription.status[0].toUpperCase()}${subscription.status.slice(1)}`) : p("statusExpired")}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-text-secondary">{s("price")}</p>
-                    <p className="text-lg font-semibold text-text">
-                      {subscription?.amount_cents != null
-                        ? new Intl.NumberFormat(profile.language === "en-US" ? "en-US" : "pt-BR", {
-                            style: "currency",
-                            currency: profile.language === "en-US" ? "USD" : "BRL",
-                          }).format(subscription.amount_cents / 100)
-                        : "-"}
-                      {subscription?.billing_cycle_days ? (
-                        <span className="text-sm text-text-secondary ml-2">
-                          /{p("everyNDays").replace("{n}", String(subscription.billing_cycle_days))}
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-text-secondary">{s("nextCharge")}</p>
-                    <p className="text-lg font-semibold text-text">
-                      {subscription?.current_period_end
-                        ? new Date(subscription.current_period_end).toLocaleDateString(profile.language === "en-US" ? "en-US" : "pt-BR", {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          })
-                        : "-"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-text-secondary">{s("method")}</p>
-                    <p className="text-lg font-semibold text-text capitalize">{subscription?.payment_method || "-"}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-3 justify-end">
-                <Button variant="secondary" size="lg" asChild>
-                  <a href={`/${locale}/planos`}>
-                    <CreditCard size={18} className="mr-2" />
-                    {s("manageInStripe")}
-                  </a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <MembershipPanel
+            locale={locale}
+            language={profile.language}
+            subscription={subscription}
+            payments={payments}
+            access={access}
+          />
         )}
 
         {activeTab === "settings" && (

@@ -143,6 +143,8 @@ export default function CadastroPage() {
         "accepts_privacy",
         values.accepts_privacy ? "true" : "false"
       );
+      const nextParam = new URLSearchParams(window.location.search).get("next");
+      if (nextParam) formData.append("next", nextParam);
 
       const result = await signUpAction(formData);
       if (result && !result.success) {

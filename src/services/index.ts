@@ -22,6 +22,7 @@ export { ExamService } from "./ExamService"
 export { EbookService } from "./EbookService"
 export { SocialLinksService } from "./SocialLinksService"
 export type { SocialLinkRow } from "../types"
+export { ContentPageService } from "./ContentPageService"
 export { PlanService } from "./PlanService"
 export { BillingAdminService } from "./BillingAdminService"
 export type {

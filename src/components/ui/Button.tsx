@@ -16,7 +16,7 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   secondary:
     "bg-transparent border border-border/60 text-text hover:border-primary/60 hover:text-primary hover:bg-surface-secondary/50",
   destructive:
-    "bg-red-600 text-white hover:bg-red-700 hover:-translate-y-0.5 active:translate-y-0",
+    "border border-text/25 bg-text/[0.08] text-text hover:bg-text/[0.14] hover:-translate-y-0.5 active:translate-y-0",
   ghost: "bg-transparent text-text hover:bg-surface-secondary/50",
   outline: "bg-transparent border border-border/60 text-text hover:border-primary/60 hover:text-primary",
 };

@@ -2,8 +2,9 @@ import { NextRequest } from "next/server"
 import { createPixSchema } from "@/schemas/payments"
 import { handleApiError, jsonResponse, errorResponse, requireApiUser } from "@/lib/api/response"
 import { AsaasProvider } from "@/lib/payments/asaas"
-import { PaymentService, ProfileService } from "@/lib/payments/services"
+import { PaymentService, ProfileService, SubscriptionService } from "@/lib/payments/services"
 import type { PaymentMethod } from "@/types"
+import type { CurrencyT } from "@/lib/supabase/types"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -68,8 +69,29 @@ export async function POST(req: NextRequest) {
       await ProfileService.setAsaasCustomerId(userId, customer.id)
     }
 
+    const now = new Date()
+    const intervalMs = (plan.billing_cycle_days || 30) * 86400_000
+
+    // Cria a assinatura local em estado inativo e vincula o PIX a ela,
+    // para que o webhook ative o acesso assim que o pagamento for confirmado.
+    const subscription = await SubscriptionService.upsertSubscription({
+      userId,
+      planId: plan.id,
+      externalId: pixResult.id,
+      provider: "asaas",
+      externalStatus: "pending",
+      status: "inactive",
+      currency: plan.currency as CurrencyT,
+      unitAmountCents: plan.price_cents,
+      billingCycleDays: plan.billing_cycle_days,
+      currentPeriodStart: now.toISOString(),
+      currentPeriodEnd: new Date(now.getTime() + intervalMs).toISOString(),
+      cancelAtPeriodEnd: false,
+    })
+
     const payment = await PaymentService.upsertPayment({
       userId,
+      subscriptionId: subscription?.id ?? undefined,
       provider: "asaas",
       externalId: pixResult.id,
       status: "pending",

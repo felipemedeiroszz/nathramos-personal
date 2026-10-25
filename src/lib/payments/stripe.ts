@@ -93,6 +93,86 @@ export const StripeProvider = {
     return { sessionId: session.id, url: session.url }
   },
 
+  async getOrCreateCustomer(input: {
+    userId: string
+    email: string
+    name?: string
+    existingCustomerId?: string | null
+  }): Promise<string> {
+    const stripe = getStripeClient()
+
+    if (input.existingCustomerId) {
+      try {
+        const existing = await stripe.customers.retrieve(input.existingCustomerId)
+        if (!(existing as Stripe.DeletedCustomer).deleted) {
+          return input.existingCustomerId
+        }
+      } catch {
+        // cliente inexistente: cria um novo abaixo
+      }
+    }
+
+    const created = await stripe.customers.create({
+      email: input.email || undefined,
+      name: input.name || undefined,
+      metadata: { user_id: input.userId },
+    })
+    return created.id
+  },
+
+  /** SetupIntent para coletar e salvar o cartão sem cobrança imediata. */
+  async createSetupIntentForSubscription(input: {
+    customerId: string
+    userId: string
+    planId: string
+  }): Promise<{ clientSecret: string; setupIntentId: string }> {
+    const stripe = getStripeClient()
+    const intent = await stripe.setupIntents.create({
+      customer: input.customerId,
+      payment_method_types: ["card"],
+      usage: "off_session",
+      metadata: { user_id: input.userId, plan_id: input.planId },
+    })
+    if (!intent.client_secret) {
+      throw new Error("Stripe não retornou o client secret do SetupIntent.")
+    }
+    return { clientSecret: intent.client_secret, setupIntentId: intent.id }
+  },
+
+  /**
+   * Cria a assinatura usando um cartão já salvo (SetupIntent confirmado).
+   * - Com trial: a assinatura entra em `trialing` sem cobrança imediata.
+   * - Sem trial: o Stripe cobra a primeira fatura com o cartão salvo.
+   */
+  async createSubscriptionWithPaymentMethod(input: {
+    customerId: string
+    priceId: string
+    paymentMethodId: string
+    userId: string
+    planId: string
+    trialDays?: number
+  }): Promise<Stripe.Subscription> {
+    const stripe = getStripeClient()
+
+    await stripe.customers.update(input.customerId, {
+      invoice_settings: { default_payment_method: input.paymentMethodId },
+    })
+
+    const subscription = await stripe.subscriptions.create({
+      customer: input.customerId,
+      items: [{ price: input.priceId }],
+      default_payment_method: input.paymentMethodId,
+      payment_behavior: "allow_incomplete",
+      expand: ["latest_invoice"],
+      metadata: { user_id: input.userId, plan_id: input.planId },
+      ...(input.trialDays && input.trialDays > 0
+        ? { trial_period_days: input.trialDays }
+        : {}),
+    })
+
+    return subscription
+  },
+
   async createOneTimeCheckoutSession(input: {
     userId: string
     customerId?: string

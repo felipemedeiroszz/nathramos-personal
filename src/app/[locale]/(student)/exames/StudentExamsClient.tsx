@@ -129,7 +129,7 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
   return (
     <div className="space-y-6 md:space-y-8 w-full">
       <section className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="md:col-span-2 xl:col-span-3 border-l-4 border-l-green-500">
+        <Card className="md:col-span-2 xl:col-span-3 border-l-4 border-l-primary">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -287,8 +287,8 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                 <div
                   className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                     status.type === "ok"
-                      ? "border-green-500/30 bg-green-500/10 text-green-500"
-                      : "border-red-500/30 bg-red-500/10 text-red-500"
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-text/25 bg-text/[0.08] text-text"
                   }`}
                 >
                   {status.type === "ok" ? <CheckCircle size={16} /> : <XCircle size={16} />}
@@ -332,7 +332,7 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                   {exams.length === 1 ? "" : "s"}
                 </CardDescription>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-surface-secondary text-text-secondary flex items-center justify-center">
                 <FileText size={22} />
               </div>
             </div>
@@ -400,7 +400,7 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-500 hover:text-red-500"
+                        className="text-text hover:text-text"
                         onClick={() => handleDelete(exam)}
                         disabled={busyId === exam.id}
                       >

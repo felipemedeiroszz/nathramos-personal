@@ -18,6 +18,7 @@ const publicNavItems = [
   { navKey: "diets", href: "/dietas" },
   { navKey: "performance", href: "/desempenho" },
   { navKey: "mentoring", href: "/mentoria" },
+  { navKey: "plans", href: "/planos" },
   { navKey: "faq", href: "/faq" },
 ] as const;
 

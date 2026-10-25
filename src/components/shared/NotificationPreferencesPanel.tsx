@@ -262,7 +262,7 @@ export function NotificationPreferencesPanel({
           <span
             className={cn(
               "inline-flex items-center gap-2 text-sm",
-              feedback.type === "success" ? "text-green-400" : "text-red-400"
+              feedback.type === "success" ? "text-primary" : "text-text"
             )}
           >
             {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}

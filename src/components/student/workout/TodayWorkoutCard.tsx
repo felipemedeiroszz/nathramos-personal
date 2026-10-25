@@ -118,7 +118,7 @@ export function TodayWorkoutCard({ locale, userId }: TodayWorkoutCardProps) {
           <div className="flex flex-col items-center justify-center py-8 text-center">
             {data.completedToday ? (
               <>
-                <CheckCircle size={32} className="text-green-500 mb-3" />
+                <CheckCircle size={32} className="text-primary mb-3" />
                 <p className="text-text font-semibold mb-1">{tWorkout("completed")}</p>
                 <p className="text-text-secondary text-sm">
                   {t("restDay")}
@@ -126,7 +126,7 @@ export function TodayWorkoutCard({ locale, userId }: TodayWorkoutCardProps) {
               </>
             ) : (
               <>
-                <CheckCircle size={32} className="text-green-500 mb-3" />
+                <CheckCircle size={32} className="text-primary mb-3" />
                 <p className="text-text font-semibold mb-1">{t("noWorkoutToday")}</p>
                 <p className="text-text-secondary text-sm">
                   {data.reason || t("restDay")}
@@ -145,14 +145,14 @@ export function TodayWorkoutCard({ locale, userId }: TodayWorkoutCardProps) {
 
   if (data.completedToday) {
     return (
-      <Card className="md:col-span-2 xl:col-span-2 border-green-500/30 bg-green-500/5">
+      <Card className="md:col-span-2 xl:col-span-2 border-primary/30 bg-primary/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>{t("todayTraining")}</CardTitle>
               <CardDescription>{tWorkout("today")}</CardDescription>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <CheckCircle size={22} />
             </div>
           </div>

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/Dialog";
 import { PixDisplay } from "@/components/shared/PixDisplay";
 import {
@@ -44,13 +45,7 @@ interface PixData {
   pix_expires_at?: string;
 }
 
-const ACCENTS = [
-  "from-amber-500 to-orange-600",
-  "from-emerald-500 to-green-600",
-  "from-sky-500 to-blue-600",
-  "from-violet-500 to-purple-600",
-  "from-rose-500 to-red-600",
-];
+const ACCENTS = ["bg-primary/10 border border-primary/30"];
 
 export function EbookLibraryClient({
   locale,
@@ -181,29 +176,26 @@ export function EbookLibraryClient({
       );
     }
     return (
-      <div className={cn("h-full w-full flex items-center justify-center bg-gradient-to-br", accent)}>
-        <BookOpen size={44} className="text-white/90" />
+      <div className={cn("h-full w-full flex items-center justify-center", accent)}>
+        <BookOpen size={44} className="text-primary" />
       </div>
     );
   };
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">
-          {L("Biblioteca Digital", "Digital Library")}
-        </h1>
-        <p className="text-sm md:text-base text-text-secondary">
-          {L(
-            "Materiais exclusivos para alunos Nath Ramos",
-            "Exclusive materials for Nath Ramos students"
-          )}
-        </p>
-      </header>
+      <PageHeader
+        title={L("Biblioteca Digital", "Digital Library")}
+        description={L(
+          "Materiais exclusivos para alunos Nath Ramos",
+          "Exclusive materials for Nath Ramos students"
+        )}
+        icon={<BookOpen size={22} />}
+      />
 
       {purchaseStatus === "success" && (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4">
+          <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-semibold text-text">
               {L("Pagamento confirmado!", "Payment confirmed!")}
@@ -449,7 +441,7 @@ export function EbookLibraryClient({
             </div>
 
             {error && (
-              <p className="mt-3 text-sm text-red-500 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2">
+              <p className="mt-3 text-sm text-text rounded-lg border border-text/25 bg-text/[0.08] px-3 py-2">
                 {error}
               </p>
             )}

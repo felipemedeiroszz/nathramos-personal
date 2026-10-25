@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { handleApiError, jsonResponse, errorResponse, requireApiUser } from "@/lib/api/response"
 import { AsaasProvider } from "@/lib/payments/asaas"
-import { PaymentService } from "@/lib/payments/services"
+import { PaymentService, SubscriptionService } from "@/lib/payments/services"
 import type { PaymentStatus, PaymentRow } from "@/lib/supabase/types"
 
 export const dynamic = "force-dynamic"
@@ -57,6 +57,14 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
           descriptionEn: localPayment.description_en,
           paidAt: asaasStatus.payment_date || localPayment.paid_at || undefined,
         })
+
+        // Libera o acesso imediatamente, sem depender do webhook.
+        if (mapped === "paid" && localPayment.subscription_id) {
+          await SubscriptionService.markPaid(
+            localPayment.subscription_id,
+            asaasStatus.payment_date || undefined
+          )
+        }
       }
 
       return jsonResponse({

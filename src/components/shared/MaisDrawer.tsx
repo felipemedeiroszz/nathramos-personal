@@ -1,12 +1,13 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/Drawer";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import {
   Pill,
-  Droplet,
+  Droplets,
   FileText,
   BookOpen,
   ShoppingCart,
@@ -14,6 +15,7 @@ import {
   Calendar,
   Bell,
   User,
+  CreditCard,
   LogOut,
 } from "lucide-react";
 
@@ -33,9 +35,25 @@ type MenuItemKey =
   | "mentoring"
   | "meetings"
   | "notifications"
-  | "account";
+  | "account"
+  | "membership";
+
+const labelKey: Record<MenuItemKey, string> = {
+  account: "account",
+  membership: "membership",
+  supplements: "supplements",
+  hydration: "hydration",
+  exams: "exams",
+  ebooks: "ebooks",
+  shoppingList: "shoppingList",
+  mentoring: "mentoring",
+  meetings: "meetings",
+  notifications: "notifications",
+};
 
 const routeForKey: Record<MenuItemKey, string> = {
+  account: "/account",
+  membership: "/account?tab=subscription",
   supplements: "/suplementos",
   hydration: "/hidratacao",
   exams: "/exames",
@@ -44,40 +62,49 @@ const routeForKey: Record<MenuItemKey, string> = {
   mentoring: "/conversas",
   meetings: "/reunioes",
   notifications: "/notificacoes",
-  account: "/account",
 };
 
 export function MaisDrawer({ locale, isOpen, onClose, onLogout }: MaisDrawerProps) {
   const t = useTranslations("navigation");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab");
 
-  const menuItems: {
-    key: MenuItemKey;
-    icon: React.ReactNode;
+  const sections: {
+    titleKey: string;
+    items: { key: MenuItemKey; icon: React.ReactNode }[];
   }[] = [
-    { key: "supplements", icon: <Pill size={20} /> },
-    { key: "hydration", icon: <Droplet size={20} /> },
-    { key: "exams", icon: <FileText size={20} /> },
-    { key: "ebooks", icon: <BookOpen size={20} /> },
-    { key: "shoppingList", icon: <ShoppingCart size={20} /> },
-    { key: "mentoring", icon: <MessageSquare size={20} /> },
-    { key: "meetings", icon: <Calendar size={20} /> },
-    { key: "notifications", icon: <Bell size={20} /> },
-    { key: "account", icon: <User size={20} /> },
+    {
+      titleKey: "sectionAccount",
+      items: [
+        { key: "account", icon: <User size={20} /> },
+        { key: "membership", icon: <CreditCard size={20} /> },
+      ],
+    },
+    {
+      titleKey: "sectionHealth",
+      items: [
+        { key: "supplements", icon: <Pill size={20} /> },
+        { key: "hydration", icon: <Droplets size={20} /> },
+        { key: "exams", icon: <FileText size={20} /> },
+      ],
+    },
+    {
+      titleKey: "sectionContent",
+      items: [
+        { key: "ebooks", icon: <BookOpen size={20} /> },
+        { key: "shoppingList", icon: <ShoppingCart size={20} /> },
+      ],
+    },
+    {
+      titleKey: "sectionCommunication",
+      items: [
+        { key: "mentoring", icon: <MessageSquare size={20} /> },
+        { key: "meetings", icon: <Calendar size={20} /> },
+        { key: "notifications", icon: <Bell size={20} /> },
+      ],
+    },
   ];
-
-  const labelForKey = (key: MenuItemKey) => {
-    switch (key) {
-      case "supplements": return t("supplements");
-      case "hydration": return t("hydration");
-      case "exams": return t("exams");
-      case "ebooks": return t("ebooks");
-      case "shoppingList": return t("shoppingList");
-      case "mentoring": return t("mentoring");
-      case "meetings": return t("meetings");
-      case "notifications": return t("notifications");
-      case "account": return t("account");
-    }
-  };
 
   return (
     <Drawer isOpen={isOpen} onClose={onClose} position="right">
@@ -86,27 +113,56 @@ export function MaisDrawer({ locale, isOpen, onClose, onLogout }: MaisDrawerProp
         <DrawerClose onClick={onClose} />
       </DrawerHeader>
       <DrawerContent>
-        <nav className="space-y-1">
-          {menuItems.map((item) => (
-            <Link
-              key={item.key}
-              href={`/${locale}${routeForKey[item.key]}`}
-              onClick={onClose}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-text-secondary hover:text-text hover:bg-surface-secondary transition-colors"
-            >
-              {item.icon}
-              <span className="font-medium">{labelForKey(item.key)}</span>
-            </Link>
+        <nav className="space-y-6">
+          {sections.map((section) => (
+            <div key={section.titleKey} className="space-y-1">
+              <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                {t(section.titleKey)}
+              </p>
+              {section.items.map((item) => {
+                const href = `/${locale}${routeForKey[item.key]}`;
+                const basePath = `/${locale}${routeForKey[item.key].split("?")[0]}`;
+                const isAccountArea = basePath.endsWith("/account");
+                const isActive = isAccountArea
+                  ? pathname === basePath &&
+                    (item.key === "membership"
+                      ? activeTab === "subscription"
+                      : activeTab !== "subscription")
+                  : pathname === basePath || pathname === basePath + "/";
+                return (
+                  <Link
+                    key={item.key}
+                    href={href}
+                    onClick={onClose}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-text-secondary hover:bg-surface-secondary hover:text-text"
+                    )}
+                  >
+                    <span className={cn(isActive ? "text-primary" : "text-text-secondary")}>
+                      {item.icon}
+                    </span>
+                    <span className="font-medium">{t(labelKey[item.key])}</span>
+                  </Link>
+                );
+              })}
+            </div>
           ))}
+
           {onLogout && (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-surface-secondary transition-colors"
-            >
-              <LogOut size={20} />
-              <span className="font-medium">{t("logout")}</span>
-            </button>
+            <div className="border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text"
+              >
+                <LogOut size={20} />
+                <span className="font-medium">{t("logout")}</span>
+              </button>
+            </div>
           )}
         </nav>
       </DrawerContent>

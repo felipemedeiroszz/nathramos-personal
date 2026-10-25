@@ -7,6 +7,7 @@ import { CalendarClock, History, Video } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAuthenticated } from "@/lib/auth/access";
 import { MentorshipService, type MeetingWithStudent } from "@/services/MentorshipService";
 
@@ -106,10 +107,11 @@ export default async function StudentMeetingsPage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">{nav("meetings")}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{t("meetingsSubtitle")}</p>
-      </header>
+      <PageHeader
+        title={nav("meetings")}
+        description={t("meetingsSubtitle")}
+        icon={<CalendarClock size={22} />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5 space-y-4 h-fit">

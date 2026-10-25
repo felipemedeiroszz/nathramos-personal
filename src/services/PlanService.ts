@@ -108,6 +108,7 @@ export class PlanService {
         highlight_hex: parsed.highlight_hex ?? null,
         badge_pt: parsed.badge_pt ?? null,
         badge_en: parsed.badge_en ?? null,
+        banners: parsed.banners ?? [],
         is_active: parsed.is_active,
       }
 

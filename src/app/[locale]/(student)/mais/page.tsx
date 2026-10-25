@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { MoreHorizontal, MessageCircle } from "lucide-react";
 import { requireAuthenticated } from "@/lib/auth/access";
 
@@ -27,10 +28,11 @@ export default async function MorePage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">{nav("moreOptions")}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{s("comingSoon")}</p>
-      </header>
+      <PageHeader
+        title={nav("moreOptions")}
+        description={s("comingSoon")}
+        icon={<MoreHorizontal size={22} />}
+      />
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
