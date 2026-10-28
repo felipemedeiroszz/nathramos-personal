@@ -1,7 +1,8 @@
 "use client";
 
+import { useDialogFocus } from "./useDialogFocus";
 import { cn } from "@/lib/utils";
-import { HTMLAttributes, useEffect, useRef } from "react";
+import { HTMLAttributes, ButtonHTMLAttributes, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 export interface ModalProps extends HTMLAttributes<HTMLDivElement> {
@@ -9,24 +10,16 @@ export interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;
 }
 
-export function Modal({ isOpen, onClose, children, className, ...props }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  children,
+  className,
+  ...props
+}: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, onClose]);
+  useDialogFocus(isOpen, onClose, modalRef);
 
   if (!isOpen) return null;
 
@@ -38,9 +31,13 @@ export function Modal({ isOpen, onClose, children, className, ...props }: ModalP
       />
       <div
         ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={props["aria-label"] || "Dialog"}
+        tabIndex={-1}
         className={cn(
           "relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl animate-fade-in",
-          className
+          className,
         )}
         {...props}
       >
@@ -50,25 +47,43 @@ export function Modal({ isOpen, onClose, children, className, ...props }: ModalP
   );
 }
 
-export function ModalHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function ModalHeader({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center justify-between mb-4", className)} {...props} />
+    <div
+      className={cn("flex items-center justify-between mb-4", className)}
+      {...props}
+    />
   );
 }
 
-export function ModalTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+export function ModalTitle({
+  className,
+  ...props
+}: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h2 className={cn("text-lg font-semibold text-text", className)} {...props} />
+    <h2
+      className={cn("text-lg font-semibold text-text", className)}
+      {...props}
+    />
   );
 }
 
-export function ModalClose({ onClick, className, ...props }: HTMLAttributes<HTMLButtonElement>) {
+export function ModalClose({
+  onClick,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
+      type="button"
+      aria-label="Close"
       onClick={onClick}
       className={cn(
         "p-2 hover:bg-surface-secondary rounded-lg transition-colors text-text-secondary hover:text-text",
-        className
+        className,
       )}
       {...props}
     >
@@ -77,12 +92,21 @@ export function ModalClose({ onClick, className, ...props }: HTMLAttributes<HTML
   );
 }
 
-export function ModalBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function ModalBody({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("mb-4", className)} {...props} />;
 }
 
-export function ModalFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function ModalFooter({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center justify-end gap-3", className)} {...props} />
+    <div
+      className={cn("flex items-center justify-end gap-3", className)}
+      {...props}
+    />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, Loader2, QrCode, RefreshCw } from "lucide-react";
+import { validCpf } from "@/lib/payments/document";
 import { cn } from "@/lib/utils";
 
 export interface PixLabels {
@@ -26,21 +27,45 @@ interface PixCharge {
 }
 
 interface PixCheckoutPanelProps {
+  needsDocument?: boolean;
+  locale?: string;
   planId: string;
   labels: PixLabels;
   onSuccess: () => void;
 }
 
-export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanelProps) {
+export function PixCheckoutPanel({
+  locale = "pt-BR",
+  needsDocument = false,
+  planId,
+  labels,
+  onSuccess,
+}: PixCheckoutPanelProps) {
+  const [cpf, setCpf] = useState("");
   const [charge, setCharge] = useState<PixCharge | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [expired, setExpired] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const en = locale === "en-US";
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedRef = useRef(false);
+  const creatingRef = useRef(false);
 
   const createCharge = useCallback(async () => {
+    if (creatingRef.current) return;
+    if ((needsDocument || cpf) && !validCpf(cpf)) {
+      setError(
+        en
+          ? "Enter a valid CPF to identify the payer."
+          : "Informe um CPF válido para identificar o pagador.",
+      );
+      return;
+    }
+    creatingRef.current = true;
     setLoading(true);
     setError(null);
     setCharge(null);
@@ -50,12 +75,17 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
       const res = await fetch("/api/payments/asaas/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId }),
+        body: JSON.stringify({
+          plan_id: planId,
+          ...(cpf ? { cpf: cpf.replace(/\D/g, "") } : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.pix_copy_paste) {
-        setError(typeof data?.error === "string" ? data.error : labels.paymentError);
+        setError(
+          typeof data?.error === "string" ? data.error : labels.paymentError,
+        );
         setLoading(false);
         return;
       }
@@ -70,12 +100,10 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
     } catch {
       setError(labels.paymentError);
       setLoading(false);
+    } finally {
+      creatingRef.current = false;
     }
-  }, [planId, labels.paymentError]);
-
-  useEffect(() => {
-    void createCharge();
-  }, [createCharge]);
+  }, [planId, labels.paymentError, cpf, needsDocument, en]);
 
   useEffect(() => {
     if (!charge?.payment_id) return;
@@ -83,15 +111,30 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
     const check = async () => {
       try {
         const res = await fetch(`/api/payments/asaas/${charge.payment_id}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          setNotice(
+            en
+              ? "Unable to check right now. Please retry; do not pay twice."
+              : "Não foi possível verificar agora. Tente novamente; não pague duas vezes.",
+          );
+          return;
+        }
+        setNotice("");
         const data = await res.json().catch(() => null);
-        if (data?.status === "paid" && !completedRef.current) {
+        if (
+          ["paid", "partially_refunded"].includes(data?.status) &&
+          !completedRef.current
+        ) {
           completedRef.current = true;
           if (pollingRef.current) clearInterval(pollingRef.current);
           onSuccess();
         }
       } catch {
-        // silencioso: tenta novamente no próximo ciclo
+        setNotice(
+          en
+            ? "Connection interrupted. Your PIX was preserved."
+            : "Conexão interrompida. Seu PIX foi preservado.",
+        );
       }
     };
 
@@ -101,7 +144,18 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [charge?.payment_id, onSuccess]);
+  }, [charge?.payment_id, onSuccess, en]);
+
+  useEffect(() => {
+    const check = () =>
+      setExpired(
+        !!charge?.pix_expires_at &&
+          Date.parse(charge.pix_expires_at) <= Date.now(),
+      );
+    check();
+    const timer = setInterval(check, 1000);
+    return () => clearInterval(timer);
+  }, [charge?.pix_expires_at]);
 
   const handleCopy = async () => {
     if (!charge) return;
@@ -110,12 +164,17 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // clipboard indisponível
+      setNotice(
+        en
+          ? "Unable to copy. Select the code and copy it manually."
+          : "Não foi possível copiar. Selecione o código e copie manualmente.",
+      );
     }
   };
 
   const qrSrc = charge?.pix_qr_code
-    ? charge.pix_qr_code.startsWith("data:") || charge.pix_qr_code.startsWith("http")
+    ? charge.pix_qr_code.startsWith("data:") ||
+      charge.pix_qr_code.startsWith("http")
       ? charge.pix_qr_code
       : `data:image/png;base64,${charge.pix_qr_code}`
     : "";
@@ -129,10 +188,58 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
     );
   }
 
+  const documentInput = (
+    <div className="space-y-2 text-left">
+      <label htmlFor="pix-cpf" className="text-sm font-medium">
+        {en ? "Payer CPF" : "CPF do pagador"}
+        {!needsDocument && (en ? " (optional)" : " (opcional)")}
+      </label>
+      <input
+        id="pix-cpf"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={14}
+        value={cpf}
+        onChange={(e) => setCpf(e.target.value)}
+        placeholder="000.000.000-00"
+        className="w-full rounded-xl border border-border bg-background px-4 py-3"
+      />
+      <p className="text-xs text-text-secondary">
+        {en
+          ? "Used by the payment provider to identify the payer. Never enter a card password here."
+          : "Utilizado pelo provedor para identificar o pagador na cobrança PIX."}
+      </p>
+    </div>
+  );
+
+  if (!charge && !error)
+    return (
+      <div className="space-y-4 text-center py-6">
+        <QrCode size={32} className="mx-auto text-primary" />
+        <h3 className="text-lg font-semibold">
+          {en ? "Create your PIX payment" : "Gere seu pagamento PIX"}
+        </h3>
+        <p className="text-sm text-text-secondary">
+          {en
+            ? "A charge will only be created when you continue. An existing pending PIX will be reused."
+            : "A cobrança só será criada quando você continuar. Se já existir PIX pendente, vamos reutilizá-lo."}
+        </p>
+        {documentInput}
+        <button
+          type="button"
+          onClick={() => void createCharge()}
+          className="min-h-11 rounded-xl bg-primary px-6 font-semibold text-primary-foreground"
+        >
+          {en ? "Generate PIX" : "Gerar PIX"}
+        </button>
+      </div>
+    );
+
   if (error || !charge) {
     return (
       <div className="space-y-4 py-10 text-center">
         <p className="text-sm text-red-400">{error ?? labels.paymentError}</p>
+        {documentInput}
         <button
           type="button"
           onClick={() => void createCharge()}
@@ -149,63 +256,141 @@ export function PixCheckoutPanel({ planId, labels, onSuccess }: PixCheckoutPanel
     <div className="space-y-5">
       <div className="flex items-center gap-2 text-primary">
         <QrCode size={18} />
-        <h3 className="text-sm font-semibold uppercase tracking-wide">{labels.title}</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide">
+          {labels.title}
+        </h3>
       </div>
 
-      <p className="text-sm leading-relaxed text-text-secondary">{labels.instructions}</p>
+      <p className="text-sm leading-relaxed text-text-secondary">
+        {labels.instructions}
+      </p>
 
-      <div className="flex justify-center">
-        <div className="rounded-2xl border border-primary/25 bg-white p-3 shadow-[0_0_35px_hsl(var(--primary)/0.15)]">
-          {qrSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={qrSrc} alt={labels.qr} className="h-52 w-52 object-contain" />
-          ) : (
-            <div className="flex h-52 w-52 items-center justify-center text-black/40">QR</div>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-text-secondary">{labels.copyPaste}</label>
-        <div className="flex items-stretch gap-2">
-          <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
-            <p className="truncate font-mono text-xs text-text-secondary">{charge.pix_copy_paste}</p>
+      {notice && (
+        <p
+          role="status"
+          className="rounded-xl border border-primary/30 p-3 text-sm"
+        >
+          {notice}
+        </p>
+      )}
+      {expired && (
+        <p role="alert" className="rounded-xl border border-border p-3 text-sm">
+          {en
+            ? "This PIX code expired. Do not use it. Check your payment in the billing center before creating another."
+            : "Este código PIX venceu. Não o utilize. Confira o pagamento na central antes de gerar outro."}
+        </p>
+      )}
+      {!expired && (
+        <>
+          <div className="flex justify-center">
+            <div className="rounded-2xl border border-primary/25 bg-white p-3 shadow-[0_0_35px_hsl(var(--primary)/0.15)]">
+              {qrSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={qrSrc}
+                  alt={labels.qr}
+                  className="h-52 w-52 object-contain"
+                />
+              ) : (
+                <div className="flex h-52 w-52 items-center justify-center text-black/40">
+                  QR
+                </div>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all duration-300",
-              copied
-                ? "bg-primary/15 text-primary"
-                : "bg-primary text-primary-foreground hover:shadow-[0_0_30px_hsl(var(--primary)/0.4)]"
-            )}
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            <span className="hidden sm:inline">{copied ? labels.copied : labels.copy}</span>
-          </button>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-2 text-xs text-text-secondary/80">
-        <Loader2 size={14} className="animate-spin text-primary" />
-        <span>{labels.awaiting}</span>
-      </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text-secondary">
+              {labels.copyPaste}
+            </label>
+            <div className="flex items-stretch gap-2">
+              <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-background/60 px-3 py-3">
+                <p className="truncate font-mono text-xs text-text-secondary">
+                  {charge.pix_copy_paste}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all duration-300",
+                  copied
+                    ? "bg-primary/15 text-primary"
+                    : "bg-primary text-primary-foreground hover:shadow-[0_0_30px_hsl(var(--primary)/0.4)]",
+                )}
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                <span className="hidden sm:inline">
+                  {copied ? labels.copied : labels.copy}
+                </span>
+              </button>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-2 text-xs text-text-secondary/80">
+            <Loader2 size={14} className="animate-spin text-primary" />
+            <span>{labels.awaiting}</span>
+          </div>
+        </>
+      )}
       {charge.pix_expires_at && (
         <p className="text-xs text-text-secondary/70">
-          {labels.expires}: {new Date(charge.pix_expires_at).toLocaleDateString()}
+          {labels.expires}:{" "}
+          {new Date(charge.pix_expires_at).toLocaleString(locale, {
+            timeZone: "America/Sao_Paulo",
+          })}
         </p>
       )}
 
       <button
         type="button"
-        onClick={() => void createCharge()}
+        disabled={checking}
+        onClick={async () => {
+          setChecking(true);
+          try {
+            const response = await fetch(
+              `/api/payments/asaas/${charge.payment_id}`,
+              { cache: "no-store" },
+            );
+            if (!response.ok) throw new Error();
+            const data = await response.json();
+            if (["paid", "partially_refunded"].includes(data.status))
+              onSuccess();
+            else
+              setNotice(
+                en
+                  ? "Payment is not confirmed yet. Please check your bank receipt."
+                  : "O pagamento ainda não foi confirmado. Confira o comprovante do seu banco.",
+              );
+          } catch {
+            setNotice(
+              en
+                ? "Unable to check. Try again shortly."
+                : "Não foi possível consultar. Tente novamente em instantes.",
+            );
+          } finally {
+            setChecking(false);
+          }
+        }}
         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-background/40 text-sm font-semibold text-text transition-all duration-300 hover:border-primary/60 hover:text-primary"
       >
         <RefreshCw size={16} />
-        {labels.refresh}
+        {checking
+          ? en
+            ? "Checking…"
+            : "Verificando…"
+          : en
+            ? "I paid · Check payment"
+            : "Já paguei · Verificar pagamento"}
       </button>
+      <a
+        className="block text-center text-sm text-primary underline"
+        href={`/${locale}/assinatura`}
+      >
+        {en
+          ? "Billing center / change method"
+          : "Central de pagamentos / trocar forma"}
+      </a>
     </div>
   );
 }

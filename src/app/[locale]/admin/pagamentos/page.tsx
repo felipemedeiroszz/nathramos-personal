@@ -1,3 +1,5 @@
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -14,16 +16,23 @@ export const metadata: Metadata = {
 
 export default async function AdminPagamentosPage({
   params: { locale },
+  searchParams = {},
 }: {
   params: { locale: (typeof locales)[number] };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminPayments = await getTranslations("adminPayments");
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
 
-  const payments = await BillingAdminService.listPayments();
+  const pageParams = {
+    ...searchParams,
+    currency: searchParams.currency || "BRL",
+  };
+  const dataPage = await getAdminDataPage("payments", pageParams);
+  const payments = dataPage.rows;
 
   const title = (() => {
     try {
@@ -36,9 +45,20 @@ export default async function AdminPagamentosPage({
     <div className="space-y-6 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{tAdminPayments("subtitle")}</p>
+        <p className="text-sm md:text-base text-text-secondary">
+          {tAdminPayments("subtitle")}
+        </p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+        finance
+        exportUrl="/api/admin/payments/export"
+      />
       <AdminPagamentosClient title={title} payments={payments} />
     </div>
   );

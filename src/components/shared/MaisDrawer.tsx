@@ -53,7 +53,7 @@ const labelKey: Record<MenuItemKey, string> = {
 
 const routeForKey: Record<MenuItemKey, string> = {
   account: "/account",
-  membership: "/account?tab=subscription",
+  membership: "/assinatura",
   supplements: "/suplementos",
   hydration: "/hidratacao",
   exams: "/exames",

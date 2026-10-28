@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -15,11 +16,19 @@ import {
   ModalBody,
   ModalFooter,
 } from "@/components/ui/Modal";
-import { CheckCircle, Loader2, Pill, Plus, Trash2, XCircle } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  Pill,
+  Plus,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { saveSupplementKitAction } from "@/app/actions/content";
 import type { SupplementKitWithItems, SupplementRow } from "@/types";
 
 interface KitItemDraft {
+  id?: string;
   supplement_id: string;
   dosage: string;
   dosage_unit: string;
@@ -64,12 +73,15 @@ export function SupplementKitModal({
   const t = useTranslations("adminSupplementKits");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const [form, setForm] = useState(emptyForm);
   const [items, setItems] = useState<KitItemDraft[]>([]);
   const [selectedSupplement, setSelectedSupplement] = useState("");
-  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [status, setStatus] = useState<{
+    type: "ok" | "err";
+    msg: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -93,6 +105,7 @@ export function SupplementKitModal({
       });
       setItems(
         (kit.items ?? []).map((item) => ({
+          id: item.id,
           supplement_id: item.supplement_id ?? "",
           dosage: item.dosage != null ? String(item.dosage) : "",
           dosage_unit: item.dosage_unit ?? "",
@@ -100,7 +113,7 @@ export function SupplementKitModal({
           times_of_day: (item.times_of_day ?? []).join(", "),
           notes_pt: item.notes_pt ?? "",
           notes_en: item.notes_en ?? "",
-        }))
+        })),
       );
     } else {
       setForm(emptyForm);
@@ -137,7 +150,7 @@ export function SupplementKitModal({
 
   function updateItem(index: number, key: keyof KitItemDraft, value: any) {
     setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [key]: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
     );
   }
 
@@ -155,6 +168,7 @@ export function SupplementKitModal({
 
       const res = await saveSupplementKitAction({
         kit: {
+          revision: kit?.revision,
           id: form.id,
           name_pt: form.name_pt,
           name_en: form.name_en,
@@ -170,6 +184,7 @@ export function SupplementKitModal({
           is_featured: form.is_featured,
         },
         items: items.map((item, index) => ({
+          id: item.id,
           supplement_id: item.supplement_id,
           dosage: item.dosage ? Number(item.dosage) : null,
           dosage_unit: item.dosage_unit || null,
@@ -194,16 +209,34 @@ export function SupplementKitModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
+      className="max-w-3xl max-h-[90vh] overflow-y-auto"
+    >
       <ModalHeader>
         <ModalTitle>{kit ? t("editKit") : t("newKit")}</ModalTitle>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
+      {kit && (
+        <a
+          className="block mb-3 text-sm text-primary underline"
+          href={`/${locale}/admin/historico?kind=supplement_kits&record=${kit.id}`}
+        >
+          {locale === "en-US"
+            ? "Compare saved versions"
+            : "Comparar versões salvas"}
+        </a>
+      )}
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("namePt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("namePt")}
+              </label>
               <Input
                 value={form.name_pt}
                 onChange={(e) => update("name_pt", e.target.value)}
@@ -212,7 +245,9 @@ export function SupplementKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("nameEn")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("nameEn")}
+              </label>
               <Input
                 value={form.name_en}
                 onChange={(e) => update("name_en", e.target.value)}
@@ -223,7 +258,9 @@ export function SupplementKitModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("goalPt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("goalPt")}
+              </label>
               <Input
                 value={form.goal_pt}
                 onChange={(e) => update("goal_pt", e.target.value)}
@@ -231,21 +268,30 @@ export function SupplementKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("goalEn")}</label>
-              <Input value={form.goal_en} onChange={(e) => update("goal_en", e.target.value)} />
+              <label className="text-sm font-medium text-text">
+                {t("goalEn")}
+              </label>
+              <Input
+                value={form.goal_en}
+                onChange={(e) => update("goal_en", e.target.value)}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("shortDescPt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("shortDescPt")}
+              </label>
               <Input
                 value={form.short_desc_pt}
                 onChange={(e) => update("short_desc_pt", e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("shortDescEn")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("shortDescEn")}
+              </label>
               <Input
                 value={form.short_desc_en}
                 onChange={(e) => update("short_desc_en", e.target.value)}
@@ -254,7 +300,9 @@ export function SupplementKitModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("descPt")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("descPt")}
+            </label>
             <Textarea
               value={form.description_pt}
               onChange={(e) => update("description_pt", e.target.value)}
@@ -263,7 +311,9 @@ export function SupplementKitModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("descEn")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("descEn")}
+            </label>
             <Textarea
               value={form.description_en}
               onChange={(e) => update("description_en", e.target.value)}
@@ -273,7 +323,9 @@ export function SupplementKitModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("coverUrl")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("coverUrl")}
+              </label>
               <Input
                 value={form.cover_image_url}
                 onChange={(e) => update("cover_image_url", e.target.value)}
@@ -281,7 +333,9 @@ export function SupplementKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("tags")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("tags")}
+              </label>
               <Input
                 value={form.tags}
                 onChange={(e) => update("tags", e.target.value)}
@@ -315,7 +369,9 @@ export function SupplementKitModal({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Pill size={16} className="text-primary" />
-                <span className="text-sm font-semibold text-text">{t("kitItems")}</span>
+                <span className="text-sm font-semibold text-text">
+                  {t("kitItems")}
+                </span>
                 <Badge variant="outline">{items.length}</Badge>
               </div>
             </div>
@@ -346,7 +402,9 @@ export function SupplementKitModal({
             </div>
 
             {supplements.length === 0 && (
-              <p className="text-xs text-text-secondary">{t("noSupplementsAvailable")}</p>
+              <p className="text-xs text-text-secondary">
+                {t("noSupplementsAvailable")}
+              </p>
             )}
 
             {items.length === 0 ? (
@@ -354,7 +412,9 @@ export function SupplementKitModal({
             ) : (
               <div className="space-y-3">
                 {items.map((item, index) => {
-                  const supplement = supplements.find((s) => s.id === item.supplement_id);
+                  const supplement = supplements.find(
+                    (s) => s.id === item.supplement_id,
+                  );
                   return (
                     <div
                       key={item.supplement_id}
@@ -362,7 +422,8 @@ export function SupplementKitModal({
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold text-text">
-                          {supplementLabel(supplement) || item.supplement_id.slice(0, 8)}
+                          {supplementLabel(supplement) ||
+                            item.supplement_id.slice(0, 8)}
                         </span>
                         <Button
                           type="button"
@@ -377,46 +438,68 @@ export function SupplementKitModal({
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="space-y-1">
-                          <label className="text-xs text-text-secondary">{t("dosage")}</label>
+                          <label className="text-xs text-text-secondary">
+                            {t("dosage")}
+                          </label>
                           <Input
                             value={item.dosage}
-                            onChange={(e) => updateItem(index, "dosage", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(index, "dosage", e.target.value)
+                            }
                             placeholder="5"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-text-secondary">{t("dosageUnit")}</label>
+                          <label className="text-xs text-text-secondary">
+                            {t("dosageUnit")}
+                          </label>
                           <Input
                             value={item.dosage_unit}
-                            onChange={(e) => updateItem(index, "dosage_unit", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(index, "dosage_unit", e.target.value)
+                            }
                             placeholder="g"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-text-secondary">{t("frequency")}</label>
+                          <label className="text-xs text-text-secondary">
+                            {t("frequency")}
+                          </label>
                           <Input
                             type="number"
                             min={1}
                             value={item.frequency_per_day}
                             onChange={(e) =>
-                              updateItem(index, "frequency_per_day", Number(e.target.value))
+                              updateItem(
+                                index,
+                                "frequency_per_day",
+                                Number(e.target.value),
+                              )
                             }
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-text-secondary">{t("timesOfDay")}</label>
+                          <label className="text-xs text-text-secondary">
+                            {t("timesOfDay")}
+                          </label>
                           <Input
                             value={item.times_of_day}
-                            onChange={(e) => updateItem(index, "times_of_day", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(index, "times_of_day", e.target.value)
+                            }
                             placeholder="08:00, 20:00"
                           />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-text-secondary">{t("notes")}</label>
+                        <label className="text-xs text-text-secondary">
+                          {t("notes")}
+                        </label>
                         <Input
                           value={item.notes_pt}
-                          onChange={(e) => updateItem(index, "notes_pt", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "notes_pt", e.target.value)
+                          }
                         />
                       </div>
                     </div>
@@ -434,13 +517,22 @@ export function SupplementKitModal({
                   : "border-red-500/30 bg-red-500/10 text-red-500"
               }`}
             >
-              {status.type === "ok" ? <CheckCircle size={16} /> : <XCircle size={16} />}
+              {status.type === "ok" ? (
+                <CheckCircle size={16} />
+              ) : (
+                <XCircle size={16} />
+              )}
               {status.msg}
             </div>
           )}
         </ModalBody>
         <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={isPending}>

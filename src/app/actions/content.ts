@@ -1,4 +1,10 @@
 "use server";
+import {
+  requireManagedStudent,
+  requireManagedRecord,
+  requireOwnedPrescription,
+  requireOwnedKitItem,
+} from "@/lib/auth/platform";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -15,7 +21,12 @@ import type {
   SyncDietKitStudentsInput,
   SyncStudentDietKitsInput,
 } from "@/schemas/diets";
-import type { UpsertSupplementInput, SaveSupplementKitInput, SyncSupplementKitStudentsInput, SyncStudentSupplementKitsInput } from "@/schemas/supplements";
+import type {
+  UpsertSupplementInput,
+  SaveSupplementKitInput,
+  SyncSupplementKitStudentsInput,
+  SyncStudentSupplementKitsInput,
+} from "@/schemas/supplements";
 import type { UpsertExamInput, ReviewExamInput } from "@/schemas/exams";
 import type { UpsertEbookInput } from "@/schemas/ebooks";
 import type { UpsertContentPageInput } from "@/schemas/contentPages";
@@ -24,7 +35,7 @@ import type { UpsertContentPageInput } from "@/schemas/contentPages";
 // ALIMENTOS (CATÁLOGO)
 // ---------------------------------------------------------------------
 export async function upsertDietFoodAction(input: UpsertDietFoodInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(["admin"], "/dashboard");
   try {
     const saved = await DietService.upsertFood(input, adminId);
     if (!saved) {
@@ -42,7 +53,7 @@ export async function upsertDietFoodAction(input: UpsertDietFoodInput) {
 }
 
 export async function deleteDietFoodAction(id: string) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(["admin"], "/dashboard");
   try {
     const ok = await DietService.deleteFood(id, adminId);
     if (!ok) {
@@ -63,8 +74,14 @@ export async function deleteDietFoodAction(id: string) {
 // KITS DE DIETA
 // ---------------------------------------------------------------------
 export async function saveDietKitAction(input: SaveDietKitInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireOwnedPrescription("diet_kits", input.kit.id);
+    if (input.kit.id && !input.kit.revision)
+      throw new Error("Recarregue a prescrição antes de editar.");
     const saved = await DietService.saveKit(input, adminId);
     if (!saved) {
       return { success: false as const, message: "Falha ao salvar kit." };
@@ -81,8 +98,12 @@ export async function saveDietKitAction(input: SaveDietKitInput) {
 }
 
 export async function deleteDietKitAction(id: string) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireOwnedPrescription("diet_kits", id);
     const ok = await DietService.deleteKit(id, adminId);
     if (!ok) {
       return { success: false as const, message: "Falha ao excluir kit." };
@@ -98,12 +119,24 @@ export async function deleteDietKitAction(id: string) {
   }
 }
 
-export async function syncDietKitStudentsAction(input: SyncDietKitStudentsInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+export async function syncDietKitStudentsAction(
+  input: SyncDietKitStudentsInput,
+) {
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    if (!input.expected_fingerprint)
+      throw new Error("Recarregue as atribuições antes de salvar.");
+    for (const id of input.student_ids) await requireManagedStudent(id);
+    await requireOwnedPrescription("diet_kits", input.kit_id);
     const ok = await DietService.syncKitStudents(input, adminId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao vincular kit aos alunos." };
+      return {
+        success: false as const,
+        message: "Falha ao vincular kit aos alunos.",
+      };
     }
     revalidatePath("/[locale]/admin/kits/dietas", "page");
     revalidatePath("/[locale]/dieta", "page");
@@ -117,12 +150,23 @@ export async function syncDietKitStudentsAction(input: SyncDietKitStudentsInput)
   }
 }
 
-export async function syncStudentDietKitsAction(input: SyncStudentDietKitsInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+export async function syncStudentDietKitsAction(
+  input: SyncStudentDietKitsInput,
+) {
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    if (!input.expected_fingerprint)
+      throw new Error("Recarregue as atribuições antes de salvar.");
+    await requireManagedStudent(input.student_id);
     const ok = await DietService.syncStudentKits(input, adminId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao salvar os vínculos do aluno." };
+      return {
+        success: false as const,
+        message: "Falha ao salvar os vínculos do aluno.",
+      };
     }
     revalidatePath("/[locale]/admin/alunos/[id]", "page");
     revalidatePath("/[locale]/dieta", "page");
@@ -140,11 +184,14 @@ export async function syncStudentDietKitsAction(input: SyncStudentDietKitsInput)
 // SUPLEMENTOS
 // ---------------------------------------------------------------------
 export async function upsertSupplementAction(input: UpsertSupplementInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(["admin"], "/dashboard");
   try {
     const saved = await SupplementService.upsertSupplement(input, adminId);
     if (!saved) {
-      return { success: false as const, message: "Falha ao salvar suplemento." };
+      return {
+        success: false as const,
+        message: "Falha ao salvar suplemento.",
+      };
     }
     revalidatePath("/[locale]/admin/suplementos", "page");
     return { success: true as const, data: saved };
@@ -157,11 +204,14 @@ export async function upsertSupplementAction(input: UpsertSupplementInput) {
 }
 
 export async function deleteSupplementAction(id: string) {
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
   try {
     const ok = await SupplementService.deleteSupplement(id);
     if (!ok) {
-      return { success: false as const, message: "Falha ao excluir suplemento." };
+      return {
+        success: false as const,
+        message: "Falha ao excluir suplemento.",
+      };
     }
     revalidatePath("/[locale]/admin/suplementos", "page");
     return { success: true as const };
@@ -177,8 +227,14 @@ export async function deleteSupplementAction(id: string) {
 // KITS DE SUPLEMENTOS
 // ---------------------------------------------------------------------
 export async function saveSupplementKitAction(input: SaveSupplementKitInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireOwnedPrescription("supplement_kits", input.kit.id);
+    if (input.kit.id && !input.kit.revision)
+      throw new Error("Recarregue a prescrição antes de editar.");
     const saved = await SupplementService.saveKit(input, adminId);
     if (!saved) {
       return { success: false as const, message: "Falha ao salvar kit." };
@@ -195,8 +251,12 @@ export async function saveSupplementKitAction(input: SaveSupplementKitInput) {
 }
 
 export async function deleteSupplementKitAction(id: string) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireOwnedPrescription("supplement_kits", id);
     const ok = await SupplementService.deleteKit(id, adminId);
     if (!ok) {
       return { success: false as const, message: "Falha ao excluir kit." };
@@ -213,13 +273,23 @@ export async function deleteSupplementKitAction(id: string) {
 }
 
 export async function syncSupplementKitStudentsAction(
-  input: SyncSupplementKitStudentsInput
+  input: SyncSupplementKitStudentsInput,
 ) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    if (!input.expected_fingerprint)
+      throw new Error("Recarregue as atribuições antes de salvar.");
+    for (const id of input.student_ids) await requireManagedStudent(id);
+    await requireOwnedPrescription("supplement_kits", input.kit_id);
     const ok = await SupplementService.syncKitStudents(input, adminId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao vincular kit aos alunos." };
+      return {
+        success: false as const,
+        message: "Falha ao vincular kit aos alunos.",
+      };
     }
     revalidatePath("/[locale]/admin/kits/suplementos", "page");
     revalidatePath("/[locale]/suplementos", "page");
@@ -234,13 +304,22 @@ export async function syncSupplementKitStudentsAction(
 }
 
 export async function syncStudentSupplementKitsAction(
-  input: SyncStudentSupplementKitsInput
+  input: SyncStudentSupplementKitsInput,
 ) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    if (!input.expected_fingerprint)
+      throw new Error("Recarregue as atribuições antes de salvar.");
+    await requireManagedStudent(input.student_id);
     const ok = await SupplementService.syncStudentKits(input, adminId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao salvar os vínculos do aluno." };
+      return {
+        success: false as const,
+        message: "Falha ao salvar os vínculos do aluno.",
+      };
     }
     revalidatePath("/[locale]/admin/alunos/[id]", "page");
     revalidatePath("/[locale]/suplementos", "page");
@@ -258,8 +337,13 @@ export async function syncStudentSupplementKitsAction(
 // EXAMES
 // ---------------------------------------------------------------------
 export async function upsertExamAction(input: UpsertExamInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireManagedStudent(input.user_id);
+    if (input.id) await requireManagedRecord("exams", input.id, "user_id");
     const saved = await ExamService.upsertExam(input, input.user_id, adminId);
     if (!saved) {
       return { success: false as const, message: "Falha ao salvar exame." };
@@ -277,6 +361,7 @@ export async function upsertExamAction(input: UpsertExamInput) {
 export async function deleteExamAction(id: string) {
   await requireRole(["admin", "coach"], "/dashboard");
   try {
+    await requireManagedRecord("exams", id, "user_id");
     const ok = await ExamService.deleteExam(id);
     if (!ok) {
       return { success: false as const, message: "Falha ao excluir exame." };
@@ -292,8 +377,12 @@ export async function deleteExamAction(id: string) {
 }
 
 export async function reviewExamAction(input: ReviewExamInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(
+    ["admin", "coach"],
+    "/dashboard",
+  );
   try {
+    await requireManagedRecord("exams", input.id, "user_id");
     const saved = await ExamService.reviewExam(input, adminId);
     if (!saved) {
       return { success: false as const, message: "Falha ao salvar parecer." };
@@ -313,7 +402,7 @@ export async function reviewExamAction(input: ReviewExamInput) {
 // E-BOOKS
 // ---------------------------------------------------------------------
 export async function upsertEbookAction(input: UpsertEbookInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(["admin"], "/dashboard");
   try {
     const saved = await EbookService.upsertEbook(input, adminId);
     if (!saved) {
@@ -330,7 +419,7 @@ export async function upsertEbookAction(input: UpsertEbookInput) {
 }
 
 export async function deleteEbookAction(id: string) {
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
   try {
     const ok = await EbookService.deleteEbook(id);
     if (!ok) {
@@ -350,7 +439,7 @@ export async function deleteEbookAction(id: string) {
 // PÁGINAS INSTITUCIONAIS (TERMOS / PRIVACIDADE / FAQ)
 // ---------------------------------------------------------------------
 export async function upsertContentPageAction(input: UpsertContentPageInput) {
-  const { userId: adminId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId: adminId } = await requireRole(["admin"], "/dashboard");
   try {
     const saved = await ContentPageService.upsert(input, adminId);
     if (!saved) {
@@ -375,14 +464,17 @@ export async function upsertContentPageAction(input: UpsertContentPageInput) {
 const PRODUCT_IMAGES_BUCKET = "product-images";
 
 export async function uploadProductImageAction(formData: FormData) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) {
       return { success: false as const, message: "Arquivo obrigatório." };
     }
     if (file.size > 5_000_000) {
-      return { success: false as const, message: "A imagem deve ter no máximo 5MB." };
+      return {
+        success: false as const,
+        message: "A imagem deve ter no máximo 5MB.",
+      };
     }
     const ext = (file.name.split(".").pop() ?? "").toLowerCase();
     if (!["jpg", "jpeg", "png", "webp"].includes(ext)) {
@@ -410,7 +502,10 @@ export async function uploadProductImageAction(formData: FormData) {
       .from(PRODUCT_IMAGES_BUCKET)
       .getPublicUrl(key);
     if (!data?.publicUrl) {
-      return { success: false as const, message: "Falha ao obter a URL da imagem." };
+      return {
+        success: false as const,
+        message: "Falha ao obter a URL da imagem.",
+      };
     }
     return { success: true as const, url: data.publicUrl };
   } catch (e: any) {

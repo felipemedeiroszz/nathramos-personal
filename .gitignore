@@ -22,3 +22,9 @@ coverage
 *.sw?
 .trae/**
 !.trae/specs/**
+
+# Local visual QA output
+artifacts/auditoria-ui/
+artifacts/auditoria-admin-ui/
+artifacts/analytics-ui/
+artifacts/student-billing-ui/

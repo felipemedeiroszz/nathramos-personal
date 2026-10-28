@@ -21,7 +21,7 @@ export default async function AdminNotificacoesPage({
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminNotifications = await getTranslations("adminNotifications");
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
 
   const [history, templates, studentCount] = await Promise.all([
     NotificationService.listHistory({ limit: 100 }),

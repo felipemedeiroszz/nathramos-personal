@@ -1,3 +1,5 @@
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -37,7 +39,7 @@ export default async function AdminTreinosPage({
   searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
-  searchParams?: { tab?: string };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -50,17 +52,23 @@ export default async function AdminTreinosPage({
   const subtitle = await safe(
     tAdmin,
     "workouts.subtitle",
-    "Catálogo próprio de exercícios e catálogo ExerciseDB."
+    "Catálogo próprio de exercícios e catálogo ExerciseDB.",
   );
 
-  const [ownExercises, bodyPartsResult, musclesResult, equipmentsResult, exercisesResult] =
-    await Promise.all([
-      ExerciseDBService.listExercises({ source: "custom", limit: OWN_CATALOG_LIMIT }),
-      listBodyParts(),
-      listMuscles(),
-      listEquipments(),
-      listExercises({ limit: CATALOG_PAGE_SIZE }),
-    ]);
+  const pageParams = { ...searchParams, source: "custom" };
+  const [
+    ownPage,
+    bodyPartsResult,
+    musclesResult,
+    equipmentsResult,
+    exercisesResult,
+  ] = await Promise.all([
+    getAdminDataPage("exercises", pageParams),
+    listBodyParts(),
+    listMuscles(),
+    listEquipments(),
+    listExercises({ limit: CATALOG_PAGE_SIZE }),
+  ]);
 
   const catalogBodyParts = bodyPartsResult.ok
     ? bodyPartsResult.data.map((option) => option.name)
@@ -78,9 +86,13 @@ export default async function AdminTreinosPage({
   const catalogMeta = {
     total: exercisesResult.ok ? exercisesResult.data.total : 0,
     hasNextPage: exercisesResult.ok ? exercisesResult.data.hasNextPage : false,
-    hasPreviousPage: exercisesResult.ok ? exercisesResult.data.hasPreviousPage : false,
+    hasPreviousPage: exercisesResult.ok
+      ? exercisesResult.data.hasPreviousPage
+      : false,
     nextCursor: exercisesResult.ok ? exercisesResult.data.nextCursor : null,
-    previousCursor: exercisesResult.ok ? exercisesResult.data.previousCursor : null,
+    previousCursor: exercisesResult.ok
+      ? exercisesResult.data.previousCursor
+      : null,
   };
   const catalogError = exercisesResult.ok ? null : exercisesResult.code;
 
@@ -96,19 +108,32 @@ export default async function AdminTreinosPage({
       <AdminTreinosTabs
         defaultTab={defaultTab}
         ownCatalogContent={
-          <OwnExercisesClient
-            locale={locale}
-            userId={userId}
-            title={tCatalog("ownTitle")}
-            subtitle={tCatalog("ownSubtitle")}
-            exercises={ownExercises as ExerciseRow[]}
-          />
+          <>
+            <AdminDataControls
+              params={pageParams}
+              total={ownPage.total}
+              page={ownPage.page}
+              size={ownPage.size}
+              locale={locale}
+            />
+            <OwnExercisesClient
+              locale={locale}
+              userId={userId}
+              title={tCatalog("ownTitle")}
+              subtitle={tCatalog("ownSubtitle")}
+              exercises={ownPage.rows as ExerciseRow[]}
+            />
+          </>
         }
         catalogContent={
           <div className="space-y-5">
             <header className="space-y-1">
-              <h2 className="text-xl md:text-2xl font-bold text-text">{tCatalog("title")}</h2>
-              <p className="text-sm text-text-secondary">{tCatalog("subtitle")}</p>
+              <h2 className="text-xl md:text-2xl font-bold text-text">
+                {tCatalog("title")}
+              </h2>
+              <p className="text-sm text-text-secondary">
+                {tCatalog("subtitle")}
+              </p>
             </header>
 
             <ExerciseCatalogClient

@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -26,13 +27,23 @@ interface DayUpsertModalProps {
 }
 
 const DAYS_OF_WEEK_PT = [
-  "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
-  "Quinta-feira", "Sexta-feira", "Sábado",
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
 ];
 
 const DAYS_OF_WEEK_EN = [
-  "Sunday", "Monday", "Tuesday", "Wednesday",
-  "Thursday", "Friday", "Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
 
 export function DayUpsertModal({
@@ -46,7 +57,8 @@ export function DayUpsertModal({
 }: DayUpsertModalProps) {
   const t = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
   const dayLabels = locale === "pt-BR" ? DAYS_OF_WEEK_PT : DAYS_OF_WEEK_EN;
@@ -107,11 +119,18 @@ export function DayUpsertModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     startTransition(async () => {
-      const payload: Record<string, any> = { ...form };
-      if (!payload.id) delete payload.id;
-      if (onSubmit) await onSubmit(payload);
-      onSaved?.();
+      try {
+        const payload: Record<string, any> = { ...form };
+        if (!payload.id) delete payload.id;
+        if (onSubmit) await onSubmit(payload);
+        onSaved?.();
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : "Falha ao salvar.",
+        );
+      }
     });
   };
 
@@ -121,14 +140,21 @@ export function DayUpsertModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
       className="max-w-3xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
         <ModalTitle>{day ? titleEdit : titleCreate}</ModalTitle>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
       <form onSubmit={handleSubmit}>
+        {saveError && (
+          <p role="alert" className="text-red-500 p-3">
+            {saveError}
+          </p>
+        )}
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -166,7 +192,7 @@ export function DayUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Foco em hipertrofia de peito e triceps...",
-                  "Focus on chest and triceps hypertrophy..."
+                  "Focus on chest and triceps hypertrophy...",
                 )}
               />
             </div>
@@ -180,7 +206,7 @@ export function DayUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Foco em hipertrofia de peito e triceps...",
-                  "Focus on chest and triceps hypertrophy..."
+                  "Focus on chest and triceps hypertrophy...",
                 )}
               />
             </div>
@@ -274,7 +300,10 @@ export function DayUpsertModal({
                 min={0}
                 value={form.cooldown_minutes}
                 onChange={(e) =>
-                  update("cooldown_minutes", parseInt(e.target.value || "0", 10))
+                  update(
+                    "cooldown_minutes",
+                    parseInt(e.target.value || "0", 10),
+                  )
                 }
                 required
               />

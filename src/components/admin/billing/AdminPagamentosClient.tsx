@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { reconcilePaymentAction } from "@/app/actions/billing";
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Search, DollarSign, Eye } from "lucide-react";
@@ -61,6 +63,9 @@ function statusVariant(status: string) {
 }
 
 export function AdminPagamentosClient({ title, payments }: AdminPagamentosClientProps) {
+  const router=useRouter();
+  const [syncing,setSyncing]=useState(false);
+  const [syncMessage,setSyncMessage]=useState("");
   const t = useTranslations("adminPayments");
   const locale = useLocale();
 
@@ -256,6 +261,17 @@ export function AdminPagamentosClient({ title, payments }: AdminPagamentosClient
             <ModalClose onClick={() => setDetail(null)} />
           </ModalHeader>
           <ModalBody className="space-y-1">
+            <Button disabled={syncing} onClick={async () => {
+              setSyncing(true);setSyncMessage("");
+              try {
+                const result=await reconcilePaymentAction(detail.id);
+                if(result.success) {setDetail(null);router.refresh();}
+                else setSyncMessage(result.message);
+              } catch {setSyncMessage(locale === "pt-BR" ? "Falha na conciliação." : "Reconciliation failed.");}
+              finally {setSyncing(false);}
+            }}>{locale === "pt-BR" ? (syncing ? "Conciliando…" : "Conciliar com provedor") : (syncing ? "Reconciling…" : "Reconcile with provider")}</Button>
+            {syncMessage && <p role="alert" className="text-sm text-red-400">{syncMessage}</p>}
+            <DetailRow label={locale === "pt-BR" ? "Estornado" : "Refunded"} value={formatMoney((detail as any).refunded_amount_cents || 0,detail.currency)} />
             <DetailRow label={t("colStudent")} value={detail.student_name} />
             <DetailRow label={t("colDescription")} value={detail.description_pt} />
             <DetailRow
@@ -264,11 +280,11 @@ export function AdminPagamentosClient({ title, payments }: AdminPagamentosClient
             />
             <DetailRow
               label={t("fee")}
-              value={formatMoney(detail.fee_cents, detail.currency)}
+              value={(detail.metadata as any)?.fee_known ? formatMoney(detail.fee_cents, detail.currency) : "—"}
             />
             <DetailRow
               label={t("net")}
-              value={formatMoney(detail.net_amount_cents, detail.currency)}
+              value={(detail.metadata as any)?.fee_known ? formatMoney(detail.net_amount_cents - ((detail as any).refunded_amount_cents || 0), detail.currency) : "—"}
             />
             <DetailRow label={t("colMethod")} value={t(`method_${detail.method}` as any)} />
             <DetailRow label={t("installments")} value={String(detail.installments)} />

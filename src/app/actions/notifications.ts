@@ -37,7 +37,7 @@ export async function getNotificationInboxAction(limit: number = 100) {
   const items = await NotificationService.listForUser(
     userId,
     false,
-    Math.min(Math.max(limit, 1), 200)
+    Math.min(Math.max(limit, 1), 200),
   );
   return { items };
 }
@@ -68,7 +68,7 @@ export async function getNotificationPreferencesAction() {
 }
 
 export async function saveNotificationPreferencesAction(
-  input: NotificationPreferencesInput
+  input: NotificationPreferencesInput,
 ) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false as const, message: "unauthorized" };
@@ -77,19 +77,30 @@ export async function saveNotificationPreferencesAction(
     const email: Record<string, boolean> = {};
     const push: Record<string, boolean> = {};
     for (const type of NOTIFICATION_TYPES) {
-      if (typeof parsed.email[type] === "boolean") email[type] = parsed.email[type];
-      if (typeof parsed.push[type] === "boolean") push[type] = parsed.push[type];
+      if (typeof parsed.email[type] === "boolean")
+        email[type] = parsed.email[type];
+      if (typeof parsed.push[type] === "boolean")
+        push[type] = parsed.push[type];
     }
-    const ok = await NotificationService.savePreferences(userId, { email, push } as never);
+    const ok = await NotificationService.savePreferences(userId, {
+      email,
+      push,
+    } as never);
     if (!ok) {
-      return { success: false as const, message: "Não foi possível salvar as preferências." };
+      return {
+        success: false as const,
+        message: "Não foi possível salvar as preferências.",
+      };
     }
     revalidatePath("/[locale]/account", "page");
     return { success: true as const };
   } catch (e: any) {
     return {
       success: false as const,
-      message: e?.issues?.[0]?.message ?? e?.message ?? "Não foi possível salvar as preferências.",
+      message:
+        e?.issues?.[0]?.message ??
+        e?.message ??
+        "Não foi possível salvar as preferências.",
     };
   }
 }
@@ -104,23 +115,31 @@ export async function saveNotifySettingsAction(input: NotifySettingsInput) {
       quiet_hours_start: parsed.quiet_hours_start
         ? `${parsed.quiet_hours_start}:00`
         : null,
-      quiet_hours_end: parsed.quiet_hours_end ? `${parsed.quiet_hours_end}:00` : null,
+      quiet_hours_end: parsed.quiet_hours_end
+        ? `${parsed.quiet_hours_end}:00`
+        : null,
     });
     if (!ok) {
-      return { success: false as const, message: "Não foi possível salvar as configurações." };
+      return {
+        success: false as const,
+        message: "Não foi possível salvar as configurações.",
+      };
     }
     revalidatePath("/[locale]/account", "page");
     return { success: true as const };
   } catch (e: any) {
     return {
       success: false as const,
-      message: e?.issues?.[0]?.message ?? e?.message ?? "Não foi possível salvar as configurações.",
+      message:
+        e?.issues?.[0]?.message ??
+        e?.message ??
+        "Não foi possível salvar as configurações.",
     };
   }
 }
 
 export async function sendNotificationAction(input: SendNotificationInput) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const parsed = sendNotificationSchema.parse(input);
     const result = await NotificationService.broadcastToStudents({
@@ -149,13 +168,15 @@ export async function sendNotificationAction(input: SendNotificationInput) {
     return {
       success: false as const,
       message:
-        e?.issues?.[0]?.message ?? e?.message ?? "Não foi possível enviar a notificação.",
+        e?.issues?.[0]?.message ??
+        e?.message ??
+        "Não foi possível enviar a notificação.",
     };
   }
 }
 
 export async function saveTemplateAction(input: TemplateInput) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const parsed = templateSchema.parse(input);
     const ok = await NotificationService.saveTemplate({
@@ -170,12 +191,17 @@ export async function saveTemplateAction(input: TemplateInput) {
     });
 
     if (!ok) {
-      return { success: false as const, message: "Não foi possível salvar o template." };
+      return {
+        success: false as const,
+        message: "Não foi possível salvar o template.",
+      };
     }
 
     await AuditLogService.log({
       adminId: userId,
-      action: parsed.id ? "notification.template.update" : "notification.template.create",
+      action: parsed.id
+        ? "notification.template.update"
+        : "notification.template.create",
       entity_type: "notification_template",
       entity_id: parsed.id ?? parsed.slug,
       details: { slug: parsed.slug, type: parsed.type },
@@ -186,17 +212,23 @@ export async function saveTemplateAction(input: TemplateInput) {
   } catch (e: any) {
     return {
       success: false as const,
-      message: e?.issues?.[0]?.message ?? e?.message ?? "Não foi possível salvar o template.",
+      message:
+        e?.issues?.[0]?.message ??
+        e?.message ??
+        "Não foi possível salvar o template.",
     };
   }
 }
 
 export async function deleteTemplateAction(templateId: string) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const ok = await NotificationService.deleteTemplate(templateId);
     if (!ok) {
-      return { success: false as const, message: "Não foi possível excluir o template." };
+      return {
+        success: false as const,
+        message: "Não foi possível excluir o template.",
+      };
     }
 
     await AuditLogService.log({
@@ -209,6 +241,9 @@ export async function deleteTemplateAction(templateId: string) {
     revalidate();
     return { success: true as const };
   } catch {
-    return { success: false as const, message: "Não foi possível excluir o template." };
+    return {
+      success: false as const,
+      message: "Não foi possível excluir o template.",
+    };
   }
 }

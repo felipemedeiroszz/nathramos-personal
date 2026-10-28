@@ -27,7 +27,7 @@ export default async function AdminAuditoriaPage({
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminAudit = await getTranslations("adminAudit");
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
 
   const pick = (key: string) => {
     const value = searchParams[key];
@@ -43,7 +43,8 @@ export default async function AdminAuditoriaPage({
   };
 
   const parsedPage = Number(pick("page") ?? "1");
-  const currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1;
+  const currentPage =
+    Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1;
 
   const [rows, total, entityTypes, actions] = await Promise.all([
     AuditLogService.list({
@@ -67,7 +68,9 @@ export default async function AdminAuditoriaPage({
     <div className="space-y-6 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{tAdminAudit("subtitle")}</p>
+        <p className="text-sm md:text-base text-text-secondary">
+          {tAdminAudit("subtitle")}
+        </p>
       </header>
 
       <AdminAuditoriaClient

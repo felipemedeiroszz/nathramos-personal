@@ -1,0 +1,2 @@
+src/app/[locale]/admin/treinos/OwnExercisesClient.tsx(448,29): error TS2304: Cannot find name 'isPending'.
+src/app/[locale]/admin/treinos/OwnExercisesClient.tsx(456,31): error TS2304: Cannot find name 'isPending'.

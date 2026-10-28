@@ -1,108 +1,164 @@
 const getEnv = (key: string, required = false) => {
-  const value = process.env[key]
+  const value = process.env[key];
   if (required && (!value || value.length === 0)) {
-    throw new Error(`[asaas] Missing required env: ${key}`)
+    throw new Error(`[asaas] Missing required env: ${key}`);
   }
-  return value ?? ""
-}
+  return value ?? "";
+};
 
-const apiKey = getEnv("ASAAS_API_KEY")
-const environment = (getEnv("ASAAS_ENVIRONMENT") || "sandbox") as "sandbox" | "production"
-const webhookToken = getEnv("ASAAS_WEBHOOK_TOKEN")
+const apiKey = getEnv("ASAAS_API_KEY");
+const environment = (getEnv("ASAAS_ENVIRONMENT") || "sandbox") as
+  | "sandbox"
+  | "production";
+const webhookToken = getEnv("ASAAS_WEBHOOK_TOKEN");
 
 const BASE_URLS: Record<"sandbox" | "production", string> = {
-  sandbox: "https://sandbox.asaas.com/api/v3",
-  production: "https://www.asaas.com/api/v3",
-}
+  sandbox: "https://api-sandbox.asaas.com/v3",
+  production: "https://api.asaas.com/v3",
+};
 
 function getBaseUrl() {
-  return BASE_URLS[environment] ?? BASE_URLS.sandbox
+  return BASE_URLS[environment] ?? BASE_URLS.sandbox;
 }
 
 function getAuthHeaders(): Record<string, string> {
   if (!apiKey) {
-    throw new Error("ASAAS_API_KEY não configurada.")
+    throw new Error("ASAAS_API_KEY não configurada.");
   }
   return {
     access_token: apiKey,
+    "User-Agent": "NathRamos-Pagamentos/1.0",
     "Content-Type": "application/json",
     Accept: "application/json",
-  }
+  };
 }
 
 export interface AsaasPixCreateInput {
-  customerId?: string
-  name: string
-  email: string
-  cpfCnpj?: string
-  phone?: string
-  amount: number
-  dueDate: string
-  description: string
-  externalReference?: string
-  userId?: string
-  planId?: string
+  customerId?: string;
+  name: string;
+  email: string;
+  cpfCnpj?: string;
+  phone?: string;
+  amount: number;
+  dueDate: string;
+  description: string;
+  externalReference?: string;
+  userId?: string;
+  planId?: string;
 }
 
 export interface AsaasPixResult {
-  id: string
-  pix_qr_code: string
-  pix_copy_paste: string
-  pix_expires_at: string
-  status: string
-  external_reference?: string
-  invoice_url?: string
+  id: string;
+  pix_qr_code: string;
+  pix_copy_paste: string;
+  pix_expires_at: string;
+  status: string;
+  external_reference?: string;
+  invoice_url?: string;
 }
 
 export interface AsaasPaymentStatus {
-  id: string
-  status: string
-  external_reference?: string
-  date_created?: string
-  payment_date?: string
-  value?: number
+  id: string;
+  status: string;
+  external_reference?: string;
+  date_created?: string;
+  payment_date?: string;
+  value?: number;
 }
 
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+const request = async <T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> => {
   const res = await fetch(`${getBaseUrl()}${path}`, {
     ...options,
+    cache: "no-store",
+    signal: options.signal ?? AbortSignal.timeout(15000),
     headers: {
       ...getAuthHeaders(),
       ...(options.headers ?? {}),
     },
-  })
+  });
 
-  let data: unknown = null
+  let data: unknown = null;
   try {
-    data = await res.json()
+    data = await res.json();
   } catch {
-    data = null
+    data = null;
   }
 
   if (!res.ok) {
     const errMsg =
-      (data && typeof data === "object" && "errors" in data && Array.isArray((data as any).errors)
-        ? (data as any).errors.map((e: any) => e.description || e.code).join(", ")
+      (data &&
+      typeof data === "object" &&
+      "errors" in data &&
+      Array.isArray((data as any).errors)
+        ? (data as any).errors
+            .map((e: any) => e.description || e.code)
+            .join(", ")
         : null) ||
-      (data && typeof data === "object" && "message" in data ? (data as any).message : null) ||
-      `ASAAS request failed (${res.status})`
-    throw new Error(errMsg)
+      (data && typeof data === "object" && "message" in data
+        ? (data as any).message
+        : null) ||
+      `ASAAS request failed (${res.status})`;
+    throw new Error(errMsg);
   }
 
-  return data as T
-}
+  return data as T;
+};
 
 export const AsaasProvider = {
-  getWebhookToken() {
-    return webhookToken
+  async updateCustomerDocument(customerId: string,cpf: string) {
+    return request(`/customers/${encodeURIComponent(customerId)}`,{method:"PUT",body:JSON.stringify({cpfCnpj:cpf.replace(/\D/g, "")})})
+  },
+  async deletePayment(paymentId: string) {
+    return request(`/payments/${encodeURIComponent(paymentId)}`,{method:"DELETE"})
+  },
+  async getPayment(paymentId: string): Promise<any> {
+    return request(`/payments/${encodeURIComponent(paymentId)}`)
+  },
+  async findPayment(reference: string): Promise<any> {
+    const result = await request<any>(`/payments?externalReference=${encodeURIComponent(reference)}&limit=100`)
+    if (result.data?.length > 1) throw new Error("Mais de uma cobrança para a operação; conciliação necessária.")
+    return result.data?.[0] ?? null
+  },
+  async getPix(paymentId: string): Promise<AsaasPixResult> {
+    const pix = await request<any>(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`)
+    return { id: paymentId, pix_qr_code: pix.encodedImage ?? "", pix_copy_paste: pix.payload ?? "", pix_expires_at: pix.expirationDate, status: "PENDING" }
+  },
+  async getSubscriptionStatus(
+    subscriptionId: string,
+  ): Promise<{ id: string; status: string; value: number }> {
+    const subscription = await request<any>(
+      `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      { method: "GET", cache: "no-store", signal: AbortSignal.timeout(15000) },
+    );
+    return {
+      id: subscription.id,
+      status: subscription.status,
+      value: subscription.value,
+    };
   },
 
-  async findOrCreateCustomer(input: { name: string; email: string; cpfCnpj?: string; phone?: string; userId?: string }): Promise<{ id: string }> {
-    const list = await request<any>(`/customers?email=${encodeURIComponent(input.email)}&limit=1`, {
-      method: "GET",
-    })
+  getWebhookToken() {
+    return webhookToken;
+  },
+
+  async findOrCreateCustomer(input: {
+    name: string;
+    email: string;
+    cpfCnpj?: string;
+    phone?: string;
+    userId?: string;
+  }): Promise<{ id: string }> {
+    const list = await request<any>(
+      `/customers?externalReference=${encodeURIComponent(input.userId || input.email)}&limit=1`,
+      {
+        method: "GET",
+      },
+    );
     if (list && list.data && list.data.length > 0) {
-      return { id: list.data[0].id }
+      return { id: list.data[0].id };
     }
     const created = await request<any>("/customers", {
       method: "POST",
@@ -114,12 +170,12 @@ export const AsaasProvider = {
         externalReference: input.userId,
         notificationDisabled: true,
       }),
-    })
-    return { id: created.id }
+    });
+    return { id: created.id };
   },
 
   async createPixCharge(input: AsaasPixCreateInput): Promise<AsaasPixResult> {
-    let customerId = input.customerId
+    let customerId = input.customerId;
     if (!customerId) {
       const customer = await this.findOrCreateCustomer({
         name: input.name,
@@ -127,8 +183,8 @@ export const AsaasProvider = {
         cpfCnpj: input.cpfCnpj,
         phone: input.phone,
         userId: input.userId,
-      })
-      customerId = customer.id
+      });
+      customerId = customer.id;
     }
 
     const payment = await request<any>("/payments", {
@@ -141,17 +197,20 @@ export const AsaasProvider = {
         description: input.description,
         externalReference: input.externalReference,
       }),
-    })
+    });
 
     if (!payment || !payment.id) {
-      throw new Error("Falha ao criar cobrança PIX no ASAAS.")
+      throw new Error("Falha ao criar cobrança PIX no ASAAS.");
     }
 
     const pix = await request<any>(`/payments/${payment.id}/pixQrCode`, {
       method: "GET",
-    })
+    });
 
-    const expiresAt = pix?.expirationDate || payment?.dueDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    const expiresAt =
+      pix?.expirationDate ||
+      payment?.dueDate ||
+      new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     return {
       id: payment.id,
@@ -161,13 +220,13 @@ export const AsaasProvider = {
       status: payment.status || "PENDING",
       external_reference: payment.externalReference,
       invoice_url: payment.invoiceUrl,
-    }
+    };
   },
 
   async getPaymentStatus(paymentId: string): Promise<AsaasPaymentStatus> {
     const payment = await request<any>(`/payments/${paymentId}`, {
       method: "GET",
-    })
+    });
     return {
       id: payment.id,
       status: payment.status,
@@ -175,6 +234,6 @@ export const AsaasProvider = {
       date_created: payment.dateCreated,
       payment_date: payment.paymentDate,
       value: payment.value,
-    }
+    };
   },
-}
+};

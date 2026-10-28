@@ -1,0 +1,233 @@
+
+> nath-ramos-personal-trainer@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.15
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/121) ...
+   Generating static pages (30/121) 
+   Generating static pages (60/121) 
+   Generating static pages (90/121) 
+ ✓ Generating static pages (121/121)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                     Size     First Load JS
+┌ ○ /_not-found                                 880 B          88.6 kB
+├ ● /[locale]                                   3.25 kB         126 kB
+├   ├ /pt-BR
+├   └ /en-US
+├ ● /[locale]/account                           15.5 kB         140 kB
+├   ├ /pt-BR/account
+├   └ /en-US/account
+├ ● /[locale]/admin                             162 B          87.8 kB
+├   ├ /pt-BR/admin
+├   └ /en-US/admin
+├ ● /[locale]/admin/alimentos                   3.69 kB         125 kB
+├   ├ /pt-BR/admin/alimentos
+├   └ /en-US/admin/alimentos
+├ ● /[locale]/admin/alimentos/new               162 B          87.8 kB
+├   ├ /pt-BR/admin/alimentos/new
+├   └ /en-US/admin/alimentos/new
+├ ● /[locale]/admin/alunos                      4.76 kB         106 kB
+├   ├ /pt-BR/admin/alunos
+├   └ /en-US/admin/alunos
+├ ƒ /[locale]/admin/alunos/[id]                 9.34 kB         132 kB
+├ ● /[locale]/admin/assinaturas                 4.43 kB         122 kB
+├   ├ /pt-BR/admin/assinaturas
+├   └ /en-US/admin/assinaturas
+├ ● /[locale]/admin/auditoria                   4.06 kB         115 kB
+├   ├ /pt-BR/admin/auditoria
+├   └ /en-US/admin/auditoria
+├ ● /[locale]/admin/configuracoes               3.98 kB         115 kB
+├   ├ /pt-BR/admin/configuracoes
+├   └ /en-US/admin/configuracoes
+├ ● /[locale]/admin/dashboard                   1.55 kB         211 kB
+├   ├ /pt-BR/admin/dashboard
+├   └ /en-US/admin/dashboard
+├ ● /[locale]/admin/ebooks                      3.83 kB         125 kB
+├   ├ /pt-BR/admin/ebooks
+├   └ /en-US/admin/ebooks
+├ ● /[locale]/admin/exames                      4.22 kB         126 kB
+├   ├ /pt-BR/admin/exames
+├   └ /en-US/admin/exames
+├ ● /[locale]/admin/financeiro                  5.13 kB         231 kB
+├   ├ /pt-BR/admin/financeiro
+├   └ /en-US/admin/financeiro
+├ ● /[locale]/admin/historico                   185 B          94.7 kB
+├   ├ /pt-BR/admin/historico
+├   └ /en-US/admin/historico
+├ ● /[locale]/admin/kit/dieta/new               162 B          87.8 kB
+├   ├ /pt-BR/admin/kit/dieta/new
+├   └ /en-US/admin/kit/dieta/new
+├ ● /[locale]/admin/kits/dietas                 5.39 kB         127 kB
+├   ├ /pt-BR/admin/kits/dietas
+├   └ /en-US/admin/kits/dietas
+├ ● /[locale]/admin/kits/dietas/new             162 B          87.8 kB
+├   ├ /pt-BR/admin/kits/dietas/new
+├   └ /en-US/admin/kits/dietas/new
+├ ● /[locale]/admin/kits/suplementos            5.13 kB         127 kB
+├   ├ /pt-BR/admin/kits/suplementos
+├   └ /en-US/admin/kits/suplementos
+├ ● /[locale]/admin/kits/treinos                6.09 kB         128 kB
+├   ├ /pt-BR/admin/kits/treinos
+├   └ /en-US/admin/kits/treinos
+├ ● /[locale]/admin/mentoria                    2.94 kB         194 kB
+├   ├ /pt-BR/admin/mentoria
+├   └ /en-US/admin/mentoria
+├ ● /[locale]/admin/notificacoes                6.62 kB         131 kB
+├   ├ /pt-BR/admin/notificacoes
+├   └ /en-US/admin/notificacoes
+├ ● /[locale]/admin/pagamentos                  5.16 kB         123 kB
+├   ├ /pt-BR/admin/pagamentos
+├   └ /en-US/admin/pagamentos
+├ ● /[locale]/admin/paginas                     7.45 kB         131 kB
+├   ├ /pt-BR/admin/paginas
+├   └ /en-US/admin/paginas
+├ ● /[locale]/admin/planos                      7.4 kB          131 kB
+├   ├ /pt-BR/admin/planos
+├   └ /en-US/admin/planos
+├ ● /[locale]/admin/redes-sociais               8.81 kB         133 kB
+├   ├ /pt-BR/admin/redes-sociais
+├   └ /en-US/admin/redes-sociais
+├ ● /[locale]/admin/reunioes                    7.01 kB         131 kB
+├   ├ /pt-BR/admin/reunioes
+├   └ /en-US/admin/reunioes
+├ ● /[locale]/admin/suplementos                 3.55 kB         125 kB
+├   ├ /pt-BR/admin/suplementos
+├   └ /en-US/admin/suplementos
+├ ● /[locale]/admin/treinos                     9.89 kB         131 kB
+├   ├ /pt-BR/admin/treinos
+├   └ /en-US/admin/treinos
+├ ● /[locale]/assinatura/cancelado              2.78 kB         126 kB
+├   ├ /pt-BR/assinatura/cancelado
+├   └ /en-US/assinatura/cancelado
+├ ● /[locale]/assinatura/checkout               11.6 kB         138 kB
+├   ├ /pt-BR/assinatura/checkout
+├   └ /en-US/assinatura/checkout
+├ ● /[locale]/assinatura/checkout/preview       4.25 kB         131 kB
+├   ├ /pt-BR/assinatura/checkout/preview
+├   └ /en-US/assinatura/checkout/preview
+├ ● /[locale]/assinatura/sucesso                3.71 kB         127 kB
+├   ├ /pt-BR/assinatura/sucesso
+├   └ /en-US/assinatura/sucesso
+├ ƒ /[locale]/auth/callback                     0 B                0 B
+├ ● /[locale]/cadastro                          6.83 kB         155 kB
+├   ├ /pt-BR/cadastro
+├   └ /en-US/cadastro
+├ ● /[locale]/como-funciona                     2.78 kB         126 kB
+├   ├ /pt-BR/como-funciona
+├   └ /en-US/como-funciona
+├ ● /[locale]/conversas                         203 B           191 kB
+├   ├ /pt-BR/conversas
+├   └ /en-US/conversas
+├ ● /[locale]/dashboard                         2.84 kB         121 kB
+├   ├ /pt-BR/dashboard
+├   └ /en-US/dashboard
+├ ● /[locale]/desempenho                        3.4 kB          235 kB
+├   ├ /pt-BR/desempenho
+├   └ /en-US/desempenho
+├ ● /[locale]/dieta                             780 B           100 kB
+├   ├ /pt-BR/dieta
+├   └ /en-US/dieta
+├ ● /[locale]/dietas                            2.78 kB         126 kB
+├   ├ /pt-BR/dietas
+├   └ /en-US/dietas
+├ ● /[locale]/ebooks                            8.62 kB         103 kB
+├   ├ /pt-BR/ebooks
+├   └ /en-US/ebooks
+├ ● /[locale]/exames                            5.91 kB         100 kB
+├   ├ /pt-BR/exames
+├   └ /en-US/exames
+├ ● /[locale]/faq                               153 B           126 kB
+├   ├ /pt-BR/faq
+├   └ /en-US/faq
+├ ● /[locale]/hidratacao                        775 B           100 kB
+├   ├ /pt-BR/hidratacao
+├   └ /en-US/hidratacao
+├ ● /[locale]/lista-compras                     776 B           100 kB
+├   ├ /pt-BR/lista-compras
+├   └ /en-US/lista-compras
+├ ● /[locale]/login                             5.81 kB         154 kB
+├   ├ /pt-BR/login
+├   └ /en-US/login
+├ ● /[locale]/mais                              181 B          94.7 kB
+├   ├ /pt-BR/mais
+├   └ /en-US/mais
+├ ● /[locale]/mentoria                          2.78 kB         126 kB
+├   ├ /pt-BR/mentoria
+├   └ /en-US/mentoria
+├ ● /[locale]/notificacoes                      3.18 kB         184 kB
+├   ├ /pt-BR/notificacoes
+├   └ /en-US/notificacoes
+├ ● /[locale]/planos                            4.26 kB         127 kB
+├   ├ /pt-BR/planos
+├   └ /en-US/planos
+├ ● /[locale]/privacidade                       153 B           126 kB
+├   ├ /pt-BR/privacidade
+├   └ /en-US/privacidade
+├ ● /[locale]/progresso                         2.7 kB          227 kB
+├   ├ /pt-BR/progresso
+├   └ /en-US/progresso
+├ ● /[locale]/reset-password                    1.89 kB         103 kB
+├   ├ /pt-BR/reset-password
+├   └ /en-US/reset-password
+├ ● /[locale]/reunioes                          185 B          94.7 kB
+├   ├ /pt-BR/reunioes
+├   └ /en-US/reunioes
+├ ● /[locale]/sobre                             2.78 kB         126 kB
+├   ├ /pt-BR/sobre
+├   └ /en-US/sobre
+├ ● /[locale]/suplementos                       780 B           100 kB
+├   ├ /pt-BR/suplementos
+├   └ /en-US/suplementos
+├ ● /[locale]/termos                            153 B           126 kB
+├   ├ /pt-BR/termos
+├   └ /en-US/termos
+├ ● /[locale]/treino                            8.17 kB         126 kB
+├   ├ /pt-BR/treino
+├   └ /en-US/treino
+├ ● /[locale]/treinos                           2.78 kB         126 kB
+├   ├ /pt-BR/treinos
+├   └ /en-US/treinos
+├ ƒ /api/admin/payments/export                  0 B                0 B
+├ ƒ /api/cron/notifications                     0 B                0 B
+├ ƒ /api/exercisedb/exercises                   0 B                0 B
+├ ƒ /api/exercisedb/exercises/[id]              0 B                0 B
+├ ƒ /api/payments/asaas/[id]                    0 B                0 B
+├ ƒ /api/payments/asaas/pix                     0 B                0 B
+├ ƒ /api/payments/checkout/intent               0 B                0 B
+├ ƒ /api/payments/checkout/subscribe            0 B                0 B
+├ ƒ /api/payments/ebook/checkout                0 B                0 B
+├ ƒ /api/payments/ebook/pix                     0 B                0 B
+├ ƒ /api/payments/history                       0 B                0 B
+├ ƒ /api/payments/stripe/cancel                 0 B                0 B
+├ ƒ /api/payments/stripe/checkout               0 B                0 B
+├ ƒ /api/payments/stripe/reactivate             0 B                0 B
+├ ƒ /api/payments/stripe/update-payment-method  0 B                0 B
+├ ƒ /api/push/subscribe                         0 B                0 B
+├ ƒ /api/push/unsubscribe                       0 B                0 B
+├ ƒ /api/subscription                           0 B                0 B
+├ ƒ /api/subscription/status                    0 B                0 B
+├ ƒ /api/webhooks/asaas                         0 B                0 B
+├ ƒ /api/webhooks/stripe                        0 B                0 B
+├ ƒ /api/workout/history                        0 B                0 B
+├ ƒ /api/workout/today                          0 B                0 B
+├ ○ /robots.txt                                 0 B                0 B
+└ ○ /sitemap.xml                                0 B                0 B
++ First Load JS shared by all                   87.7 kB
+  ├ chunks/2117-2646bf3f49fba2ec.js             31.8 kB
+  ├ chunks/fd9d1056-6cb65a4f8dfd0715.js         53.6 kB
+  └ other shared chunks (total)                 2.28 kB
+
+
+ƒ Middleware                                    101 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses getStaticProps)
+ƒ  (Dynamic)  server-rendered on demand
+

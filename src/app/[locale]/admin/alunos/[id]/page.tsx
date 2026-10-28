@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { StudentCoachForm } from "@/components/admin/StudentCoachForm";
+import { requireManagedStudent } from "@/lib/auth/platform";
+import { StudentRoutinePanel } from "@/components/admin/student/StudentRoutinePanel";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -71,13 +75,10 @@ import {
   type StudentKitOption,
   type StudentKitAssignment,
 } from "@/components/admin/student/StudentKitsPanel";
-
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Admin | Aluno",
 };
-
 interface ExtendedProfile {
   id: string;
   first_name?: string | null;
@@ -94,7 +95,6 @@ interface ExtendedProfile {
   country?: string | null;
   created_at?: string | null;
 }
-
 interface SubscriptionWithPlan {
   id: string;
   status: string;
@@ -107,9 +107,7 @@ interface SubscriptionWithPlan {
   provider?: string | null;
   started_at?: string | null;
 }
-
 const MAX_ACTIVE_WORKOUTS = 6;
-
 function formatDateISO(iso?: string | null): string {
   if (!iso) return "-";
   try {
@@ -120,7 +118,6 @@ function formatDateISO(iso?: string | null): string {
     return iso;
   }
 }
-
 function formatDateTime(iso?: string | null): string {
   if (!iso) return "-";
   try {
@@ -131,7 +128,6 @@ function formatDateTime(iso?: string | null): string {
     return iso;
   }
 }
-
 function genderLabel(g?: string | null, locale = "pt-BR"): string {
   if (!g) return "-";
   const map: Record<string, { pt: string; en: string }> = {
@@ -143,8 +139,9 @@ function genderLabel(g?: string | null, locale = "pt-BR"): string {
   if (!v) return g;
   return locale === "pt-BR" ? v.pt : v.en;
 }
-
-function statusBadgeVariant(status: string): "default" | "success" | "warning" | "error" | "outline" {
+function statusBadgeVariant(
+  status: string,
+): "default" | "success" | "warning" | "error" | "outline" {
   switch (status) {
     case "active":
     case "paid":
@@ -165,8 +162,11 @@ function statusBadgeVariant(status: string): "default" | "success" | "warning" |
       return "outline";
   }
 }
-
-function statusLabel(status: string, tCommon: (k: any) => string, tPayments?: any): string {
+function statusLabel(
+  status: string,
+  tCommon: (k: any) => string,
+  tPayments?: any,
+): string {
   const map: Record<string, string> = {
     active: "Ativo",
     completed: "Concluido",
@@ -184,7 +184,6 @@ function statusLabel(status: string, tCommon: (k: any) => string, tPayments?: an
   };
   return map[status] || status;
 }
-
 export default async function AdminAlunoDetalhePage({
   params: { locale, id },
 }: {
@@ -192,8 +191,9 @@ export default async function AdminAlunoDetalhePage({
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
-  await requireRole(["admin", "coach"], "/dashboard");
-
+  const label = (pt: string, en: string) => (locale === "en-US" ? en : pt);
+  const actor = await requireRole(["admin", "coach"], "/dashboard");
+  await requireManagedStudent(id);
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
   const tCommon = await getTranslations("common");
@@ -205,43 +205,71 @@ export default async function AdminAlunoDetalhePage({
   const tMuscle = await getTranslations("muscleGroups");
   const tEquip = await getTranslations("equipments");
   const tDiff = await getTranslations("difficultyLevels");
-
   const supabase = await createServiceClientSSR();
-
+  const [dietFingerprint, supplementFingerprint] = await Promise.all(
+    ["diet", "supplement"].map(async (kind) => {
+      const result = await (supabase.rpc as any)(
+        "admin_assignment_fingerprint",
+        { p_actor: actor.userId, p_kind: kind, p_scope: "student", p_id: id },
+      );
+      if (result.error)
+        throw new Error("Não foi possível verificar a versão das atribuições.");
+      return result.data as string;
+    }),
+  );
+  const coaches =
+    actor.role === "admin"
+      ? await supabase
+          .from("profiles")
+          .select("id,full_name")
+          .in("role", ["admin", "coach"])
+          .eq("is_deleted", false)
+          .order("full_name")
+      : { data: [] };
+  const responsibility =
+    actor.role === "admin"
+      ? await supabase
+          .from("mentorship_rooms")
+          .select("coach_id")
+          .eq("user_id", id)
+          .maybeSingle()
+      : { data: null };
   let profile: ExtendedProfile | null = null;
   try {
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", id)
+      .eq("role", "student")
+      .eq("is_deleted", false)
       .maybeSingle();
     profile = (data as ExtendedProfile | null) ?? null;
   } catch {
     profile = null;
   }
-
   if (!profile) {
     notFound();
   }
-
   let email = (profile as any).email || null;
   if (!email) {
     try {
       const res = await (supabase.auth.admin as any)?.getUserById?.(id);
-      email = res?.user?.email ?? null;
+      email = res?.data?.user?.email ?? null;
     } catch {}
   }
-
   let subscription: SubscriptionWithPlan | null = null;
   try {
-    const sub = await SubscriptionService.getActive(id);
+    const sub =
+      actor.role === "admin" ? await SubscriptionService.getActive(id) : null;
     if (sub) {
       const { data: planData } = await supabase
         .from("plans")
         .select("name_pt,name_en,price_cents,currency")
         .eq("id", sub.plan_id)
         .maybeSingle();
-      const plan = planData as (PlanRow & { name_pt: string; name_en: string }) | null;
+      const plan = planData as
+        | (PlanRow & { name_pt: string; name_en: string })
+        | null;
       subscription = {
         id: sub.id,
         status: sub.status,
@@ -258,21 +286,18 @@ export default async function AdminAlunoDetalhePage({
   } catch {
     subscription = null;
   }
-
   let assignments: StudentWorkoutKitRow[] = [];
   try {
     assignments = await WorkoutKitService.listStudentAssignments(id);
   } catch {
     assignments = [];
   }
-
   let history: WorkoutSessionRow[] = [];
   try {
     history = await WorkoutService.userHistory(id, 20);
   } catch {
     history = [];
   }
-
   let kits: WorkoutKitRow[] = [];
   let programs: WorkoutProgramRow[] = [];
   try {
@@ -282,24 +307,22 @@ export default async function AdminAlunoDetalhePage({
     kits = [];
     programs = [];
   }
-
   let supplementKitOptions: StudentKitOption[] = [];
   let supplementAssignments: StudentKitAssignment[] = [];
   let dietKitOptions: StudentKitOption[] = [];
   let dietAssignments: StudentKitAssignment[] = [];
   try {
-    const allSupplementKits: SupplementKitRow[] = await SupplementService.listKits({
-      is_published: true,
-    });
+    const allSupplementKits: SupplementKitRow[] =
+      await SupplementService.listKits({
+        is_published: true,
+      });
     supplementKitOptions = allSupplementKits.map((k) => ({
       id: k.id,
       namePt: k.name_pt,
       nameEn: k.name_en,
     }));
-    const rows: StudentSupplementKitWithKit[] = await SupplementService.listStudentKits(
-      id,
-      "active"
-    );
+    const rows: StudentSupplementKitWithKit[] =
+      await SupplementService.listStudentKits(id, "active");
     supplementAssignments = rows.map((r) => ({
       id: r.id,
       kitId: r.kit_id,
@@ -315,15 +338,19 @@ export default async function AdminAlunoDetalhePage({
     supplementKitOptions = [];
     supplementAssignments = [];
   }
-
   try {
-    const allDietKits: DietKitRow[] = await DietService.listKits({ is_published: true });
+    const allDietKits: DietKitRow[] = await DietService.listKits({
+      is_published: true,
+    });
     dietKitOptions = allDietKits.map((k) => ({
       id: k.id,
       namePt: k.name_pt,
       nameEn: k.name_en,
     }));
-    const rows: StudentDietKitWithKit[] = await DietService.listStudentKits(id, "active");
+    const rows: StudentDietKitWithKit[] = await DietService.listStudentKits(
+      id,
+      "active",
+    );
     dietAssignments = rows.map((r) => ({
       id: r.id,
       kitId: r.kit_id,
@@ -339,35 +366,33 @@ export default async function AdminAlunoDetalhePage({
     dietKitOptions = [];
     dietAssignments = [];
   }
-
   const activeCount = assignments.filter((a) => a.status === "active").length;
   const maxReached = activeCount >= MAX_ACTIVE_WORKOUTS;
-
-  const avatarFallback = (`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "??")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s: string) => s[0]?.toUpperCase() ?? "")
-    .join("") || "??";
-
+  const avatarFallback =
+    (`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "??")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s: string) => s[0]?.toUpperCase() ?? "")
+      .join("") || "??";
   const title = (() => {
     try {
       if (tAdminNav.has("students")) return tAdminNav("students");
     } catch {}
     return "Alunos";
   })();
-
   return (
     <div className="space-y-6 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">
-          {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || tAuth("firstName") + " " + tAuth("lastName")}
+          {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+            tAuth("firstName") + " " + tAuth("lastName")}
         </h1>
         <p className="text-sm md:text-base text-text-secondary">
           Perfil detalhado do aluno e gerenciamento de conteudos atribuidos.
         </p>
       </header>
-
+      <StudentRoutinePanel studentId={id} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card>
           <CardHeader>
@@ -376,9 +401,19 @@ export default async function AdminAlunoDetalhePage({
                 <CardTitle className="flex items-center gap-2">
                   <User size={18} /> Perfil
                 </CardTitle>
-                <CardDescription>Dados cadastrais</CardDescription>
+                <CardDescription>
+                  {label("Dados cadastrais", "Profile details")}
+                </CardDescription>
               </div>
-              <Badge variant={profile.role === "admin" ? "error" : profile.role === "coach" ? "warning" : "default"}>
+              <Badge
+                variant={
+                  profile.role === "admin"
+                    ? "error"
+                    : profile.role === "coach"
+                      ? "warning"
+                      : "default"
+                }
+              >
                 {(profile.role ?? "student").toUpperCase()}
               </Badge>
             </div>
@@ -388,12 +423,16 @@ export default async function AdminAlunoDetalhePage({
               <Avatar
                 size="xl"
                 src={profile.avatar_url ?? undefined}
-                alt={`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "Avatar"}
+                alt={
+                  `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+                  "Avatar"
+                }
                 fallback={avatarFallback}
               />
               <div className="min-w-0 flex-1">
                 <div className="text-lg font-bold text-text truncate">
-                  {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "-"}
+                  {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+                    "-"}
                 </div>
                 {email && (
                   <div className="text-sm text-text-secondary truncate flex items-center gap-1.5 mt-0.5">
@@ -405,10 +444,17 @@ export default async function AdminAlunoDetalhePage({
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <InfoLine icon={<Mail size={14} />} label={tAuth("email")} value={email || "-"} />
-              <InfoLine icon={<Phone size={14} />} label={tAuth("phone")} value={profile.phone || "-"} />
+              <InfoLine
+                icon={<Mail size={14} />}
+                label={tAuth("email")}
+                value={email || "-"}
+              />
+              <InfoLine
+                icon={<Phone size={14} />}
+                label={tAuth("phone")}
+                value={profile.phone || "-"}
+              />
               <InfoLine
                 icon={<Calendar size={14} />}
                 label={tAuth("birthDate")}
@@ -441,74 +487,87 @@ export default async function AdminAlunoDetalhePage({
               />
               <InfoLine
                 icon={<UserPlus size={14} />}
-                label="Cadastrado em"
+                label={label("Cadastrado em", "Registered on")}
                 value={formatDateISO(profile.created_at)}
                 span={2}
               />
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard size={18} /> Assinatura
-                </CardTitle>
-                <CardDescription>Plano e status atual</CardDescription>
+        {actor.role === "admin" && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard size={18} /> Assinatura
+                  </CardTitle>
+                  <CardDescription>
+                    {label("Plano e status atual", "Plan and current status")}
+                  </CardDescription>
+                </div>
+                {subscription && (
+                  <Badge variant={statusBadgeVariant(subscription.status)}>
+                    {statusLabel(subscription.status, tCommon, tPayments)}
+                  </Badge>
+                )}
               </div>
-              {subscription && (
-                <Badge variant={statusBadgeVariant(subscription.status)}>
-                  {statusLabel(subscription.status, tCommon, tPayments)}
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!subscription ? (
-              <EmptyState
-                className="py-8"
-                icon={<CreditCard size={32} className="text-text-secondary" />}
-                title="Sem assinatura ativa"
-                description="Aluno nao possui plano ativo no momento."
-              />
-            ) : (
-              <div className="grid grid-cols-1 gap-3 text-sm">
-                <InfoLine
-                  icon={<CreditCard size={14} />}
-                  label="Plano"
-                  value={
-                    locale === "pt-BR"
-                      ? subscription.plan_name_pt || "-"
-                      : subscription.plan_name_en || "-"
+            </CardHeader>
+            <CardContent>
+              {!subscription ? (
+                <EmptyState
+                  className="py-8"
+                  icon={
+                    <CreditCard size={32} className="text-text-secondary" />
                   }
+                  title={label(
+                    "Sem assinatura ativa",
+                    "No active subscription",
+                  )}
+                  description={label(
+                    "Aluno nao possui plano ativo no momento.",
+                    "The student has no active plan.",
+                  )}
                 />
-                <InfoLine
-                  icon={<CheckCircle2 size={14} />}
-                  label="Status"
-                  value={statusLabel(subscription.status, tCommon, tPayments)}
-                />
-                <InfoLine
-                  icon={<CalendarDays size={14} />}
-                  label="Proximo vencimento"
-                  value={formatDateISO(subscription.current_period_end)}
-                />
-                <InfoLine
-                  icon={<CreditCard size={14} />}
-                  label="Metodo de pagamento"
-                  value={methodLabel(subscription.payment_method_pref, subscription.provider)}
-                />
-                <InfoLine
-                  icon={<UserPlus size={14} />}
-                  label="Iniciada em"
-                  value={formatDateISO(subscription.started_at)}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+              ) : (
+                <div className="grid grid-cols-1 gap-3 text-sm">
+                  <InfoLine
+                    icon={<CreditCard size={14} />}
+                    label={label("Plano", "Plan")}
+                    value={
+                      locale === "pt-BR"
+                        ? subscription.plan_name_pt || "-"
+                        : subscription.plan_name_en || "-"
+                    }
+                  />
+                  <InfoLine
+                    icon={<CheckCircle2 size={14} />}
+                    label="Status"
+                    value={statusLabel(subscription.status, tCommon, tPayments)}
+                  />
+                  <InfoLine
+                    icon={<CalendarDays size={14} />}
+                    label={label("Proximo vencimento", "Next due date")}
+                    value={formatDateISO(subscription.current_period_end)}
+                  />
+                  <InfoLine
+                    icon={<CreditCard size={14} />}
+                    label={label("Metodo de pagamento", "Payment method")}
+                    value={methodLabel(
+                      subscription.payment_method_pref,
+                      subscription.provider,
+                    )}
+                  />
+                  <InfoLine
+                    icon={<UserPlus size={14} />}
+                    label={label("Iniciada em", "Started on")}
+                    value={formatDateISO(subscription.started_at)}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         <Card className="lg:col-span-1">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -516,7 +575,9 @@ export default async function AdminAlunoDetalhePage({
                 <CardTitle className="flex items-center gap-2">
                   <History size={18} /> Resumo
                 </CardTitle>
-                <CardDescription>Metricas rapidas</CardDescription>
+                <CardDescription>
+                  {label("Metricas rapidas", "Quick metrics")}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -525,13 +586,17 @@ export default async function AdminAlunoDetalhePage({
               <div className="flex items-center gap-2 text-text-secondary text-sm">
                 <Dumbbell size={14} /> Treinos atribuidos
               </div>
-              <div className="text-lg font-bold text-text">{assignments.length}</div>
+              <div className="text-lg font-bold text-text">
+                {assignments.length}
+              </div>
             </div>
             <div className="rounded-xl border border-border bg-surface-secondary/30 p-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-text-secondary text-sm">
                 <CheckCircle2 size={14} /> Sessoes concluidas
               </div>
-              <div className="text-lg font-bold text-text">{history.length}</div>
+              <div className="text-lg font-bold text-text">
+                {history.length}
+              </div>
             </div>
             <div className="rounded-xl border border-border bg-surface-secondary/30 p-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-text-secondary text-sm">
@@ -544,12 +609,32 @@ export default async function AdminAlunoDetalhePage({
           </CardContent>
         </Card>
       </div>
-
-      <StudentPasswordResetForm
-        studentId={id}
-        studentName={`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "aluno"}
-      />
-
+      <Link
+        className="text-primary underline"
+        href={`/${locale}/admin/historico?student=${id}`}
+      >
+        {locale === "en-US" ? "Assignment history" : "Histórico de atribuições"}
+      </Link>
+      {actor.role === "admin" && (
+        <StudentCoachForm
+          studentId={id}
+          locale={locale}
+          coaches={(coaches.data || []) as { id: string; full_name: string }[]}
+          current={
+            (responsibility.data as { coach_id: string } | null)?.coach_id || ""
+          }
+        />
+      )}
+      {actor.role === "admin" && (
+        <StudentPasswordResetForm
+          locale={locale}
+          studentId={id}
+          studentName={
+            `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+            "aluno"
+          }
+        />
+      )}
       <Tabs defaultValue="workouts">
         <TabsList>
           <TabsTrigger value="workouts">
@@ -559,13 +644,14 @@ export default async function AdminAlunoDetalhePage({
             <History size={14} className="mr-1.5" /> Historico de sessoes
           </TabsTrigger>
           <TabsTrigger value="supplements">
-            <Pill size={14} className="mr-1.5" /> {tStudentKits("titleSupplement")}
+            <Pill size={14} className="mr-1.5" />{" "}
+            {tStudentKits("titleSupplement")}
           </TabsTrigger>
           <TabsTrigger value="diets">
-            <Utensils size={14} className="mr-1.5" /> {tStudentKits("titleDiet")}
+            <Utensils size={14} className="mr-1.5" />{" "}
+            {tStudentKits("titleDiet")}
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="workouts" className="mt-4">
           <Card>
             <CardHeader>
@@ -581,7 +667,8 @@ export default async function AdminAlunoDetalhePage({
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={maxReached ? "error" : "warning"}>
                     <AlertTriangle size={12} className="mr-1" />
-                    Ativos: {activeCount} / {MAX_ACTIVE_WORKOUTS} (maximo permitido)
+                    Ativos: {activeCount} / {MAX_ACTIVE_WORKOUTS} (maximo
+                    permitido)
                   </Badge>
                   <AssignWorkoutKitModalClient
                     studentId={id}
@@ -597,8 +684,9 @@ export default async function AdminAlunoDetalhePage({
                 <div className="mt-3 rounded-xl border border-red-600/40 bg-red-600/10 px-4 py-2.5 text-sm text-red-300 flex items-start gap-2">
                   <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                   <span>
-                    Este aluno atingiu o limite maximo de {MAX_ACTIVE_WORKOUTS} treinos ativos.
-                    Desatribua um treino existente antes de atribuir um novo.
+                    Este aluno atingiu o limite maximo de {MAX_ACTIVE_WORKOUTS}{" "}
+                    treinos ativos. Desatribua um treino existente antes de
+                    atribuir um novo.
                   </span>
                 </div>
               )}
@@ -608,20 +696,30 @@ export default async function AdminAlunoDetalhePage({
                 <EmptyState
                   className="py-12"
                   icon={<Dumbbell size={36} className="text-text-secondary" />}
-                  title="Nenhum treino atribuido"
-                  description="Clique em 'Atribuir novo' para adicionar o primeiro programa ao aluno."
+                  title={label(
+                    "Nenhum treino atribuido",
+                    "No assigned workouts",
+                  )}
+                  description={label(
+                    "Clique em 'Atribuir novo' para adicionar o primeiro programa ao aluno.",
+                    "Select 'Assign new' to add the first workout program.",
+                  )}
                 />
               ) : (
                 <div className="rounded-xl border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Inicio</TableHead>
-                        <TableHead>Fim</TableHead>
+                        <TableHead>{label("Nome", "Name")}</TableHead>
+                        <TableHead>{label("Inicio", "Start")}</TableHead>
+                        <TableHead>{label("Fim", "End")}</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Atribuido em</TableHead>
-                        <TableHead className="text-right">{tCommon("actions")}</TableHead>
+                        <TableHead>
+                          {label("Atribuido em", "Assigned on")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {tCommon("actions")}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -636,18 +734,24 @@ export default async function AdminAlunoDetalhePage({
                           (kit && (kit as any).name_en) ||
                           (program && (program as any).title_en) ||
                           "Untitled";
-                        const displayName = locale === "pt-BR" ? namePt : nameEn;
+                        const displayName =
+                          locale === "pt-BR" ? namePt : nameEn;
                         return (
                           <TableRow key={a.id}>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <Dumbbell size={14} className="text-text-secondary shrink-0" />
+                                <Dumbbell
+                                  size={14}
+                                  className="text-text-secondary shrink-0"
+                                />
                                 <div className="min-w-0">
                                   <div className="font-semibold text-text truncate max-w-[260px]">
                                     {displayName}
                                   </div>
                                   <div className="text-xs text-text-secondary truncate max-w-[260px]">
-                                    {kit ? `Kit: ${(kit as any).name_pt || (kit as any).name_en}` : `Programa individual`}
+                                    {kit
+                                      ? `Kit: ${(kit as any).name_pt || (kit as any).name_en}`
+                                      : `Programa individual`}
                                   </div>
                                 </div>
                               </div>
@@ -659,9 +763,14 @@ export default async function AdminAlunoDetalhePage({
                                 {statusLabel(a.status, tCommon)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{formatDateISO(a.assigned_at)}</TableCell>
+                            <TableCell>
+                              {formatDateISO(a.assigned_at)}
+                            </TableCell>
                             <TableCell className="text-right">
-                              <UnassignWorkoutButton swkId={a.id} locale={locale} />
+                              <UnassignWorkoutButton
+                                swkId={a.id}
+                                locale={locale}
+                              />
                             </TableCell>
                           </TableRow>
                         );
@@ -673,7 +782,6 @@ export default async function AdminAlunoDetalhePage({
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="history" className="mt-4">
           <Card>
             <CardHeader>
@@ -691,19 +799,27 @@ export default async function AdminAlunoDetalhePage({
                 <EmptyState
                   className="py-12"
                   icon={<History size={36} className="text-text-secondary" />}
-                  title="Sem sessoes concluidas"
-                  description="O aluno ainda nao finalizou nenhuma sessao de treino."
+                  title={label(
+                    "Sem sessoes concluidas",
+                    "No completed sessions",
+                  )}
+                  description={label(
+                    "O aluno ainda nao finalizou nenhuma sessao de treino.",
+                    "The student has not completed a workout session yet.",
+                  )}
                 />
               ) : (
                 <div className="rounded-xl border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Iniciada</TableHead>
-                        <TableHead>Finalizada</TableHead>
-                        <TableHead>Duracao</TableHead>
-                        <TableHead>Sentimento</TableHead>
+                        <TableHead>{label("Data", "Date")}</TableHead>
+                        <TableHead>{label("Iniciada", "Started")}</TableHead>
+                        <TableHead>
+                          {label("Finalizada", "Completed")}
+                        </TableHead>
+                        <TableHead>{label("Duracao", "Duration")}</TableHead>
+                        <TableHead>{label("Sentimento", "Feeling")}</TableHead>
                         <TableHead>RPE</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -714,16 +830,22 @@ export default async function AdminAlunoDetalhePage({
                             {formatDateISO(s.scheduled_date)}
                           </TableCell>
                           <TableCell>{formatDateTime(s.started_at)}</TableCell>
-                          <TableCell>{formatDateTime(s.completed_at)}</TableCell>
+                          <TableCell>
+                            {formatDateTime(s.completed_at)}
+                          </TableCell>
                           <TableCell>
                             {s.duration_min ? `${s.duration_min} min` : "-"}
                           </TableCell>
                           <TableCell>
                             {s.feeling_scale
-                              ? "★".repeat(Math.max(0, Math.min(5, s.feeling_scale)))
+                              ? "★".repeat(
+                                  Math.max(0, Math.min(5, s.feeling_scale)),
+                                )
                               : "-"}
                           </TableCell>
-                          <TableCell>{s.rpe_avg != null ? String(s.rpe_avg) : "-"}</TableCell>
+                          <TableCell>
+                            {s.rpe_avg != null ? String(s.rpe_avg) : "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -733,12 +855,12 @@ export default async function AdminAlunoDetalhePage({
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="supplements" className="mt-4">
           <Card>
             <CardContent className="pt-5">
               <StudentKitsPanel
                 studentId={id}
+                fingerprint={supplementFingerprint}
                 kind="supplement"
                 kits={supplementKitOptions}
                 assignments={supplementAssignments}
@@ -746,12 +868,12 @@ export default async function AdminAlunoDetalhePage({
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="diets" className="mt-4">
           <Card>
             <CardContent className="pt-5">
               <StudentKitsPanel
                 studentId={id}
+                fingerprint={dietFingerprint}
                 kind="diet"
                 kits={dietKitOptions}
                 assignments={dietAssignments}
@@ -763,7 +885,6 @@ export default async function AdminAlunoDetalhePage({
     </div>
   );
 }
-
 function InfoLine({
   icon,
   label,
@@ -790,7 +911,6 @@ function InfoLine({
     </div>
   );
 }
-
 function methodLabel(method?: string | null, provider?: string | null): string {
   if (!method && !provider) return "-";
   const m: Record<string, string> = {

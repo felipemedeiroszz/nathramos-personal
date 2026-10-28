@@ -304,11 +304,12 @@ export const getMaintenanceStatus = cache(
   async (): Promise<{ active: boolean; until: string | null }> => {
     try {
       const supabase = await createServiceClientSSR()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("platform_settings")
         .select("key, value_pt, value_json")
         .in("key", ["maintenance_mode", "maintenance_until"])
 
+      if (error) throw error
       const byKey = new Map<string, SettingsDbRow>()
       for (const row of (data ?? []) as unknown as SettingsDbRow[]) {
         byKey.set(row.key, row)
@@ -317,8 +318,9 @@ export const getMaintenanceStatus = cache(
       const untilRaw = byKey.get("maintenance_until")?.value_pt
       const until = typeof untilRaw === "string" ? untilRaw : null
       return resolveMaintenance(mode, until)
-    } catch {
-      return { active: false, until: null }
+    } catch (error) {
+      console.error("[PlatformSettings] maintenance", error)
+      throw new Error("Não foi possível verificar a disponibilidade da plataforma.")
     }
   }
 )

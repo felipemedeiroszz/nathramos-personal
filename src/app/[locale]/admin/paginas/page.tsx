@@ -55,7 +55,7 @@ export default async function AdminPaginasPage({
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminPages = await getTranslations("adminPages");
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
 
   const rows = await ContentPageService.list();
   const bySlug = new Map(rows.map((row) => [row.slug, row]));
@@ -64,7 +64,7 @@ export default async function AdminPaginasPage({
     const row = bySlug.get(slug) ?? null;
     const fallback = DEFAULT_CONTENT_PAGES[slug];
     const isCustomized = Boolean(
-      row && (row.title_pt || row.title_en || (row.blocks?.length ?? 0) > 0)
+      row && (row.title_pt || row.title_en || (row.blocks?.length ?? 0) > 0),
     );
 
     if (isCustomized && row) {

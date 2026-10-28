@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServiceClientSSR } from "@/lib/supabase/server";
+import { requireStudentTarget, AccessError } from "@/lib/auth/platform";
 import { WorkoutService } from "@/services/WorkoutService";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const { targetId: userId } = await requireStudentTarget(searchParams.get("userId"));
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
       completedToday: todaysProgram.sessionCompletedToday ?? false,
     });
   } catch (error) {
+    if (error instanceof AccessError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("Error fetching today's workout:", error);
     return NextResponse.json(
       { error: "Failed to fetch today's workout" },

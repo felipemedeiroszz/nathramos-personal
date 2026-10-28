@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
 import { NotificationBell } from "@/components/shared/NotificationBell";
@@ -22,6 +22,7 @@ interface StudentLayoutClientProps {
   lastName?: string | null;
   photoUrl?: string | null;
   subscriptionAllowed: boolean;
+  accessExpiresAt?: string | null;
   maintenance: MaintenanceInfo;
   onLogout: () => Promise<void>;
   children: React.ReactNode;
@@ -33,6 +34,7 @@ export function StudentLayoutClient({
   lastName,
   photoUrl,
   subscriptionAllowed,
+  accessExpiresAt,
   maintenance,
   onLogout,
   children,
@@ -40,9 +42,30 @@ export function StudentLayoutClient({
   const t = useTranslations("navigation");
   const localeTag = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const isAccount = pathname === `/${locale}/account`;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [periodExpired, setPeriodExpired] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const check = () => {
+      clearTimeout(timer);
+      const expires = Date.parse(accessExpiresAt || "");
+      const remaining = expires - Date.now();
+      setPeriodExpired(Number.isFinite(expires) && remaining <= 0);
+      if (remaining > 0) timer = setTimeout(check, Math.min(remaining, 2147483647));
+    };
+    check();
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [accessExpiresAt]);
 
-  if (maintenance.active) {
+  if (maintenance.active && !isAccount) {
     const date = maintenance.until ? new Date(maintenance.until) : null;
     const untilLabel =
       date && !Number.isNaN(date.getTime())
@@ -77,7 +100,7 @@ export function StudentLayoutClient({
     );
   }
 
-  if (!subscriptionAllowed) {
+  if ((!subscriptionAllowed || periodExpired) && !isAccount) {
     return (
       <div className="min-h-dvh flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-8 shadow-lg text-center">
@@ -87,7 +110,7 @@ export function StudentLayoutClient({
           <h1 className="text-2xl font-bold text-text mb-2">{t("blockedTitle")}</h1>
           <p className="text-text-secondary mb-6">{t("blockedDescription")}</p>
           <button
-            onClick={() => router.push(`/${locale}/planos`)}
+            onClick={() => router.push(`/${locale}/assinatura`)}
             className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-[0_0_20px_hsl(var(--primary)/0.2)]"
           >
             {t("blockedCta")}

@@ -1,8 +1,16 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Dumbbell, FolderKanban, ImageOff, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  Dumbbell,
+  FolderKanban,
+  ImageOff,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -71,14 +79,16 @@ export function KitItemUpsertModal({
 }: KitItemUpsertModalProps) {
   const t = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
 
   const [source, setSource] = useState<SourceKind>("program");
   const [programId, setProgramId] = useState("");
   const [exerciseId, setExerciseId] = useState("");
-  const [apiExercise, setApiExercise] = useState<ExerciseDbExercise | null>(null);
+  const [apiExercise, setApiExercise] = useState<ExerciseDbExercise | null>(
+    null,
+  );
   const [categoryLabel, setCategoryLabel] = useState("");
   const [dayOfWeek, setDayOfWeek] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -122,9 +132,12 @@ export function KitItemUpsertModal({
         const params = new URLSearchParams();
         params.set("limit", String(API_PAGE_SIZE));
         if (debouncedQuery) params.set("q", debouncedQuery);
-        const response = await fetch(`/api/exercisedb/exercises?${params.toString()}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/exercisedb/exercises?${params.toString()}`,
+          {
+            signal: controller.signal,
+          },
+        );
         const payload = await response.json().catch(() => null);
         if (cancelled) return;
         if (!response.ok) {
@@ -172,13 +185,18 @@ export function KitItemUpsertModal({
           order_index: nextOrder,
         });
         if (!result?.success) {
-          setErrorMsg(result?.message ?? label("Erro ao adicionar treino.", "Failed to add workout."));
+          setErrorMsg(
+            result?.message ??
+              label("Erro ao adicionar treino.", "Failed to add workout."),
+          );
           return;
         }
         onSaved?.();
         onClose();
       } catch (err: any) {
-        setErrorMsg(err?.message ?? label("Erro inesperado.", "Unexpected error."));
+        setErrorMsg(
+          err?.message ?? label("Erro inesperado.", "Unexpected error."),
+        );
       }
     });
   }
@@ -186,21 +204,30 @@ export function KitItemUpsertModal({
   const sourceTabs: Array<{ value: SourceKind; label: string }> = [
     { value: "program", label: label("Programas", "Programs") },
     { value: "api", label: label("Catálogo (API)", "Catalog (API)") },
-    { value: "catalog", label: label("Exercícios cadastrados", "Saved exercises") },
+    {
+      value: "catalog",
+      label: label("Exercícios cadastrados", "Saved exercises"),
+    },
   ];
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
       className="max-w-3xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
         <div>
-          <ModalTitle>{label("Adicionar Treino ao Kit", "Add Workout to Kit")}</ModalTitle>
-          {kitName && <p className="text-sm text-text-secondary mt-1">{kitName}</p>}
+          <ModalTitle>
+            {label("Adicionar Treino ao Kit", "Add Workout to Kit")}
+          </ModalTitle>
+          {kitName && (
+            <p className="text-sm text-text-secondary mt-1">{kitName}</p>
+          )}
         </div>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
 
       <form onSubmit={handleSubmit}>
@@ -214,7 +241,9 @@ export function KitItemUpsertModal({
                 value={categoryLabel}
                 onChange={(e) => setCategoryLabel(e.target.value)}
               >
-                <option value="">-- {label("Sem categoria", "No category")} --</option>
+                <option value="">
+                  -- {label("Sem categoria", "No category")} --
+                </option>
                 {CATEGORY_LABELS.map((letter) => (
                   <option key={letter} value={letter}>
                     {label("Treino", "Workout")} {letter}
@@ -226,8 +255,13 @@ export function KitItemUpsertModal({
               <label className="text-sm font-medium text-text">
                 {label("Dia da semana", "Day of week")}
               </label>
-              <Select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}>
-                <option value="">-- {label("Sem dia definido", "No day set")} --</option>
+              <Select
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(e.target.value)}
+              >
+                <option value="">
+                  -- {label("Sem dia definido", "No day set")} --
+                </option>
                 {Object.entries(WEEKDAY_LABELS).map(([value, names]) => (
                   <option key={value} value={value}>
                     {label(names.pt, names.en)}
@@ -256,8 +290,13 @@ export function KitItemUpsertModal({
             </div>
 
             {source === "program" && (
-              <Select value={programId} onChange={(e) => setProgramId(e.target.value)}>
-                <option value="">-- {label("Selecione um programa", "Select a program")} --</option>
+              <Select
+                value={programId}
+                onChange={(e) => setProgramId(e.target.value)}
+              >
+                <option value="">
+                  -- {label("Selecione um programa", "Select a program")} --
+                </option>
                 {programOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {locale === "pt-BR" ? p.title_pt : p.title_en}
@@ -267,8 +306,13 @@ export function KitItemUpsertModal({
             )}
 
             {source === "catalog" && (
-              <Select value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
-                <option value="">-- {label("Selecione um exercício", "Select an exercise")} --</option>
+              <Select
+                value={exerciseId}
+                onChange={(e) => setExerciseId(e.target.value)}
+              >
+                <option value="">
+                  -- {label("Selecione um exercício", "Select an exercise")} --
+                </option>
                 {exerciseOptions.map((ex) => (
                   <option key={ex.id} value={ex.id}>
                     {locale === "pt-BR" ? ex.name_pt : ex.name_en}
@@ -288,7 +332,10 @@ export function KitItemUpsertModal({
                   <Input
                     value={apiQuery}
                     onChange={(e) => setApiQuery(e.target.value)}
-                    placeholder={label("Buscar exercício na API...", "Search exercise in API...")}
+                    placeholder={label(
+                      "Buscar exercício na API...",
+                      "Search exercise in API...",
+                    )}
                     className="pl-10"
                   />
                 </div>
@@ -300,16 +347,23 @@ export function KitItemUpsertModal({
                   </p>
                 ) : apiError ? (
                   <p className="rounded-lg border border-yellow-600/40 bg-yellow-600/10 px-3 py-2 text-xs text-yellow-500">
-                    {label("Não foi possível carregar o catálogo da API.", "Could not load the API catalog.")}
+                    {label(
+                      "Não foi possível carregar o catálogo da API.",
+                      "Could not load the API catalog.",
+                    )}
                   </p>
                 ) : apiItems.length === 0 ? (
                   <p className="text-xs text-text-secondary">
-                    {label("Nenhum exercício encontrado.", "No exercises found.")}
+                    {label(
+                      "Nenhum exercício encontrado.",
+                      "No exercises found.",
+                    )}
                   </p>
                 ) : (
                   <div className="grid max-h-[320px] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
                     {apiItems.map((exercise) => {
-                      const selected = apiExercise?.exerciseId === exercise.exerciseId;
+                      const selected =
+                        apiExercise?.exerciseId === exercise.exerciseId;
                       return (
                         <button
                           key={exercise.exerciseId}
@@ -331,7 +385,10 @@ export function KitItemUpsertModal({
                                 className="h-full w-full object-contain"
                               />
                             ) : (
-                              <ImageOff size={22} className="text-text-secondary" />
+                              <ImageOff
+                                size={22}
+                                className="text-text-secondary"
+                              />
                             )}
                           </div>
                           <div className="space-y-1 p-2">
@@ -339,7 +396,10 @@ export function KitItemUpsertModal({
                               {exercise.name || label("Sem nome", "Unnamed")}
                             </p>
                             {exercise.bodyParts.length > 0 && (
-                              <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] capitalize">
+                              <Badge
+                                variant="outline"
+                                className="px-1.5 py-0.5 text-[10px] capitalize"
+                              >
                                 {exercise.bodyParts[0]}
                               </Badge>
                             )}
@@ -357,7 +417,9 @@ export function KitItemUpsertModal({
             <p className="flex items-center gap-2 text-xs text-text-secondary">
               <Dumbbell size={14} className="text-primary" />
               {label("Selecionado:", "Selected:")}{" "}
-              <span className="font-semibold text-text capitalize">{apiExercise.name}</span>
+              <span className="font-semibold text-text capitalize">
+                {apiExercise.name}
+              </span>
             </p>
           )}
 
@@ -369,7 +431,12 @@ export function KitItemUpsertModal({
         </ModalBody>
 
         <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             {t("cancel")}
           </Button>
           <Button type="submit" disabled={isPending || !canSubmit}>

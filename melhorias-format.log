@@ -1,0 +1,95 @@
+src/app/[locale]/admin/alimentos/AdminAlimentosClient.tsx 87ms (unchanged)
+src/app/[locale]/admin/alimentos/page.tsx 14ms (unchanged)
+src/app/[locale]/admin/alunos/AdminAlunosClient.tsx 41ms (unchanged)
+src/app/[locale]/admin/alunos/[id]/page.tsx 68ms (unchanged)
+src/app/[locale]/admin/alunos/page.tsx 14ms (unchanged)
+src/app/[locale]/admin/assinaturas/page.tsx 5ms (unchanged)
+src/app/[locale]/admin/auditoria/page.tsx 6ms (unchanged)
+src/app/[locale]/admin/configuracoes/page.tsx 4ms (unchanged)
+src/app/[locale]/admin/dashboard/page.tsx 22ms (unchanged)
+src/app/[locale]/admin/ebooks/AdminEbooksClient.tsx 21ms (unchanged)
+src/app/[locale]/admin/ebooks/page.tsx 4ms (unchanged)
+src/app/[locale]/admin/exames/AdminExamesClient.tsx 15ms (unchanged)
+src/app/[locale]/admin/exames/page.tsx 12ms (unchanged)
+src/app/[locale]/admin/financeiro/page.tsx 6ms (unchanged)
+src/app/[locale]/admin/kits/dietas/AdminDietKitsClient.tsx 28ms (unchanged)
+src/app/[locale]/admin/kits/dietas/page.tsx 7ms (unchanged)
+src/app/[locale]/admin/kits/suplementos/AdminSupplementKitsClient.tsx 19ms (unchanged)
+src/app/[locale]/admin/kits/suplementos/page.tsx 7ms (unchanged)
+src/app/[locale]/admin/kits/treinos/AdminKitsClient.tsx 36ms
+src/app/[locale]/admin/kits/treinos/page.tsx 8ms (unchanged)
+src/app/[locale]/admin/notificacoes/page.tsx 3ms (unchanged)
+src/app/[locale]/admin/pagamentos/page.tsx 8ms (unchanged)
+src/app/[locale]/admin/paginas/page.tsx 8ms (unchanged)
+src/app/[locale]/admin/planos/page.tsx 3ms (unchanged)
+src/app/[locale]/admin/redes-sociais/page.tsx 3ms (unchanged)
+src/app/[locale]/admin/suplementos/AdminSuplementosClient.tsx 17ms (unchanged)
+src/app/[locale]/admin/suplementos/page.tsx 4ms (unchanged)
+src/app/[locale]/admin/treinos/OwnExercisesClient.tsx 42ms (unchanged)
+src/app/[locale]/admin/treinos/page.tsx 12ms (unchanged)
+src/app/actions/account.ts 28ms (unchanged)
+src/app/actions/admin.ts 6ms (unchanged)
+src/app/actions/auth.ts 10ms (unchanged)
+src/app/actions/billing.ts 7ms (unchanged)
+src/app/actions/content.ts 24ms (unchanged)
+src/app/actions/exams.ts 9ms (unchanged)
+src/app/actions/mentoring.ts 7ms (unchanged)
+src/app/actions/notifications.ts 8ms (unchanged)
+src/app/actions/settings.ts 3ms (unchanged)
+src/app/actions/social.ts 3ms (unchanged)
+src/app/actions/workouts.ts 27ms
+src/components/admin/StudentPasswordResetForm.tsx 3ms
+src/components/admin/billing/AdminAssinaturasClient.tsx 17ms (unchanged)
+src/components/admin/diet/AssignDietKitModal.tsx 16ms (unchanged)
+src/components/admin/diet/DietKitModal.tsx 28ms
+src/components/admin/student/StudentKitsPanel.tsx 16ms (unchanged)
+src/components/admin/supplement/AssignSupplementKitModal.tsx 12ms (unchanged)
+src/components/admin/supplement/SupplementKitModal.tsx 29ms
+src/components/admin/workout/DayUpsertModal.tsx 13ms (unchanged)
+src/components/admin/workout/ExerciseUpsertModal.tsx 23ms (unchanged)
+src/components/admin/workout/KitItemUpsertModal.tsx 38ms (unchanged)
+src/components/admin/workout/KitUpsertModal.tsx 26ms
+src/components/admin/workout/ProgramUpsertModal.tsx 25ms (unchanged)
+src/components/shared/AdminHeader.tsx 12ms (unchanged)
+src/components/shared/AdminLayoutClient.tsx 5ms (unchanged)
+src/components/shared/AdminSidebar.tsx 21ms
+src/components/ui/Dialog.tsx 3ms (unchanged)
+src/components/ui/Drawer.tsx 4ms (unchanged)
+src/components/ui/Modal.tsx 3ms (unchanged)
+src/lib/payments/asaas.ts 13ms
+src/schemas/diets.ts 28ms (unchanged)
+src/schemas/supplements.ts 16ms (unchanged)
+src/schemas/workouts.ts 21ms (unchanged)
+src/services/DietService.ts 35ms (unchanged)
+src/services/ExamService.ts 12ms (unchanged)
+src/services/MentorshipService.ts 27ms (unchanged)
+src/services/StudentService.ts 5ms (unchanged)
+src/services/SupplementService.ts 23ms (unchanged)
+src/services/WorkoutKitService.ts 18ms (unchanged)
+src/services/WorkoutService.ts 46ms
+src/types/index.ts 23ms (unchanged)
+src/app/[locale]/admin/error.tsx 2ms (unchanged)
+src/app/[locale]/admin/historico/page.tsx 11ms
+src/app/[locale]/admin/loading.tsx 3ms (unchanged)
+src/app/[locale]/admin/page.tsx 2ms (unchanged)
+src/app/actions/reconciliation.ts 16ms
+src/app/actions/routine.ts 13ms
+src/app/api/admin/payments/export/route.ts 4ms (unchanged)
+src/components/admin/AdminDataControls.tsx 6ms (unchanged)
+src/components/admin/AdminWorkQueue.tsx 6ms
+src/components/admin/StudentCoachForm.tsx 3ms (unchanged)
+src/components/admin/billing/AdminCurrencySelector.tsx 2ms (unchanged)
+src/components/admin/billing/BillingInspectionForm.tsx 4ms (unchanged)
+src/components/admin/billing/FinanceChecks.tsx 7ms (unchanged)
+src/components/admin/student/StudentRoutinePanel.tsx 3ms (unchanged)
+src/components/ui/useDialogFocus.ts 7ms (unchanged)
+src/hooks/useAsyncTransition.ts 5ms (unchanged)
+src/lib/admin/csv.ts 4ms (unchanged)
+src/lib/admin/data-page.ts 5ms
+src/lib/admin/reporting.ts 23ms (unchanged)
+src/lib/auth/platform.ts 30ms (unchanged)
+tests/admin-improvements.test.mjs 58ms
+tests/dialog-browser.mjs 7ms
+tests/load-ts.mjs 4ms (unchanged)
+tests/preview-admin-ui.mjs 13ms
+AUDITORIA-PAINEL-ADMIN.md 81ms

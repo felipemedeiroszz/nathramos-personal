@@ -1,0 +1,94 @@
+# Revisão do painel administrador
+
+28/10/2026. Revisão do código, serviços, ações, páginas e migrações do painel administrativo. Foram preservadas as correções anteriores do painel do aluno.
+
+## Resultado
+
+Foram corrigidos problemas confirmados de segurança, integridade dos kits, filtros, métricas e tratamento de falhas. As seis frentes de melhoria foram trabalhadas após a definição de permissões aprovada pelo usuário, conforme o escopo e os limites registrados abaixo. A conexão com o Supabase real e os provedores externos continua sem homologação nesta cópia, pois as credenciais não estão disponíveis.
+
+## Problemas corrigidos
+
+| Prioridade | Problema                                                                                                                                                              | Correção                                                                                                                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Crítica    | Redefinição aceitava qualquer ID de conta; um coach poderia tentar redefinir a senha de um administrador. Havia senha padrão compartilhada e entrada em texto aberto. | A ação aceita apenas aluno não removido, exige senha explícita de 12 a 128 caracteres e confirmação. Campos usam `password`, envio tem estado pendente e a alteração é auditada sem registrar a senha.                     |
+| Alta       | Salvar kit apagava todos os itens antes de inserir os novos; falha podia deixar kit vazio e os novos IDs quebravam a correspondência dos consumos.                    | Gravação transacional de cabeçalho e itens, IDs preservados para itens mantidos e rollback integral em erro. Troca do produto gera outra identidade, preservando o snapshot do consumo anterior.                           |
+| Alta       | Sincronização de atribuições arquivava/inseria em requisições separadas e ignorava novas datas e observações dos vínculos já existentes.                              | Transação valida aluno, kit, datas e ator; atualiza metadados dos vínculos mantidos e inclui auditoria. Falha não deixa vínculo parcialmente removido.                                                                     |
+| Alta       | Busca prometia e-mail, mas só pesquisava nome. Filtro em relação `left` podia manter o aluno mesmo sem assinatura correspondente; primeira assinatura era arbitrária. | Diretório SQL busca nome/e-mail, escolhe assinatura com prioridade e desempate determinísticos e filtra antes de contar/paginar. Datas vencidas não aparecem como acesso ativo.                                            |
+| Média      | Página negativa, inválida ou maior que o total produzia resultados vazios ou paginação inconsistente.                                                                 | Parâmetros limitados, contagem coerente e ajuste para a última página existente. Filtros incluem atrasados, expirados, inativos e sem assinatura.                                                                          |
+| Alta       | Dashboard/financeiro somavam BRL e USD como se fossem a mesma moeda.                                                                                                  | Seletor explícito de moeda, agregações separadas e formatação monetária correta. Receita é identificada como bruta de pagamentos aprovados; não há câmbio implícito.                                                       |
+| Alta       | Assinaturas vencidas e perfis removidos podiam inflar ativos/MRR; dados eram truncados pelo limite de resposta da API.                                                | Métricas consideram vigência/tolerância e base de alunos não removidos. MRR estimado em ciclos de 30 dias exclui cancelamentos agendados. Leituras agregadas têm paginação.                                                |
+| Média      | Dashboard mostrava deltas fixos de 0% e gráfico eternamente em skeleton.                                                                                              | Percentuais fictícios removidos e comparação de novos alunos/cancelamentos usa dados efetivos. Consultas compartilham um relatório por requisição, em vez de repetir buscas mês a mês.                                     |
+| Alta       | Cancelar/reativar no administrador alterava só o banco local, sem comprovar a operação no gateway.                                                                    | Stripe é atualizado primeiro, consultado novamente e sincronizado no banco. Alteração manual de status de assinatura externa é bloqueada. Operações sem suporte seguro retornam erro explícito e preservam o estado local. |
+| Alta       | Cancelamento imediato podia manter acesso até o fim do período originalmente pago.                                                                                    | A função de acesso considera `ended_at` no cancelamento encerrado. Há teste de regressão em PostgreSQL.                                                                                                                    |
+| Média      | Exclusões de alimentos, suplementos, exames e e-books fechavam a confirmação mesmo quando a ação retornava falha.                                                     | Falha permanece visível no diálogo; lista só é atualizada como sucesso após confirmação da ação.                                                                                                                           |
+| Média      | Falhas financeiras, de alunos ou auditoria eram exibidas como zero/nenhum registro.                                                                                   | Leituras críticas propagam erro, registram diagnóstico e usam estado de erro com nova tentativa. Auditoria inclui o dia final completo no fuso de São Paulo e pagina os valores dos filtros.                               |
+| Média      | No celular, acessar a ficha exigia procurar a ação na tabela lateralmente rolável.                                                                                    | Lista de alunos usa cards no celular, com nome, e-mail, plano, status e botão visível para abrir a ficha. A tabela permanece no desktop.                                                                                   |
+| Baixa      | Ficha aceitava perfil de equipe pela URL e o fallback de e-mail lia o formato errado de resposta do Auth.                                                             | Rota de aluno restringe a perfil de aluno não removido; e-mail usa `data.user.email`.                                                                                                                                      |
+| Baixa      | `/admin` não tinha entrada; troca de idioma descartava filtros; drawer não fechava por Escape e rolava o fundo.                                                       | Entrada redireciona ao dashboard; idioma preserva query string; menu bloqueia rolagem de fundo e aceita Escape. Há loading real durante carregamento.                                                                      |
+| Baixa      | Seletor de idioma usava emojis, contrariando a regra visual do projeto.                                                                                               | Uso de ícone SVG e texto; destaque de navegação tem correspondência de rota mais precisa.                                                                                                                                  |
+
+## Limitações tratadas de forma explícita
+
+- **Asaas:** cancelamento/reativação automáticos desse fluxo ainda não têm implementação segura completa. O painel passou a recusar a operação em vez de anunciar sucesso apenas local. Completar essa integração e homologar o efeito sobre cobranças pendentes é a principal pendência técnica do financeiro.
+- **Stripe encerrado:** o painel não anuncia reativação de uma assinatura terminal; orienta nova contratação. As operações de teste usaram dependências controladas, sem cobrança ou alteração de assinatura remota.
+- **Falha entre gateway e banco:** uma operação externa pode ser confirmada e a sincronização local falhar. O painel retorna erro; recomenda-se uma rotina de reconciliação além dos webhooks existentes.
+- **Indicadores:** MRR é uma estimativa operacional normalizada por 30 dias. Receita bruta não é lucro, caixa líquido nem valor convertido entre moedas. O gráfico de cancelamentos usa os registros disponíveis, não um histórico de eventos imutável.
+
+## Melhorias implementadas após a definição aprovada
+
+O usuário aprovou: administrador gerencia toda a plataforma; coach acessa somente seus alunos, prescrições e atendimento, sem financeiro, configurações globais ou auditoria geral.
+
+| Frente                   | Implementação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Permissões               | Menus, páginas e ações globais exclusivos de admin. Carteira do coach usa o responsável da sala única de mentoria. Admin pode selecionar outro responsável no perfil do aluno; alteração e reuniões futuras são atualizadas em transação e auditadas. Guardas também verificam aluno/registro/autor antes de usar service role. Políticas RLS restritivas limitam dados atuais e legados, saúde, prescrições e itens. Coach sem vínculo vê carteira vazia; não recebe assinaturas no diretório nem métricas financeiras no dashboard.                                                                           |
+| Fila de trabalho         | Dashboard mostra exames sem parecer, conversas com mensagens não lidas, alunos sem treino/dieta vigentes e reuniões agendadas nos próximos sete dias. Contadores completos são calculados no PostgreSQL; até 30 pendências são exibidas com links. Coach recebe somente sua carteira.                                                                                                                                                                                                                                                                                                                           |
+| Histórico e concorrência | Revisões com antes/depois de kits, itens e atribuições, incluindo exclusões. Página paginada de comparação; atalhos no aluno, no editor dos kits e no menu de admin. Revisões começam na instalação, sem reconstruir versões anteriores. Dieta/suplementação verificam versão sob trava transacional; atribuições verificam fingerprint do snapshot. Treino verifica versão do cabeçalho; remoção/reordenação de itens usa transação com validação de pertencimento e versão. Autoria é registrada quando o contexto da operação está disponível; caso contrário a interface identifica a ausência do registro. |
+| Financeiro operacional   | Conferência por período e moeda, receita efetivamente paga, alertas de webhook com erro/sem processamento, períodos vencidos, referências externas ausentes e pagamentos associados a assinaturas inativas. Conferência pontual de registros com Stripe/Asaas; comparação dos campos suportados, incluindo estornos e assinatura Stripe. Recorrência Asaas não é interpretada como prova de quitação. CSV autenticado por moeda/filtros, em páginas, com escape de aspas e proteção contra fórmulas. Conferir não gera cobranças, muda acesso nem reprocessa eventos automaticamente.                           |
+| Escala                   | Busca, contagem e paginação SQL para alimentos, suplementos, e-books, exames, kits, exercícios próprios, pagamentos e assinaturas. Filtros são aplicados antes do limite. As telas recebem uma página; itens só são carregados para os kits visíveis. O catálogo remoto de exercícios mantém sua paginação existente. Seletores auxiliares de criação continuam limitados; a listagem principal/diretório permite alcançar registros por busca e página.                                                                                                                                                        |
+| Formulários e idioma     | Hook de envio aguarda a requisição completa e evita duplo envio. Falhas de exclusão/edição permanecem visíveis, incluindo kits e exercícios. Modais/drawers têm foco inicial, Tab contido, restauração de foco, Escape no diálogo superior, bloqueio de rolagem compartilhado, sem botão de fechar submetendo formulário. Traduções PT/EN aplicadas aos novos controles e aos fluxos de aluno/senha/responsável revisados; não representa tradução integral de todo texto legado do produto.                                                                                                                    |
+
+### Regras de operação
+
+- A carteira existente vem de `mentorship_rooms.coach_id`; a implantação não redistribui alunos arbitrariamente. Novas salas sem responsável explícito usam administrador como fallback. O administrador deve conferir e ajustar os vínculos existentes pelo perfil do aluno.
+- Coach altera suas próprias bibliotecas de prescrição e gerencia atribuições/atendimento dos alunos vinculados. Bibliotecas globais, senha de conta, notificações em massa e gestão financeira ficam com admin.
+- As comparações financeiras sinalizam itens para revisão. Cancelamentos, tolerância, estornos e vínculos históricos podem explicar diferenças. Webhooks não têm moeda própria; seus contadores abrangem todas as moedas no período.
+- Consulta ao provedor depende de credenciais/IDs válidos. Referências sem suporte retornam orientação explícita; a conferência não inventa confirmação de pagamento.
+
+## Migrações e implantação
+
+Após o schema até `000027`, aplicar nesta ordem:
+
+1. `supabase/migrations/000028_admin_student_directory.sql` — diretório, paginação e regra de encerramento imediato do acesso.
+2. `supabase/migrations/000029_admin_content_transactions.sql` — gravação atômica dos kits e sincronização de atribuições.
+3. `000030_coach_scope.sql` — vínculo do coach, diretório com ator e transações limitadas à carteira.
+4. `000031_admin_work_queue.sql` — fila e troca auditada de responsável.
+5. `000032_prescription_revisions.sql` — histórico e versões de kits.
+6. `000033_admin_data_pagination.sql` — consultas paginadas.
+7. `000034_finance_reconciliation.sql` — conferência financeira por moeda/período.
+8. `000035_coach_policy_completion.sql` — restrições de dados e bibliotecas.
+9. `000036_staff_catalog_pagination.sql` — catálogos e exames com escopo de coach.
+10. `000037_assignment_concurrency.sql` — snapshots e concorrência de atribuições.
+11. `000038_workout_edit_integrity.sql` — reordenação/remoção atômicas e versão dos itens.
+12. `000039_coach_legacy_student_data.sql` — isolamento dos dados e relações legadas.
+
+Os arquivos `000030` a `000039` ficam em `supabase/migrations/` e devem seguir a ordem numérica. Essas novas migrações foram testadas localmente, mas **não foram aplicadas no Supabase remoto**. O código depende do schema atualizado.
+
+As RPCs administrativas são restritas à service role; as ações de servidor verificam o papel autenticado antes de chamá-las. As funções de edição também validam o ator no banco.
+
+Se as migrações `000025` a `000027` da etapa anterior ainda não foram aplicadas, aplicá-las primeiro. Publicar código e schema de forma coordenada: listagem e edição novas dependem das funções SQL. Validar em homologação e manter backup antes da implantação. Não reaplicar as migrações históricas em um banco existente.
+
+## Verificação
+
+- `npm test`: **57 testes** no conjunto completo. Inclui isolamento de coach via RLS e ações, restrições de escrita global, rollback, versões/fingerprints, reordenação atômica, paginação, datas/moedas, CSV e conferência simulada dos gateways.
+- Migrações completas aplicadas em PostgreSQL local em memória (PGlite), com fixtures de Auth/Storage. Testados filtros, rollback, manutenção de IDs, permissões, consumos e encerramento de acesso.
+- Testes de ações cobrem alvo da redefinição, confirmação de senha, auditoria sem segredo, ordem da operação Stripe e preservação local em falha/fluxo não suportado.
+- Verificações desta etapa: `melhorias-typecheck.log`, `melhorias-lint.log`, `melhorias-build.log` e `melhorias-tests.log`.
+- Listagem, senha, moeda, fila, conferência, filtros e responsável inspecionados com fixtures em 390 e 1280 px; novos fluxos também em PT/EN. Evidências em `artifacts/auditoria-admin-ui/`, sem overflow de documento nos 22 cenários. Isso não substitui teste autenticado ponta a ponta.
+- `node tests/dialog-browser.mjs`: Chrome verificou Tab/Shift+Tab, Escape em modal aninhado, foco/rolagem restaurados e envio pendente sem duplicação.
+- Todos os testes de banco aplicam a sequência inteira das migrações em PostgreSQL local (PGlite). Requisições de gateway em testes usam mocks; nenhuma cobrança real foi efetuada.
+
+Nenhuma mensagem, cobrança, senha real ou configuração remota foi alterada durante esta revisão. Permanecem necessários testes autenticados com admin/coach/alunos e provedores em sandbox no ambiente implantado.
+
+## Referências usadas na conferência dos provedores
+
+[Objeto Charge do Stripe](https://docs.stripe.com/api/charges/object), [PaymentIntent](https://docs.stripe.com/api/payment_intents/object) e [FAQ de assinaturas Asaas](https://docs.asaas.com/docs/faq-assinaturas). A recorrência ativa no Asaas não comprova que as cobranças individuais foram quitadas.

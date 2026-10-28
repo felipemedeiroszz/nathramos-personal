@@ -4,7 +4,13 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLocale } from "next-intl";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -47,20 +53,24 @@ import {
   removeWorkoutKitItemAction,
   reorderWorkoutKitItemsAction,
 } from "@/app/actions/workouts";
+import type { WorkoutKitRow, WorkoutKitItemWithSource } from "@/types";
 import type {
-  WorkoutKitRow,
-  WorkoutKitItemWithSource,
-} from "@/types";
-import type { KitExerciseOption, KitProgramOption } from "@/components/admin/workout/KitItemUpsertModal";
+  KitExerciseOption,
+  KitProgramOption,
+} from "@/components/admin/workout/KitItemUpsertModal";
 
 const KitUpsertModal = dynamic(
-  () => import("@/components/admin/workout/KitUpsertModal").catch(() => () => null),
-  { ssr: false }
+  () =>
+    import("@/components/admin/workout/KitUpsertModal").catch(() => () => null),
+  { ssr: false },
 );
 
 const KitItemUpsertModal = dynamic(
-  () => import("@/components/admin/workout/KitItemUpsertModal").catch(() => () => null),
-  { ssr: false }
+  () =>
+    import("@/components/admin/workout/KitItemUpsertModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
 );
 
 const WEEKDAY_LABELS: Record<number, { pt: string; en: string }> = {
@@ -109,8 +119,14 @@ export function AdminKitsClient({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingKit, setEditingKit] = useState<KitWithItems | null>(null);
-  const [expandedKitId, setExpandedKitId] = useState<string | null>(kits[0]?.id ?? null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [expandedKitId, setExpandedKitId] = useState<string | null>(
+    kits[0]?.id ?? null,
+  );
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [itemModalKit, setItemModalKit] = useState<KitWithItems | null>(null);
@@ -148,12 +164,21 @@ export function AdminKitsClient({
   async function confirmDelete() {
     if (!deleteConfirm) return;
     setDeleting(true);
+    setOperationError(null);
     try {
-      await deleteKitAction(deleteConfirm.id);
-    } finally {
-      setDeleting(false);
+      const result = await deleteKitAction(deleteConfirm.id);
+      if (!result.success) {
+        setOperationError(result.message);
+        return;
+      }
       setDeleteConfirm(null);
       router.refresh();
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Falha ao excluir.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -165,23 +190,55 @@ export function AdminKitsClient({
 
   async function handleRemoveItem(itemId: string) {
     try {
-      await removeWorkoutKitItemAction(itemId);
-    } finally {
+      setOperationError(null);
+      const result = await removeWorkoutKitItemAction(
+        itemId,
+        kits.find((kit) => kit.items.some((item) => item.id === itemId))
+          ?.revision,
+      );
+      if (!result.success) {
+        setOperationError(result.message);
+        return;
+      }
       router.refresh();
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Falha ao remover.",
+      );
     }
   }
 
-  async function handleMoveItem(kitId: string, items: WorkoutKitItemWithSource[], index: number, dir: -1 | 1) {
+  async function handleMoveItem(
+    kitId: string,
+    items: WorkoutKitItemWithSource[],
+    index: number,
+    dir: -1 | 1,
+  ) {
     const target = index + dir;
     if (target < 0 || target >= items.length) return;
     try {
-      const reordered = items.map((it, i) => ({ id: it.id, order_index: i + 1 }));
+      const reordered = items.map((it, i) => ({
+        id: it.id,
+        order_index: i + 1,
+      }));
       const tmp = reordered[index];
       reordered[index] = reordered[target];
       reordered[target] = tmp;
-      await reorderWorkoutKitItemsAction(kitId, reordered);
-    } finally {
+      setOperationError(null);
+      const result = await reorderWorkoutKitItemsAction(
+        kitId,
+        reordered,
+        kits.find((kit) => kit.id === kitId)?.revision,
+      );
+      if (!result.success) {
+        setOperationError(result.message);
+        return;
+      }
       router.refresh();
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Falha ao ordenar.",
+      );
     }
   }
 
@@ -201,6 +258,11 @@ export function AdminKitsClient({
 
   return (
     <>
+      {operationError && !deleteConfirm && (
+        <p role="alert" className="text-red-500">
+          {operationError}
+        </p>
+      )}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -221,17 +283,27 @@ export function AdminKitsClient({
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
               >
-                <option value="">{label("Todas dificuldades", "All difficulties")}</option>
-                <option value="beginner">{label("Iniciante", "Beginner")}</option>
-                <option value="intermediate">{label("Intermediário", "Intermediate")}</option>
-                <option value="advanced">{label("Avançado", "Advanced")}</option>
+                <option value="">
+                  {label("Todas dificuldades", "All difficulties")}
+                </option>
+                <option value="beginner">
+                  {label("Iniciante", "Beginner")}
+                </option>
+                <option value="intermediate">
+                  {label("Intermediário", "Intermediate")}
+                </option>
+                <option value="advanced">
+                  {label("Avançado", "Advanced")}
+                </option>
               </Select>
               <Select
                 className="w-full sm:max-w-[160px]"
                 value={featuredFilter}
                 onChange={(e) => setFeaturedFilter(e.target.value)}
               >
-                <option value="">{label("Destaque: Todos", "Featured: All")}</option>
+                <option value="">
+                  {label("Destaque: Todos", "Featured: All")}
+                </option>
                 <option value="1">{label("Sim", "Yes")}</option>
                 <option value="0">{label("Não", "No")}</option>
               </Select>
@@ -240,7 +312,9 @@ export function AdminKitsClient({
                 value={publishedFilter}
                 onChange={(e) => setPublishedFilter(e.target.value)}
               >
-                <option value="">{label("Publicado: Todos", "Published: All")}</option>
+                <option value="">
+                  {label("Publicado: Todos", "Published: All")}
+                </option>
                 <option value="1">{label("Sim", "Yes")}</option>
                 <option value="0">{label("Não", "No")}</option>
               </Select>
@@ -257,7 +331,12 @@ export function AdminKitsClient({
                 />
               </div>
             </div>
-            <Button variant="primary" size="md" className="shrink-0" onClick={openCreate}>
+            <Button
+              variant="primary"
+              size="md"
+              className="shrink-0"
+              onClick={openCreate}
+            >
               <Plus size={18} className="mr-2" />
               {label("Novo Kit", "New Kit")}
             </Button>
@@ -269,7 +348,7 @@ export function AdminKitsClient({
               title={label("Nenhum kit encontrado", "No kits found")}
               description={label(
                 "Crie seu primeiro kit de treino ou ajuste os filtros.",
-                "Create your first workout kit or adjust the filters."
+                "Create your first workout kit or adjust the filters.",
               )}
               action={
                 <Button variant="primary" size="sm" onClick={openCreate}>
@@ -294,7 +373,8 @@ export function AdminKitsClient({
                               alt={kit.name_pt}
                               className="absolute inset-0 w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
                               }}
                             />
                           ) : (
@@ -302,20 +382,30 @@ export function AdminKitsClient({
                           )}
                           {!kit.cover_image_url && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <FolderKanban size={42} className="text-primary/40" />
+                              <FolderKanban
+                                size={42}
+                                className="text-primary/40"
+                              />
                             </div>
                           )}
                           <div className="absolute top-3 left-3 z-10 flex gap-2">
                             {kit.is_featured && (
-                              <Badge variant="warning" className="shadow-[0_0_12px_hsl(var(--warning)/0.3)]">
+                              <Badge
+                                variant="warning"
+                                className="shadow-[0_0_12px_hsl(var(--warning)/0.3)]"
+                              >
                                 <Star size={12} className="mr-1 fill-current" />
                                 {label("Destaque", "Featured")}
                               </Badge>
                             )}
                             {kit.is_published ? (
-                              <Badge variant="success">{label("Publicado", "Published")}</Badge>
+                              <Badge variant="success">
+                                {label("Publicado", "Published")}
+                              </Badge>
                             ) : (
-                              <Badge variant="outline">{label("Rascunho", "Draft")}</Badge>
+                              <Badge variant="outline">
+                                {label("Rascunho", "Draft")}
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -325,27 +415,34 @@ export function AdminKitsClient({
                             <h3 className="text-lg font-bold text-text leading-tight">
                               {kit.name_pt}
                             </h3>
-                            <p className="text-xs text-text-secondary">{kit.name_en}</p>
+                            <p className="text-xs text-text-secondary">
+                              {kit.name_en}
+                            </p>
                           </div>
 
                           <p className="text-sm text-text-secondary leading-relaxed line-clamp-2">
                             {kit.short_desc_pt ||
                               kit.short_desc_en ||
                               kit.description_pt ||
-                              label("Sem descrição curta.", "No short description.")}
+                              label(
+                                "Sem descrição curta.",
+                                "No short description.",
+                              )}
                           </p>
 
                           <div className="flex items-center justify-between mt-auto pt-3 border-t border-border">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="outline">
-                                {difficultyLabels[kit.difficulty] ?? kit.difficulty}
+                                {difficultyLabels[kit.difficulty] ??
+                                  kit.difficulty}
                               </Badge>
                               <Badge variant="outline">
-                                {kit.total_weeks} {label("sem", "wk")} x {kit.days_per_week}{" "}
-                                {label("dias", "days")}
+                                {kit.total_weeks} {label("sem", "wk")} x{" "}
+                                {kit.days_per_week} {label("dias", "days")}
                               </Badge>
                               <span className="text-xs text-text-secondary">
-                                {kit.est_minutes_per_session} {label("min/sessão", "min/session")}
+                                {kit.est_minutes_per_session}{" "}
+                                {label("min/sessão", "min/session")}
                               </span>
                             </div>
                             <div className="flex items-center space-x-1 shrink-0 ml-2">
@@ -362,17 +459,33 @@ export function AdminKitsClient({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                title={expanded ? label("Recolher editor", "Collapse editor") : label("Abrir editor", "Open editor")}
+                                title={
+                                  expanded
+                                    ? label(
+                                        "Recolher editor",
+                                        "Collapse editor",
+                                      )
+                                    : label("Abrir editor", "Open editor")
+                                }
                                 onClick={() => toggleExpand(kit.id)}
                               >
-                                {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                {expanded ? (
+                                  <ChevronUp size={15} />
+                                ) : (
+                                  <ChevronDown size={15} />
+                                )}
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
                                 title={label("Excluir", "Delete")}
-                                onClick={() => setDeleteConfirm({ id: kit.id, name: kit.name_pt })}
+                                onClick={() =>
+                                  setDeleteConfirm({
+                                    id: kit.id,
+                                    name: kit.name_pt,
+                                  })
+                                }
                               >
                                 <Trash2 size={15} />
                               </Button>
@@ -392,12 +505,18 @@ export function AdminKitsClient({
                               </CardTitle>
                               <CardDescription className="text-xs">
                                 {kit.items.length} {label("treino", "workout")}
-                                {kit.items.length === 1 ? "" : label("s", "s")}{" "}
+                                {kit.items.length === 1
+                                  ? ""
+                                  : label("s", "s")}{" "}
                                 {label("associado", "associated")}
                                 {kit.items.length === 1 ? "" : label("s", "s")}
                               </CardDescription>
                             </div>
-                            <Button variant="secondary" size="sm" onClick={() => setItemModalKit(kit)}>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setItemModalKit(kit)}
+                            >
                               <Plus size={14} className="mr-1" />
                               {label("Adicionar Treino", "Add Workout")}
                             </Button>
@@ -406,14 +525,23 @@ export function AdminKitsClient({
                         <CardContent>
                           {kit.items.length === 0 ? (
                             <EmptyState
-                              icon={<ArrowUpRight size={22} className="text-text-secondary" />}
+                              icon={
+                                <ArrowUpRight
+                                  size={22}
+                                  className="text-text-secondary"
+                                />
+                              }
                               title={label("Sem treinos", "No workouts")}
                               description={label(
                                 "Adicione programas ou exercícios para montar este kit.",
-                                "Add programs or exercises to build this kit."
+                                "Add programs or exercises to build this kit.",
                               )}
                               action={
-                                <Button variant="primary" size="sm" onClick={() => setItemModalKit(kit)}>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => setItemModalKit(kit)}
+                                >
                                   <Plus size={14} className="mr-1" />
                                   {label("Adicionar", "Add")}
                                 </Button>
@@ -425,10 +553,18 @@ export function AdminKitsClient({
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead className="w-[70px]">{label("Cat.", "Cat.")}</TableHead>
-                                    <TableHead>{label("Treino", "Workout")}</TableHead>
-                                    <TableHead className="w-[140px]">{label("Dia", "Day")}</TableHead>
-                                    <TableHead className="w-[130px]">{label("Origem", "Source")}</TableHead>
+                                    <TableHead className="w-[70px]">
+                                      {label("Cat.", "Cat.")}
+                                    </TableHead>
+                                    <TableHead>
+                                      {label("Treino", "Workout")}
+                                    </TableHead>
+                                    <TableHead className="w-[140px]">
+                                      {label("Dia", "Day")}
+                                    </TableHead>
+                                    <TableHead className="w-[130px]">
+                                      {label("Origem", "Source")}
+                                    </TableHead>
                                     <TableHead className="w-[120px] text-right">
                                       {label("Ações", "Actions")}
                                     </TableHead>
@@ -436,14 +572,18 @@ export function AdminKitsClient({
                                 </TableHeader>
                                 <TableBody>
                                   {kit.items.map((item, i) => {
-                                    const isExercise = !item.program && !!item.exercise;
+                                    const isExercise =
+                                      !item.program && !!item.exercise;
                                     const weekday = item.day_of_week
                                       ? WEEKDAY_LABELS[item.day_of_week]
                                       : null;
                                     const originLabel = item.program
                                       ? label("Programa", "Program")
                                       : item.exercise?.source === "exercisedb"
-                                        ? label("Exercício (API)", "Exercise (API)")
+                                        ? label(
+                                            "Exercício (API)",
+                                            "Exercise (API)",
+                                          )
                                         : label("Exercício", "Exercise");
                                     return (
                                       <TableRow key={item.id}>
@@ -457,11 +597,15 @@ export function AdminKitsClient({
                                         </TableCell>
                                         <TableCell className="font-semibold text-text">
                                           {itemTitle(item)}
-                                          {isExercise && item.exercise?.primary_muscle && (
-                                            <span className="block text-xs font-normal text-text-secondary capitalize">
-                                              {item.exercise.primary_muscle.replace(/_/g, " ")}
-                                            </span>
-                                          )}
+                                          {isExercise &&
+                                            item.exercise?.primary_muscle && (
+                                              <span className="block text-xs font-normal text-text-secondary capitalize">
+                                                {item.exercise.primary_muscle.replace(
+                                                  /_/g,
+                                                  " ",
+                                                )}
+                                              </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-text">
                                           {weekday ? (
@@ -469,11 +613,16 @@ export function AdminKitsClient({
                                               {label(weekday.pt, weekday.en)}
                                             </Badge>
                                           ) : (
-                                            <span className="text-text-secondary text-xs">-</span>
+                                            <span className="text-text-secondary text-xs">
+                                              -
+                                            </span>
                                           )}
                                         </TableCell>
                                         <TableCell>
-                                          <Badge variant="outline" className="text-[11px]">
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[11px]"
+                                          >
                                             {originLabel}
                                           </Badge>
                                         </TableCell>
@@ -485,7 +634,14 @@ export function AdminKitsClient({
                                               className="h-8 w-8 p-0"
                                               title={label("Subir", "Move up")}
                                               disabled={i === 0}
-                                              onClick={() => handleMoveItem(kit.id, kit.items, i, -1)}
+                                              onClick={() =>
+                                                handleMoveItem(
+                                                  kit.id,
+                                                  kit.items,
+                                                  i,
+                                                  -1,
+                                                )
+                                              }
                                             >
                                               <ArrowUp size={14} />
                                             </Button>
@@ -493,9 +649,21 @@ export function AdminKitsClient({
                                               variant="ghost"
                                               size="sm"
                                               className="h-8 w-8 p-0"
-                                              title={label("Descer", "Move down")}
-                                              disabled={i === kit.items.length - 1}
-                                              onClick={() => handleMoveItem(kit.id, kit.items, i, 1)}
+                                              title={label(
+                                                "Descer",
+                                                "Move down",
+                                              )}
+                                              disabled={
+                                                i === kit.items.length - 1
+                                              }
+                                              onClick={() =>
+                                                handleMoveItem(
+                                                  kit.id,
+                                                  kit.items,
+                                                  i,
+                                                  1,
+                                                )
+                                              }
                                             >
                                               <ArrowDown size={14} />
                                             </Button>
@@ -504,7 +672,9 @@ export function AdminKitsClient({
                                               size="sm"
                                               className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
                                               title={label("Remover", "Remove")}
-                                              onClick={() => handleRemoveItem(item.id)}
+                                              onClick={() =>
+                                                handleRemoveItem(item.id)
+                                              }
                                             >
                                               <X size={14} />
                                             </Button>
@@ -536,7 +706,8 @@ export function AdminKitsClient({
             setEditingKit(null);
           }}
           onSubmit={async (payload) => {
-            await saveWorkoutKitAction(payload);
+            const result = await saveWorkoutKitAction(payload);
+            if (!result.success) throw new Error(result.message);
           }}
           onSaved={onModalSaved}
           kit={editingKit ?? undefined}
@@ -557,31 +728,57 @@ export function AdminKitsClient({
         />
       )}
 
-      <Dialog isOpen={!!deleteConfirm} onClose={() => !deleting && setDeleteConfirm(null)}>
+      <Dialog
+        isOpen={!!deleteConfirm}
+        onClose={() => !deleting && setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>{label("Confirmar exclusão", "Confirm deletion")}</DialogTitle>
+              <DialogTitle>
+                {label("Confirmar exclusão", "Confirm deletion")}
+              </DialogTitle>
             </div>
             <DialogDescription>
-              {label("Tem certeza que deseja excluir o kit", "Are you sure you want to delete the kit")}{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?{" "}
+              {label(
+                "Tem certeza que deseja excluir o kit",
+                "Are you sure you want to delete the kit",
+              )}{" "}
+              <span className="font-semibold text-text">
+                {deleteConfirm?.name}
+              </span>
+              ?{" "}
               {label(
                 "Os programas associados não serão removidos.",
-                "Associated programs will not be removed."
+                "Associated programs will not be removed.",
               )}
             </DialogDescription>
           </DialogHeader>
+          {operationError && (
+            <p role="alert" className="text-red-500">
+              {operationError}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleting}
+            >
               {label("Cancelar", "Cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
               <Trash2 size={16} className="mr-2" />
-              {deleting ? label("Excluindo...", "Deleting...") : label("Excluir", "Delete")}
+              {deleting
+                ? label("Excluindo...", "Deleting...")
+                : label("Excluir", "Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -68,6 +68,7 @@ export async function getCurrentRole(): Promise<UserRole | null> {
       .from("profiles")
       .select<string, { role: UserRole }>("role")
       .eq("id", userId)
+      .eq("is_deleted", false)
       .limit(1)
       .maybeSingle()
     return (data?.role ?? null) as UserRole | null

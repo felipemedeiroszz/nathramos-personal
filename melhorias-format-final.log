@@ -1,0 +1,7 @@
+src/app/[locale]/admin/alunos/[id]/page.tsx 175ms
+src/lib/admin/data-page.ts 11ms
+src/app/actions/reconciliation.ts 37ms (unchanged)
+src/app/api/admin/payments/export/route.ts 8ms
+src/lib/payments/asaas.ts 14ms (unchanged)
+tests/admin-improvements.test.mjs 49ms
+AUDITORIA-PAINEL-ADMIN.md 71ms

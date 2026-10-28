@@ -1,0 +1,9 @@
+warning: in the working copy of 'src/app/[locale]/admin/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/[locale]/admin/financeiro/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/actions/admin.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/admin/StudentPasswordResetForm.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/admin/billing/AdminAssinaturasClient.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/AdminMetricsService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/AuditLogService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/BillingAdminService.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/StudentService.ts', LF will be replaced by CRLF the next time Git touches it

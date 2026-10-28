@@ -26,6 +26,7 @@ export interface ChartProps extends HTMLAttributes<HTMLDivElement> {
   xKey?: string;
   yKey?: string;
   color?: string;
+  series?: { key: string; label: string; color: string }[];
 }
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--surface-secondary))", "hsl(var(--border))"];
@@ -36,6 +37,7 @@ export function Chart({
   xKey = "name",
   yKey = "value",
   color = "hsl(var(--primary))",
+  series,
   className,
   ...props
 }: ChartProps) {
@@ -79,7 +81,7 @@ export function Chart({
               }}
               itemStyle={{ color: "hsl(var(--text))" }}
             />
-            <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
+            {series?.length ? <><Legend />{series.map(item => <Bar key={item.key} dataKey={item.key} name={item.label} fill={item.color} radius={[4,4,0,0]} />)}</> : <Bar dataKey={yKey} fill={color} radius={[4,4,0,0]} />}
           </BarChart>
         );
 

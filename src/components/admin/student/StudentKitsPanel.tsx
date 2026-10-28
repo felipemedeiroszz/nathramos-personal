@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Link2, Search } from "lucide-react";
@@ -50,6 +51,7 @@ export interface StudentKitAssignment {
 
 interface StudentKitsPanelProps {
   studentId: string;
+  fingerprint?: string;
   kind: "supplement" | "diet";
   kits: StudentKitOption[];
   assignments: StudentKitAssignment[];
@@ -73,6 +75,7 @@ function formatDate(value?: string | null): string {
 
 export function StudentKitsPanel({
   studentId,
+  fingerprint,
   kind,
   kits,
   assignments,
@@ -83,11 +86,14 @@ export function StudentKitsPanel({
   const [modalOpen, setModalOpen] = useState(false);
 
   const title = kind === "supplement" ? t("titleSupplement") : t("titleDiet");
-  const emptyTitle = kind === "supplement" ? t("emptySupplement") : t("emptyDiet");
+  const emptyTitle =
+    kind === "supplement" ? t("emptySupplement") : t("emptyDiet");
 
   function statusBadge(status: string) {
-    if (status === "active") return { label: t("active"), variant: "success" as const };
-    if (status === "completed") return { label: t("completed"), variant: "default" as const };
+    if (status === "active")
+      return { label: t("active"), variant: "success" as const };
+    if (status === "completed")
+      return { label: t("completed"), variant: "default" as const };
     return { label: t("archived"), variant: "outline" as const };
   }
 
@@ -137,7 +143,9 @@ export function StudentKitsPanel({
                 const badge = statusBadge(a.status);
                 return (
                   <TableRow key={a.id}>
-                    <TableCell className="font-semibold text-text">{nameOf(a)}</TableCell>
+                    <TableCell className="font-semibold text-text">
+                      {nameOf(a)}
+                    </TableCell>
                     <TableCell>{formatDate(a.startDate)}</TableCell>
                     <TableCell>{formatDate(a.endDate)}</TableCell>
                     <TableCell>
@@ -159,6 +167,7 @@ export function StudentKitsPanel({
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           studentId={studentId}
+          fingerprint={fingerprint}
           kind={kind}
           kits={kits}
           assignedKitIds={assignments
@@ -178,6 +187,7 @@ interface StudentKitsModalProps {
   isOpen: boolean;
   onClose: () => void;
   studentId: string;
+  fingerprint?: string;
   kind: "supplement" | "diet";
   kits: StudentKitOption[];
   assignedKitIds: string[];
@@ -188,6 +198,7 @@ function StudentKitsModal({
   isOpen,
   onClose,
   studentId,
+  fingerprint,
   kind,
   kits,
   assignedKitIds,
@@ -196,7 +207,7 @@ function StudentKitsModal({
   const t = useTranslations("studentKits");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -223,7 +234,8 @@ function StudentKitsModal({
     if (!term) return kits;
     return kits.filter(
       (k) =>
-        k.namePt.toLowerCase().includes(term) || k.nameEn.toLowerCase().includes(term)
+        k.namePt.toLowerCase().includes(term) ||
+        k.nameEn.toLowerCase().includes(term),
     );
   }, [kits, search]);
 
@@ -231,7 +243,7 @@ function StudentKitsModal({
 
   function toggle(id: string) {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -241,6 +253,7 @@ function StudentKitsModal({
     startTransition(async () => {
       try {
         const payload = {
+          expected_fingerprint: fingerprint,
           student_id: studentId,
           kit_ids: selected,
           start_date: startDate || null,
@@ -263,14 +276,20 @@ function StudentKitsModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
+      className="max-w-2xl max-h-[90vh] overflow-y-auto"
+    >
       <ModalHeader>
         <div>
           <ModalTitle>
             {kind === "supplement" ? t("titleSupplement") : t("titleDiet")}
           </ModalTitle>
         </div>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
 
       <form onSubmit={handleSubmit}>
@@ -294,7 +313,9 @@ function StudentKitsModal({
             {kits.length === 0 ? (
               <p className="p-4 text-sm text-text-secondary">{t("noKits")}</p>
             ) : filteredKits.length === 0 ? (
-              <p className="p-4 text-sm text-text-secondary">{t("noKitsFound")}</p>
+              <p className="p-4 text-sm text-text-secondary">
+                {t("noKitsFound")}
+              </p>
             ) : (
               <div className="max-h-72 overflow-y-auto divide-y divide-border">
                 {filteredKits.map((kit) => {
@@ -303,7 +324,9 @@ function StudentKitsModal({
                     <label
                       key={kit.id}
                       className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                        checked ? "bg-primary/10" : "hover:bg-surface-secondary/50"
+                        checked
+                          ? "bg-primary/10"
+                          : "hover:bg-surface-secondary/50"
                       }`}
                     >
                       <input
@@ -315,7 +338,9 @@ function StudentKitsModal({
                       <span className="flex-1 min-w-0 text-sm font-medium text-text truncate">
                         {locale === "pt-BR" ? kit.namePt : kit.nameEn}
                       </span>
-                      {checked && <Check size={16} className="text-primary shrink-0" />}
+                      {checked && (
+                        <Check size={16} className="text-primary shrink-0" />
+                      )}
                     </label>
                   );
                 })}
@@ -325,7 +350,9 @@ function StudentKitsModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("colStart")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("colStart")}
+              </label>
               <Input
                 type="date"
                 value={startDate}
@@ -333,7 +360,9 @@ function StudentKitsModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("colEnd")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("colEnd")}
+              </label>
               <Input
                 type="date"
                 value={endDate}
@@ -343,7 +372,9 @@ function StudentKitsModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("colNotes")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("colNotes")}
+            </label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -360,7 +391,12 @@ function StudentKitsModal({
         </ModalBody>
 
         <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={isPending}>

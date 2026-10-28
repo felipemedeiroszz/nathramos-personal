@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { MentorChat, type ChatMessageItem } from "@/components/mentoring/MentorChat";
-import { requireAuthenticated } from "@/lib/auth/access";
+import { requireStudentPage } from "@/lib/auth/platform";
 import { MentorshipService } from "@/services/MentorshipService";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function ConversationsPage({
   const t = await getTranslations("studentMentoring");
   const tStatus = await getTranslations("meetingStatus");
 
-  const userId = await requireAuthenticated();
+  const userId = await requireStudentPage();
 
   const room = await MentorshipService.getRoomForStudent(userId);
   const [messages, meetings] = await Promise.all([

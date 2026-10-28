@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server"
 import { handleApiError, jsonResponse, errorResponse, requireApiUser } from "@/lib/api/response"
+import { billingProfile } from "@/lib/payments/student"
+import { appReturnUrl } from "@/lib/payments/checkout"
 import { StripeProvider } from "@/lib/payments/stripe"
 import { ProfileService, SubscriptionService } from "@/lib/payments/services"
 import type { SubscriptionRow } from "@/lib/supabase/types"
@@ -10,6 +12,7 @@ export const runtime = "nodejs"
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await requireApiUser()
+    await billingProfile(userId)
     const profile = await ProfileService.getProfile(userId)
     const subscription = (await SubscriptionService.getActive(userId)) as
       | (SubscriptionRow & { plan: any } | null)
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}) as any)
-    const returnUrl = body?.returnUrl || `${StripeProvider.getAppUrl()}/assinatura`
+    const returnUrl = appReturnUrl(StripeProvider.getAppUrl(), body?.return_path, "/pt-BR/assinatura")
     const usePortal = body?.use_portal !== false
 
     if (usePortal) {

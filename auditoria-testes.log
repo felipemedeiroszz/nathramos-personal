@@ -1,0 +1,182 @@
+
+> nath-ramos-personal-trainer@0.1.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: src/app/api/workout/today/route.ts: bloqueia acesso anônimo e consulta a outro aluno
+ok 1 - src/app/api/workout/today/route.ts: bloqueia acesso anônimo e consulta a outro aluno
+  ---
+  duration_ms: 88.6152
+  type: 'test'
+  ...
+# Subtest: src/app/api/workout/today/route.ts: assinatura bloqueada e manutenção são verificadas no servidor
+ok 2 - src/app/api/workout/today/route.ts: assinatura bloqueada e manutenção são verificadas no servidor
+  ---
+  duration_ms: 18.3062
+  type: 'test'
+  ...
+# Subtest: src/app/api/workout/history/route.ts: bloqueia acesso anônimo e consulta a outro aluno
+ok 3 - src/app/api/workout/history/route.ts: bloqueia acesso anônimo e consulta a outro aluno
+  ---
+  duration_ms: 22.7068
+  type: 'test'
+  ...
+# Subtest: src/app/api/workout/history/route.ts: assinatura bloqueada e manutenção são verificadas no servidor
+ok 4 - src/app/api/workout/history/route.ts: assinatura bloqueada e manutenção são verificadas no servidor
+  ---
+  duration_ms: 20.0432
+  type: 'test'
+  ...
+# Subtest: salas exigem participação e derivam o remetente no servidor
+ok 5 - salas exigem participação e derivam o remetente no servidor
+  ---
+  duration_ms: 19.3213
+  type: 'test'
+  ...
+# Subtest: administrador pode consultar aluno, conta removida não pode operar
+ok 6 - administrador pode consultar aluno, conta removida não pode operar
+  ---
+  duration_ms: 10.6258
+  type: 'test'
+  ...
+# Subtest: lembretes usam itens reais, ignoram consumo concluído e deduplicam chamadas
+ok 7 - lembretes usam itens reais, ignoram consumo concluído e deduplicam chamadas
+  ---
+  duration_ms: 86.4907
+  type: 'test'
+  ...
+# Subtest: hidratação respeita desligamento e modo silencioso persistidos
+ok 8 - hidratação respeita desligamento e modo silencioso persistidos
+  ---
+  duration_ms: 78.0591
+  type: 'test'
+  ...
+# Subtest: callback de recuperação troca código por sessão e impede redirecionamento externo
+ok 9 - callback de recuperação troca código por sessão e impede redirecionamento externo
+  ---
+  duration_ms: 18.8244
+  type: 'test'
+  ...
+# Subtest: callback inválido não libera redefinição de senha
+ok 10 - callback inválido não libera redefinição de senha
+  ---
+  duration_ms: 8.1505
+  type: 'test'
+  ...
+# Subtest: atribuições respeitam início, fim inclusivo, status e kit removido
+ok 11 - atribuições respeitam início, fim inclusivo, status e kit removido
+  ---
+  duration_ms: 2.0104
+  type: 'test'
+  ...
+# Subtest: nutrição usa a porção real e não inventa conversões de unidade
+ok 12 - nutrição usa a porção real e não inventa conversões de unidade
+  ---
+  duration_ms: 0.8734
+  type: 'test'
+  ...
+# Subtest: doses preservam frequência sem criar horários falsos
+ok 13 - doses preservam frequência sem criar horários falsos
+  ---
+  duration_ms: 0.2652
+  type: 'test'
+  ...
+# Subtest: calendário respeita semana e dia, sem liberar treino de descanso ou próximo dia
+ok 14 - calendário respeita semana e dia, sem liberar treino de descanso ou próximo dia
+  ---
+  duration_ms: 0.3749
+  type: 'test'
+  ...
+# Subtest: aluno não pode elevar o próprio papel nem trocar cliente de pagamento
+ok 15 - aluno não pode elevar o próprio papel nem trocar cliente de pagamento
+  ---
+  duration_ms: 1766.8619
+  type: 'test'
+  ...
+# Subtest: RLS isola os dados de hidratação entre alunos e permite visão administrativa
+ok 16 - RLS isola os dados de hidratação entre alunos e permite visão administrativa
+  ---
+  duration_ms: 6.7759
+  type: 'test'
+  ...
+# Subtest: assinatura bloqueada e manutenção impedem acesso direto ao banco sem bloquear perfil
+ok 17 - assinatura bloqueada e manutenção impedem acesso direto ao banco sem bloquear perfil
+  ---
+  duration_ms: 7.2447
+  type: 'test'
+  ...
+# Subtest: rotina não pode ser forjada por chamada direta e preferências são persistidas atomicamente
+ok 18 - rotina não pode ser forjada por chamada direta e preferências são persistidas atomicamente
+  ---
+  duration_ms: 5.037
+  type: 'test'
+  ...
+# Subtest: alunos não podem reatribuir salas nem falsificar o remetente pelo Supabase
+ok 19 - alunos não podem reatribuir salas nem falsificar o remetente pelo Supabase
+  ---
+  duration_ms: 4.1763
+  type: 'test'
+  ...
+# Subtest: sessão exige atribuição e chamadas repetidas reutilizam a mesma sessão
+ok 20 - sessão exige atribuição e chamadas repetidas reutilizam a mesma sessão
+  ---
+  duration_ms: 5.0516
+  type: 'test'
+  ...
+# Subtest: séries e conclusão validam titularidade; séries não duplicam e volume é real
+ok 21 - séries e conclusão validam titularidade; séries não duplicam e volume é real
+  ---
+  duration_ms: 9.238
+  type: 'test'
+  ...
+# Subtest: exercícios diretos de kits são executáveis e edições preservam a identidade
+ok 22 - exercícios diretos de kits são executáveis e edições preservam a identidade
+  ---
+  duration_ms: 9.6567
+  type: 'test'
+  ...
+# Subtest: aluno não vê perfis de terceiros nem cria um perfil privilegiado diretamente
+ok 23 - aluno não vê perfis de terceiros nem cria um perfil privilegiado diretamente
+  ---
+  duration_ms: 3.1031
+  type: 'test'
+  ...
+# Subtest: consumo pertence à atribuição do aluno, mantém snapshot nutricional e não duplica
+ok 24 - consumo pertence à atribuição do aluno, mantém snapshot nutricional e não duplica
+  ---
+  duration_ms: 11.0747
+  type: 'test'
+  ...
+# Subtest: registro de saúde é atômico, atualiza perfil e reutiliza o peso do dia
+ok 25 - registro de saúde é atômico, atualiza perfil e reutiliza o peso do dia
+  ---
+  duration_ms: 5.5051
+  type: 'test'
+  ...
+# Subtest: dose de suplemento exige vínculo e horário ou número de dose prescrito
+ok 26 - dose de suplemento exige vínculo e horário ou número de dose prescrito
+  ---
+  duration_ms: 10.5919
+  type: 'test'
+  ...
+# Subtest: RPC legada de exclusão não aceita chamada anônima ou direta de aluno
+ok 27 - RPC legada de exclusão não aceita chamada anônima ou direta de aluno
+  ---
+  duration_ms: 2.2434
+  type: 'test'
+  ...
+# Subtest: administrador marcado como removido não pode restaurar privilégios pelo banco
+ok 28 - administrador marcado como removido não pode restaurar privilégios pelo banco
+  ---
+  duration_ms: 4.0289
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2055.6689

@@ -1,7 +1,8 @@
 "use client";
 
+import { useDialogFocus } from "./useDialogFocus";
 import { cn } from "@/lib/utils";
-import { HTMLAttributes, useEffect, useRef } from "react";
+import { HTMLAttributes, ButtonHTMLAttributes, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 export interface DrawerProps extends HTMLAttributes<HTMLDivElement> {
@@ -20,21 +21,7 @@ export function Drawer({
 }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, onClose]);
+  useDialogFocus(isOpen, onClose, drawerRef);
 
   if (!isOpen) return null;
 
@@ -53,10 +40,14 @@ export function Drawer({
       />
       <div
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={props["aria-label"] || "Dialog"}
+        tabIndex={-1}
         className={cn(
           "absolute bg-surface shadow-xl animate-fade-in",
           positionClasses[position],
-          className
+          className,
         )}
         {...props}
       >
@@ -66,25 +57,46 @@ export function Drawer({
   );
 }
 
-export function DrawerHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function DrawerHeader({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center justify-between p-6 border-b border-border", className)} {...props} />
+    <div
+      className={cn(
+        "flex items-center justify-between p-6 border-b border-border",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-export function DrawerTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+export function DrawerTitle({
+  className,
+  ...props
+}: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h2 className={cn("text-lg font-semibold text-text", className)} {...props} />
+    <h2
+      className={cn("text-lg font-semibold text-text", className)}
+      {...props}
+    />
   );
 }
 
-export function DrawerClose({ onClick, className, ...props }: HTMLAttributes<HTMLButtonElement>) {
+export function DrawerClose({
+  onClick,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
+      type="button"
+      aria-label="Close"
       onClick={onClick}
       className={cn(
         "p-2 hover:bg-surface-secondary rounded-lg transition-colors text-text-secondary hover:text-text",
-        className
+        className,
       )}
       {...props}
     >
@@ -93,11 +105,19 @@ export function DrawerClose({ onClick, className, ...props }: HTMLAttributes<HTM
   );
 }
 
-export function DrawerContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6 overflow-y-auto flex-1", className)} {...props} />;
+export function DrawerContent({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("p-6 overflow-y-auto flex-1", className)} {...props} />
+  );
 }
 
-export function DrawerFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function DrawerFooter({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn("p-6 border-t border-border", className)} {...props} />
   );

@@ -24,6 +24,7 @@ export async function GET(request: Request) {
 
   const result: Record<string, unknown> = { task }
 
+  try {
   if (task === "all" || task === "reminders") {
     result.reminders = await NotificationDispatcher.generateRoutineReminders()
   }
@@ -32,4 +33,8 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({ success: true, ...result })
+  } catch (error) {
+    console.error("[cron/notifications]", error)
+    return NextResponse.json({ error: "Falha ao processar notificações." }, { status: 500 })
+  }
 }

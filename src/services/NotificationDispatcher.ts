@@ -1,40 +1,16 @@
+import { StudentRoutineService, checked, type RoutineData } from "./StudentRoutineService"
+import { getMaintenanceStatus } from "./PlatformSettingsService"
+import { WorkoutService } from "./WorkoutService"
 import { createServiceClientSSR } from "../lib/supabase/server"
 import { NotificationService, ALWAYS_PUSH_TYPES } from "./NotificationService"
-import { getZonedParts, isWithinQuietHours, zonedTimeToUtc, shiftDateKey } from "../lib/notifications/time"
+import { getZonedParts, isWithinQuietHours, zonedTimeToUtc } from "../lib/notifications/time"
 import { canAccessPlatform } from "@/lib/auth/access"
 import type { NotificationTypeT } from "../lib/supabase/types"
 
 const MAX_DELIVERIES = 300
 const MAX_USERS = 500
 
-/** Horários fixos dos lembretes de hidratação. */
-const WATER_SLOTS = ["09:00", "12:30", "16:00", "19:30"]
-/** Horário padrão dos lembretes de treino. */
 const WORKOUT_TIME = "07:00"
-
-const MEAL_LABELS: Record<string, { pt: string; en: string }> = {
-  breakfast: { pt: "Café da manhã", en: "Breakfast" },
-  morning_snack: { pt: "Lanche da manhã", en: "Morning snack" },
-  lunch: { pt: "Almoço", en: "Lunch" },
-  afternoon_snack: { pt: "Lanche da tarde", en: "Afternoon snack" },
-  dinner: { pt: "Jantar", en: "Dinner" },
-  supper: { pt: "Ceia", en: "Supper" },
-  pre_workout: { pt: "Pré-treino", en: "Pre-workout" },
-  post_workout: { pt: "Pós-treino", en: "Post-workout" },
-  water: { pt: "Água", en: "Water" },
-  other: { pt: "Refeição", en: "Meal" },
-}
-
-interface ReminderInput {
-  dedupeKey: string
-  type: NotificationTypeT
-  titlePt: string
-  titleEn: string
-  bodyPt: string
-  bodyEn: string
-  url: string
-  scheduledFor: string
-}
 
 interface ProfileLite {
   id: string
@@ -69,13 +45,14 @@ export class NotificationDispatcher {
       const supabase = await this.getSupabase()
       const { data, error } = await supabase
         .from("notifications")
-        .select("id, user_id, type, title, body, url, image_url")
+        .select("id, user_id, type, title, body, url, image_url, payload")
         .lte("scheduled_for", new Date().toISOString())
         .is("sent_at", null)
         .order("scheduled_for", { ascending: true })
         .limit(MAX_DELIVERIES)
 
-      if (error || !data) return { processed: 0, skipped: 0, pushed: 0 }
+      if (error) throw error
+      if (!data) return { processed: 0, skipped: 0, pushed: 0 }
 
       const rows = data as {
         id: string
@@ -85,16 +62,18 @@ export class NotificationDispatcher {
         body: string
         url: string | null
         image_url: string | null
+        payload: { routine_date?: string; routine_kind?: string; item_key?: string } | null
       }[]
 
       if (rows.length === 0) return { processed: 0, skipped: 0, pushed: 0 }
 
       const userIds = Array.from(new Set(rows.map((row) => row.user_id)))
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profileError } = await supabase
         .from("profiles")
         .select("id, timezone, quiet_hours_start, quiet_hours_end")
         .in("id", userIds)
 
+      if (profileError) throw profileError
       const profileById = new Map<string, { timezone: string | null; quiet_hours_start: string | null; quiet_hours_end: string | null }>()
       for (const profile of (profiles as {
         id: string
@@ -110,7 +89,26 @@ export class NotificationDispatcher {
       let skipped = 0
       let pushed = 0
 
+      const routineCache = new Map<string, RoutineData>()
       for (const row of rows) {
+        if (row.payload?.routine_date) {
+          let data = routineCache.get(row.user_id)
+          if (!data) { data = await StudentRoutineService.get(row.user_id); routineCache.set(row.user_id, data) }
+          const kind = row.payload.routine_kind
+          const item = [...data.diet, ...data.supplements].find(i => i.key === row.payload?.item_key)
+          let invalid = row.payload.routine_date !== data.date ||
+            ((kind === "diet" || kind === "supplement") && (!item || item.done)) ||
+            (kind === "hydration" && (!data.hydrationReminders || !data.waterGoal || data.waterTotal >= data.waterGoal || (data.hydrationSilent && isWithinQuietHours(getZonedParts(now, data.timezone).hour * 60 + getZonedParts(now, data.timezone).minute, "22:00", "07:00")))) ||
+            !(await canAccessPlatform(row.user_id, true)).allowed || (await getMaintenanceStatus()).active
+          if (kind === "workout" && !invalid) {
+            const plan = await WorkoutService.getTodaysProgram(row.user_id)
+            invalid = !plan || plan.sessionCompletedToday
+          }
+          if (invalid) {
+            checked(await supabase.from("notifications").update({ sent_at: now.toISOString(), error_text: "Rotina atualizada; lembrete cancelado." } as never).eq("id", row.id), "cancel reminder")
+            skipped++; continue
+          }
+        }
         const profile = profileById.get(row.user_id)
         if (profile && !ALWAYS_PUSH_TYPES.includes(row.type)) {
           const parts = getZonedParts(now, profile.timezone)
@@ -142,8 +140,9 @@ export class NotificationDispatcher {
       }
 
       return { processed, skipped, pushed }
-    } catch {
-      return { processed: 0, skipped: 0, pushed: 0 }
+    } catch (error) {
+      console.error("[NotificationDispatcher] delivery", error)
+      throw new Error("Não foi possível processar as notificações.")
     }
   }
 
@@ -152,243 +151,49 @@ export class NotificationDispatcher {
    * restante do dia local de cada aluno. Idempotente por chave de deduplicação.
    */
   static async generateRoutineReminders(): Promise<{ users: number; created: number }> {
-    try {
-      const supabase = await this.getSupabase()
-      const { data: usersData, error } = await supabase
-        .from("profiles")
-        .select("id, language, timezone, quiet_hours_start, quiet_hours_end, push_enabled")
-        .eq("role", "student")
-        .eq("is_deleted", false)
-        .limit(MAX_USERS)
-
-      if (error || !usersData) return { users: 0, created: 0 }
-
-      const users = usersData as ProfileLite[]
-      if (users.length === 0) return { users: 0, created: 0 }
-
-      const now = new Date()
-      const userIds = users.map((user) => user.id)
-      const logsSince = shiftDateKey(now.toISOString().slice(0, 10), -1)
-
-      const [dietsRes, hydrationRes, supplementsRes, sessionsRes, mealLogsRes] = await Promise.all([
-        supabase
-          .from("diet_programs")
-          .select("id, user_id, start_date, end_date")
-          .in("user_id", userIds)
-          .eq("is_active", true),
-        supabase
-          .from("hydration_goals")
-          .select("user_id, daily_target_ml, active_from, active_until")
-          .in("user_id", userIds),
-        supabase
-          .from("user_supplements")
-          .select("id, user_id, name_pt_snapshot, dosage, dosage_unit, times_of_day, start_date, end_date")
-          .in("user_id", userIds)
-          .eq("is_active", true),
-        supabase
-          .from("workout_sessions")
-          .select("id, user_id, scheduled_date")
-          .in("user_id", userIds)
-          .is("started_at", null),
-        supabase
-          .from("meal_logs")
-          .select("user_id, meal_id, logged_date")
-          .in("user_id", userIds)
-          .gte("logged_date", logsSince),
-      ])
-
-      const diets = (dietsRes.data ?? []) as {
-        id: string
-        user_id: string
-        start_date: string | null
-        end_date: string | null
-      }[]
-      const dietIds = diets.map((diet) => diet.id)
-      const mealsRes = dietIds.length
-        ? await supabase
-            .from("diet_meals")
-            .select("id, diet_id, meal_type, time_of_day, name_pt, name_en")
-            .in("diet_id", dietIds)
-        : { data: [] as unknown[] }
-
-      const meals = (mealsRes.data ?? []) as {
-        id: string
-        diet_id: string
-        meal_type: string
-        time_of_day: string
-        name_pt: string
-        name_en: string
-      }[]
-      const mealsByDiet = new Map<string, typeof meals>()
-      for (const meal of meals) {
-        const list = mealsByDiet.get(meal.diet_id) ?? []
-        list.push(meal)
-        mealsByDiet.set(meal.diet_id, list)
+    if ((await getMaintenanceStatus()).active) return { users: 0, created: 0 }
+    const db: any = await this.getSupabase()
+    const users = checked<ProfileLite[]>(await db.from("profiles").select("id, language, timezone, quiet_hours_start, quiet_hours_end, push_enabled").eq("role", "student").eq("is_deleted", false).limit(MAX_USERS), "reminder users")
+    const now = new Date()
+    let created = 0
+    for (const user of users) {
+      if (!(await canAccessPlatform(user.id, true)).allowed) continue
+      const data = await StudentRoutineService.get(user.id)
+      const parts = getZonedParts(now, data.timezone)
+      const minutesNow = parts.hour * 60 + parts.minute
+      const existing = checked<any[]>(await db.from("notifications").select("payload").eq("user_id", user.id).gte("created_at", new Date(now.getTime() - 36 * 3600000).toISOString()), "reminder dedupe")
+      const seen = new Set(existing.map(n => n.payload?.dedupe_key))
+      const candidates: { kind: NotificationTypeT; key: string; slot: string; name: string; itemKey?: string }[] = []
+      for (const item of [...data.diet, ...data.supplements]) {
+        if (item.done || !/^\d{2}:\d{2}/.test(item.slot)) continue
+        candidates.push({ kind: item.kind, key: `${item.kind}:${item.key}:${data.date}`, itemKey: item.key, slot: item.slot, name: item.name })
       }
-
-      const hydration = (hydrationRes.data ?? []) as {
-        user_id: string
-        daily_target_ml: number
-        active_from: string | null
-        active_until: string | null
-      }[]
-      const supplements = (supplementsRes.data ?? []) as {
-        id: string
-        user_id: string
-        name_pt_snapshot: string
-        dosage: number
-        dosage_unit: string
-        times_of_day: string[] | null
-        start_date: string | null
-        end_date: string | null
-      }[]
-      const sessions = (sessionsRes.data ?? []) as {
-        id: string
-        user_id: string
-        scheduled_date: string
-      }[]
-
-      // Refeições já registradas (evita lembrete de tarefa concluída).
-      const loggedMeals = new Set<string>()
-      for (const log of (mealLogsRes.data ?? []) as {
-        user_id: string
-        meal_id: string | null
-        logged_date: string
-      }[]) {
-        if (log.meal_id) loggedMeals.add(`${log.user_id}:${log.meal_id}:${log.logged_date}`)
-      }
-
-      let created = 0
-
-      for (const user of users) {
-        const locale = user.language === "en-US" ? "en-US" : "pt-BR"
-        const parts = getZonedParts(now, user.timezone)
-        const dateKey = parts.dateKey
-        const nowMinutes = parts.hour * 60 + parts.minute
-        const tolerance = nowMinutes - 10
-        const pending: ReminderInput[] = []
-
-        // Refeições
-        for (const diet of diets) {
-          if (diet.user_id !== user.id) continue
-          if (diet.start_date && diet.start_date > dateKey) continue
-          if (diet.end_date && diet.end_date < dateKey) continue
-          for (const meal of mealsByDiet.get(diet.id) ?? []) {
-            const minutes = timeToMinutes(meal.time_of_day)
-            if (minutes < tolerance) continue
-            if (loggedMeals.has(`${user.id}:${meal.id}:${dateKey}`)) continue
-            const label = MEAL_LABELS[meal.meal_type] ?? MEAL_LABELS.other
-            pending.push({
-              dedupeKey: `meal:${meal.id}:${dateKey}`,
-              type: "diet",
-              titlePt: `Hora do ${label.pt.toLowerCase()}`,
-              titleEn: `${label.en} time`,
-              bodyPt: `Lembrete da sua refeição: ${meal.name_pt}.`,
-              bodyEn: `Meal reminder: ${meal.name_en}.`,
-              url: `/${locale}/dieta`,
-              scheduledFor: zonedTimeToUtc(dateKey, meal.time_of_day, user.timezone).toISOString(),
-            })
-          }
-        }
-
-        // Hidratação
-        const activeGoal = hydration.find(
-          (goal) =>
-            goal.user_id === user.id &&
-            (!goal.active_from || goal.active_from <= dateKey) &&
-            (!goal.active_until || goal.active_until >= dateKey)
-        )
-        if (activeGoal) {
-          for (const slot of WATER_SLOTS) {
-            if (timeToMinutes(slot) < tolerance) continue
-            pending.push({
-              dedupeKey: `water:${dateKey}:${slot}`,
-              type: "hydration",
-              titlePt: "Hora de se hidratar",
-              titleEn: "Time to hydrate",
-              bodyPt: `Beba água para atingir sua meta de ${activeGoal.daily_target_ml} ml hoje.`,
-              bodyEn: `Drink water to reach your ${activeGoal.daily_target_ml} ml goal today.`,
-              url: `/${locale}/hidratacao`,
-              scheduledFor: zonedTimeToUtc(dateKey, slot, user.timezone).toISOString(),
-            })
-          }
-        }
-
-        // Suplementos
-        for (const supplement of supplements) {
-          if (supplement.user_id !== user.id) continue
-          if (supplement.start_date && supplement.start_date > dateKey) continue
-          if (supplement.end_date && supplement.end_date < dateKey) continue
-          for (const time of supplement.times_of_day ?? []) {
-            if (timeToMinutes(time) < tolerance) continue
-            pending.push({
-              dedupeKey: `supp:${supplement.id}:${dateKey}:${time}`,
-              type: "supplement",
-              titlePt: "Tomar suplemento",
-              titleEn: "Take your supplement",
-              bodyPt: `Lembrete: ${supplement.name_pt_snapshot} (${supplement.dosage}${supplement.dosage_unit}).`,
-              bodyEn: `Reminder: ${supplement.name_pt_snapshot} (${supplement.dosage}${supplement.dosage_unit}).`,
-              url: `/${locale}/suplementos`,
-              scheduledFor: zonedTimeToUtc(dateKey, time, user.timezone).toISOString(),
-            })
-          }
-        }
-
-        // Treino
-        for (const session of sessions) {
-          if (session.user_id !== user.id) continue
-          if (session.scheduled_date !== dateKey) continue
-          const scheduled = zonedTimeToUtc(dateKey, WORKOUT_TIME, user.timezone)
-          pending.push({
-            dedupeKey: `session:${session.id}`,
-            type: "workout",
-            titlePt: "Treino de hoje",
-            titleEn: "Today's workout",
-            bodyPt: "Seu treino de hoje está agendado. Bora treinar!",
-            bodyEn: "Your workout is scheduled for today. Let's go!",
-            url: `/${locale}/treino`,
-            scheduledFor: (scheduled.getTime() < now.getTime() ? now : scheduled).toISOString(),
-          })
-        }
-
-        if (pending.length === 0) continue
-
-        // Respeita o status da assinatura (não envia lembretes a alunos bloqueados).
-        const access = await canAccessPlatform(user.id, true)
-        if (!access.allowed) continue
-
-        const since = new Date(now.getTime() - 36 * 60 * 60 * 1000).toISOString()
-        const { data: existing } = await supabase
-          .from("notifications")
-          .select("payload")
-          .eq("user_id", user.id)
-          .gte("created_at", since)
-
-        const seen = new Set<string>()
-        for (const row of (existing as { payload: Record<string, unknown> | null }[]) ?? []) {
-          const key = row?.payload?.dedupe_key
-          if (typeof key === "string") seen.add(key)
-        }
-
-        for (const reminder of pending) {
-          if (seen.has(reminder.dedupeKey)) continue
-          const result = await NotificationService.send(user.id, {
-            type: reminder.type,
-            title_pt: reminder.titlePt,
-            title_en: reminder.titleEn,
-            body_pt: reminder.bodyPt,
-            body_en: reminder.bodyEn,
-            url: reminder.url,
-            scheduled_for: reminder.scheduledFor,
-            payload: { dedupe_key: reminder.dedupeKey },
-          })
-          if (result.inApp) created++
+      if (data.waterGoal && data.hydrationReminders && data.waterTotal < data.waterGoal) {
+        for (let minute = 0; minute < 24 * 60; minute += data.hydrationFrequency) {
+          const slot = `${String(Math.floor(minute / 60)).padStart(2,'0')}:${String(minute % 60).padStart(2,'0')}`
+          candidates.push({ kind: "hydration", key: `water:${data.date}:${slot}`, slot, name: `${data.waterGoal} ml` })
         }
       }
-
-      return { users: users.length, created }
-    } catch {
-      return { users: 0, created: 0 }
+      const workout = await WorkoutService.getTodaysProgram(user.id)
+      if (workout?.program && workout.day && !workout.isRestDay && !workout.sessionCompletedToday) candidates.push({ kind: "workout", key: `workout:${data.date}`, slot: WORKOUT_TIME, name: workout.program.title_pt })
+      for (const item of candidates) {
+        const minute = timeToMinutes(item.slot)
+        // Schedule only the next cron window; do not send a backlog of old tasks.
+        if (minute < minutesNow - 15 || minute > minutesNow + 15 || seen.has(item.key)) continue
+        if (isWithinQuietHours(minute, data.quietStart, data.quietEnd)) continue
+        if (item.kind === "hydration" && data.hydrationSilent && isWithinQuietHours(minute, "22:00", "07:00")) continue
+        const result = await NotificationService.send(user.id, {
+          type: item.kind,
+          title_pt: item.kind === "diet" ? "Hora da sua refeição" : item.kind === "supplement" ? "Tomar suplemento" : item.kind === "hydration" ? "Hora de se hidratar" : "Treino de hoje",
+          title_en: item.kind === "diet" ? "Meal time" : item.kind === "supplement" ? "Take your supplement" : item.kind === "hydration" ? "Time to hydrate" : "Today's workout",
+          body_pt: `Lembrete: ${item.name}.`, body_en: `Reminder: ${item.name}.`,
+          url: `/${data.locale || 'pt-BR'}/${item.kind === 'diet' ? 'dieta' : item.kind === 'supplement' ? 'suplementos' : item.kind === 'hydration' ? 'hidratacao' : 'treino'}`,
+          scheduled_for: zonedTimeToUtc(data.date, item.slot, data.timezone).toISOString(),
+          payload: { dedupe_key: item.key, routine_date: data.date, routine_kind: item.kind, item_key: item.itemKey || null },
+        })
+        if (result.inApp) { created++; seen.add(item.key) }
+      }
     }
+    return { users: users.length, created }
   }
 }

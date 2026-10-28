@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Check, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -30,6 +31,7 @@ interface AssignDietKitModalProps {
   kit: DietKitWithItems;
   students: DietAssignStudentOption[];
   assignedStudentIds: string[];
+  fingerprint?: string;
   onSaved?: () => void;
 }
 
@@ -47,12 +49,13 @@ export function AssignDietKitModal({
   kit,
   students,
   assignedStudentIds,
+  fingerprint,
   onSaved,
 }: AssignDietKitModalProps) {
   const t = useTranslations("adminDietKits");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -80,7 +83,7 @@ export function AssignDietKitModal({
     return students.filter(
       (s) =>
         (s.name ?? "").toLowerCase().includes(term) ||
-        (s.email ?? "").toLowerCase().includes(term)
+        (s.email ?? "").toLowerCase().includes(term),
     );
   }, [students, search]);
 
@@ -88,7 +91,7 @@ export function AssignDietKitModal({
 
   function toggle(id: string) {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -110,6 +113,7 @@ export function AssignDietKitModal({
     startTransition(async () => {
       try {
         const result = await syncDietKitStudentsAction({
+          expected_fingerprint: fingerprint,
           kit_id: kit.id,
           student_ids: selected,
           start_date: startDate || null,
@@ -133,7 +137,9 @@ export function AssignDietKitModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
       className="max-w-2xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
@@ -141,7 +147,7 @@ export function AssignDietKitModal({
           <ModalTitle>{t("assignTitle")}</ModalTitle>
           <p className="text-sm text-text-secondary mt-1">{kitName}</p>
         </div>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
 
       <form onSubmit={handleSubmit}>
@@ -162,10 +168,20 @@ export function AssignDietKitModal({
               />
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button type="button" variant="secondary" size="sm" onClick={selectAllFiltered}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={selectAllFiltered}
+              >
                 {t("selectAll")}
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+              >
                 {t("clearSelection")}
               </Button>
               <Badge variant="default">
@@ -177,9 +193,13 @@ export function AssignDietKitModal({
 
           <div className="rounded-xl border border-border overflow-hidden">
             {students.length === 0 ? (
-              <p className="p-4 text-sm text-text-secondary">{t("noStudents")}</p>
+              <p className="p-4 text-sm text-text-secondary">
+                {t("noStudents")}
+              </p>
             ) : filteredStudents.length === 0 ? (
-              <p className="p-4 text-sm text-text-secondary">{t("noStudentsFound")}</p>
+              <p className="p-4 text-sm text-text-secondary">
+                {t("noStudentsFound")}
+              </p>
             ) : (
               <div className="max-h-72 overflow-y-auto divide-y divide-border">
                 {filteredStudents.map((student) => {
@@ -188,7 +208,9 @@ export function AssignDietKitModal({
                     <label
                       key={student.id}
                       className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                        checked ? "bg-primary/10" : "hover:bg-surface-secondary/50"
+                        checked
+                          ? "bg-primary/10"
+                          : "hover:bg-surface-secondary/50"
                       }`}
                     >
                       <input
@@ -207,7 +229,9 @@ export function AssignDietKitModal({
                           </span>
                         )}
                       </span>
-                      {checked && <Check size={16} className="text-primary shrink-0" />}
+                      {checked && (
+                        <Check size={16} className="text-primary shrink-0" />
+                      )}
                     </label>
                   );
                 })}
@@ -217,7 +241,9 @@ export function AssignDietKitModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("startDate")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("startDate")}
+              </label>
               <Input
                 type="date"
                 value={startDate}
@@ -225,7 +251,9 @@ export function AssignDietKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("endDate")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("endDate")}
+              </label>
               <Input
                 type="date"
                 value={endDate}
@@ -235,7 +263,9 @@ export function AssignDietKitModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("notes")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("notes")}
+            </label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -252,7 +282,12 @@ export function AssignDietKitModal({
         </ModalBody>
 
         <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={isPending}>

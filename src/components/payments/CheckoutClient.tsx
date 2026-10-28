@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import { ArrowLeft, CreditCard, Loader2, QrCode, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CreditCard,
+  Loader2,
+  QrCode,
+  ShieldCheck,
+} from "lucide-react";
 import { CardCheckoutForm, type CardFormLabels } from "./CardCheckoutForm";
 import { PixCheckoutPanel, type PixLabels } from "./PixCheckoutPanel";
 import { cn } from "@/lib/utils";
@@ -34,6 +40,7 @@ export interface CheckoutLabels {
 
 interface CheckoutClientProps {
   locale: string;
+  initialMethod?: "card" | "pix";
   planId: string;
   planName: string;
   priceLabel: string;
@@ -42,6 +49,7 @@ interface CheckoutClientProps {
   trialDays: number;
   cardAvailable: boolean;
   pixAvailable: boolean;
+  pixNeedsDocument?: boolean;
   labels: CheckoutLabels;
 }
 
@@ -49,6 +57,7 @@ type Tab = "card" | "pix";
 
 export function CheckoutClient({
   locale,
+  initialMethod,
   planId,
   planName,
   priceLabel,
@@ -57,10 +66,18 @@ export function CheckoutClient({
   trialDays,
   cardAvailable,
   pixAvailable,
+  pixNeedsDocument,
   labels,
 }: CheckoutClientProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>(cardAvailable ? "card" : "pix");
+  const en = locale === "en-US";
+  const [tab, setTab] = useState<Tab>(
+    initialMethod === "pix" && pixAvailable
+      ? "pix"
+      : cardAvailable
+        ? "card"
+        : "pix",
+  );
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [intentLoading, setIntentLoading] = useState(false);
   const [intentError, setIntentError] = useState<string | null>(null);
@@ -81,7 +98,9 @@ export function CheckoutClient({
         });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.client_secret) {
-          setIntentError(typeof data?.error === "string" ? data.error : labels.paymentError);
+          setIntentError(
+            typeof data?.error === "string" ? data.error : labels.paymentError,
+          );
         } else {
           setClientSecret(String(data.client_secret));
         }
@@ -91,14 +110,31 @@ export function CheckoutClient({
         setIntentLoading(false);
       }
     })();
-  }, [tab, cardAvailable, clientSecret, intentAttempt, planId, labels.paymentError]);
+  }, [
+    tab,
+    cardAvailable,
+    clientSecret,
+    intentAttempt,
+    planId,
+    labels.paymentError,
+  ]);
 
   const handleSuccess = () => {
     router.push(`/${locale}/assinatura/sucesso`);
   };
 
-  const tabs: Array<{ id: Tab; label: string; icon: typeof CreditCard; enabled: boolean }> = [
-    { id: "card", label: labels.creditCard, icon: CreditCard, enabled: cardAvailable },
+  const tabs: Array<{
+    id: Tab;
+    label: string;
+    icon: typeof CreditCard;
+    enabled: boolean;
+  }> = [
+    {
+      id: "card",
+      label: labels.creditCard,
+      icon: CreditCard,
+      enabled: cardAvailable,
+    },
     { id: "pix", label: labels.pix, icon: QrCode, enabled: pixAvailable },
   ];
 
@@ -118,7 +154,8 @@ export function CheckoutClient({
                 tab === id
                   ? "bg-primary text-primary-foreground shadow-[0_0_30px_hsl(var(--primary)/0.3)]"
                   : "text-text-secondary hover:text-text",
-                !enabled && "cursor-not-allowed opacity-40 hover:text-text-secondary"
+                !enabled &&
+                  "cursor-not-allowed opacity-40 hover:text-text-secondary",
               )}
             >
               <Icon size={17} />
@@ -128,6 +165,26 @@ export function CheckoutClient({
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-surface p-5 md:p-7">
+          <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm leading-relaxed">
+            <strong>
+              {tab === "pix"
+                ? en
+                  ? "One-off payment"
+                  : "Pagamento avulso"
+                : en
+                  ? "Recurring subscription"
+                  : "Assinatura recorrente"}
+            </strong>
+            <p className="mt-2 text-text-secondary">
+              {tab === "pix"
+                ? en
+                  ? "Pay the full amount shown. Access starts after confirmation and ends with the paid period. PIX does not renew automatically and has no free trial."
+                  : "Pague o valor integral exibido. O acesso começa após a confirmação e termina ao vencer o período pago. PIX não renova automaticamente e não inclui teste gratuito."
+                : en
+                  ? "Your card will be charged each billing cycle. Complete any authentication requested by your bank. Manage or cancel renewal in your billing center."
+                  : "O cartão será cobrado a cada ciclo contratado. Conclua a autenticação solicitada pelo seu banco. Gerencie ou cancele a renovação na central de pagamentos."}
+            </p>
+          </div>
           {tab === "card" ? (
             intentLoading ? (
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-text-secondary">
@@ -136,7 +193,9 @@ export function CheckoutClient({
               </div>
             ) : intentError || !clientSecret ? (
               <div className="space-y-4 py-10 text-center">
-                <p className="text-sm text-red-400">{intentError ?? labels.paymentError}</p>
+                <p className="text-sm text-red-400">
+                  {intentError ?? labels.paymentError}
+                </p>
                 <button
                   type="button"
                   onClick={() => {
@@ -172,16 +231,22 @@ export function CheckoutClient({
               </Elements>
             )
           ) : (
-            <PixCheckoutPanel planId={planId} labels={labels.pixPanel} onSuccess={handleSuccess} />
+            <PixCheckoutPanel
+              needsDocument={pixNeedsDocument}
+              locale={locale}
+              planId={planId}
+              labels={labels.pixPanel}
+              onSuccess={handleSuccess}
+            />
           )}
         </div>
 
         <Link
-          href={`/${locale}/planos`}
+          href={`/${locale}/assinatura`}
           className="inline-flex items-center gap-2 text-sm text-text-secondary transition-colors hover:text-primary"
         >
           <ArrowLeft size={15} />
-          {labels.backToPlans}
+          {en ? "Back to billing center" : "Voltar à central de pagamentos"}
         </Link>
       </div>
 
@@ -195,14 +260,22 @@ export function CheckoutClient({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-text-secondary">{labels.plan}</span>
-              <span className="text-sm font-semibold text-text">{planName}</span>
+              <span className="text-sm font-semibold text-text">
+                {planName}
+              </span>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-secondary">{labels.billingCycle}</span>
-              <span className="text-sm font-semibold text-text">{cycleLabel}</span>
+              <span className="text-sm text-text-secondary">
+                {labels.billingCycle}
+              </span>
+              <span className="text-sm font-semibold text-text">
+                {cycleLabel}
+              </span>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-secondary">{labels.method}</span>
+              <span className="text-sm text-text-secondary">
+                {labels.method}
+              </span>
               <span className="text-sm font-semibold text-text">
                 {tab === "card" ? labels.creditCard : labels.pix}
               </span>
@@ -213,19 +286,43 @@ export function CheckoutClient({
 
           <div className="space-y-1">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm text-text-secondary">{labels.totalDueToday}</span>
-              <span className="text-2xl font-bold text-primary">{totalTodayLabel}</span>
+              <span className="text-sm text-text-secondary">
+                {labels.totalDueToday}
+              </span>
+              <span className="text-2xl font-bold text-primary">
+                {tab === "pix" ? priceLabel : totalTodayLabel}
+              </span>
             </div>
-            {trialDays > 0 && (
+            {tab === "card" && trialDays > 0 && (
               <p className="text-xs leading-relaxed text-primary/90">
                 {labels.trialNote.replace("{days}", String(trialDays))}
               </p>
             )}
             <p className="text-xs text-text-secondary/70">
+              {tab === "pix"
+                ? en
+                  ? "Paid once for this access period."
+                  : "Pago uma vez por este período de acesso."
+                : en
+                  ? "Recurring price after any eligible trial."
+                  : "Valor recorrente após eventual teste elegível."}
+            </p>
+            <p className="text-xs text-text-secondary/70">
               {priceLabel} / {cycleLabel}
             </p>
           </div>
 
+          <p className="text-xs leading-relaxed text-text-secondary">
+            {en
+              ? "A pending attempt may prevent choosing another method. Close the unpaid attempt in your billing center before switching. Do not pay twice."
+              : "Uma tentativa pendente pode impedir a escolha de outro meio. Encerre a tentativa não paga na central antes de trocar. Não pague duas vezes."}
+          </p>
+          <Link
+            href={`/${locale}/assinatura`}
+            className="text-sm text-primary underline"
+          >
+            {en ? "Review pending attempts" : "Consultar tentativas pendentes"}
+          </Link>
           <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-xs text-text-secondary">
             <ShieldCheck size={15} className="shrink-0 text-primary" />
             <span>{labels.secureNote}</span>

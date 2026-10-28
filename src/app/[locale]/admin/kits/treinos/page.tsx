@@ -1,3 +1,6 @@
+import { staffStudentIds } from "@/lib/auth/platform";
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -32,8 +35,10 @@ interface KitWithItems extends WorkoutKitRow {
 
 export default async function AdminKitsTreinosPage({
   params: { locale },
+  searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -46,10 +51,12 @@ export default async function AdminKitsTreinosPage({
   const subtitle = await safe(
     tAdmin,
     "workoutKits.subtitle",
-    "Coleções reutilizáveis de treinos (programas e exercícios) para atribuir rapidamente aos alunos."
+    "Coleções reutilizáveis de treinos (programas e exercícios) para atribuir rapidamente aos alunos.",
   );
 
-  const kits: WorkoutKitRow[] = await WorkoutKitService.listKits({ limit: 100 });
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("workout_kits", pageParams);
+  const kits = dataPage.rows;
   const allPrograms: WorkoutProgramRow[] = await WorkoutService.listPrograms({
     is_template: false,
     limit: 200,
@@ -60,7 +67,9 @@ export default async function AdminKitsTreinosPage({
   });
 
   // Carrega todos os itens de todos os kits em uma única consulta e agrupa por kit.
-  const allItems = await WorkoutKitService.listKitItemsForKits(kits.map((k) => k.id));
+  const allItems = await WorkoutKitService.listKitItemsForKits(
+    kits.map((k) => k.id),
+  );
   const itemsByKit = new Map<string, WorkoutKitItemWithSource[]>();
   for (const item of allItems) {
     const list = itemsByKit.get(item.kit_id) ?? [];
@@ -107,6 +116,13 @@ export default async function AdminKitsTreinosPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminKitsClient
         locale={locale}
         userId={userId}

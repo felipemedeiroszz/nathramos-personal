@@ -14,11 +14,14 @@ function revalidate() {
 }
 
 export async function upsertSocialLinkAction(input: UpsertSocialLinkInput) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const saved = await SocialLinksService.upsert(input, userId);
     if (!saved) {
-      return { success: false as const, message: "Falha ao salvar a rede social." };
+      return {
+        success: false as const,
+        message: "Falha ao salvar a rede social.",
+      };
     }
     revalidate();
     return { success: true as const, data: saved };
@@ -31,11 +34,14 @@ export async function upsertSocialLinkAction(input: UpsertSocialLinkInput) {
 }
 
 export async function deleteSocialLinkAction(id: string) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const ok = await SocialLinksService.remove(id, userId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao excluir a rede social." };
+      return {
+        success: false as const,
+        message: "Falha ao excluir a rede social.",
+      };
     }
     revalidate();
     return { success: true as const };
@@ -47,12 +53,18 @@ export async function deleteSocialLinkAction(id: string) {
   }
 }
 
-export async function toggleSocialLinkActiveAction(id: string, isActive: boolean) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+export async function toggleSocialLinkActiveAction(
+  id: string,
+  isActive: boolean,
+) {
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const ok = await SocialLinksService.toggleActive(id, isActive, userId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao atualizar a rede social." };
+      return {
+        success: false as const,
+        message: "Falha ao atualizar a rede social.",
+      };
     }
     revalidate();
     return { success: true as const };
@@ -65,11 +77,14 @@ export async function toggleSocialLinkActiveAction(id: string, isActive: boolean
 }
 
 export async function reorderSocialLinksAction(input: ReorderSocialLinksInput) {
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const ok = await SocialLinksService.reorder(input, userId);
     if (!ok) {
-      return { success: false as const, message: "Falha ao reordenar as redes sociais." };
+      return {
+        success: false as const,
+        message: "Falha ao reordenar as redes sociais.",
+      };
     }
     revalidate();
     return { success: true as const };

@@ -1,11 +1,15 @@
-import { createServiceClientSSR } from "../lib/supabase/server"
+import { requirePlatformUser, staffStudentIds } from "@/lib/auth/platform";
+import { getZonedParts } from "@/lib/notifications/time";
+import { checked } from "./StudentRoutineService";
+import { workoutWeek, selectWorkoutDays } from "@/lib/student/routine";
+import { createServiceClientSSR } from "../lib/supabase/server";
 import type {
   MuscleGroupT,
   EquipmentT,
   DifficultyT,
   WorkoutStatusT,
   ExerciseSourceT,
-} from "../lib/supabase/types"
+} from "../lib/supabase/types";
 import type {
   WorkoutCategoryRow,
   WorkoutProgramRow,
@@ -15,8 +19,8 @@ import type {
   ExerciseSetLogRow,
   ExerciseRow,
   StudentWorkoutOverrideRow,
-} from "../types"
-import { AuditLogService } from "./AuditLogService"
+} from "../types";
+import { AuditLogService } from "./AuditLogService";
 import {
   upsertWorkoutCategorySchema,
   upsertWorkoutProgramSchema,
@@ -30,105 +34,109 @@ import {
   type UpsertWorkoutExerciseInput,
   type LogWorkoutSetInput,
   type UpsertStudentWorkoutOverrideInput,
-} from "../schemas/workouts"
+} from "../schemas/workouts";
 
 function toDateOnly(d: Date | string): string {
-  const dt = typeof d === "string" ? new Date(d) : d
-  const y = dt.getFullYear()
-  const m = String(dt.getMonth() + 1).padStart(2, "0")
-  const day = String(dt.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
+  const dt = typeof d === "string" ? new Date(d) : d;
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function todayDateOnly(): string {
-  return toDateOnly(new Date())
+  return toDateOnly(new Date());
 }
 
 function dayOfWeekToday(): number {
-  const d = new Date().getDay()
-  return d === 0 ? 7 : d
+  const d = new Date().getDay();
+  return d === 0 ? 7 : d;
 }
 
 export class WorkoutService {
   private static async getSupabase() {
-    return createServiceClientSSR()
+    return createServiceClientSSR();
   }
 
   // ---------------------------------------------------------------------
   // CATEGORIES
   // ---------------------------------------------------------------------
-  static async listCategories(onlyActive: boolean = false): Promise<WorkoutCategoryRow[]> {
+  static async listCategories(
+    onlyActive: boolean = false,
+  ): Promise<WorkoutCategoryRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       let q: any = supabase
         .from("workout_categories")
         .select("*")
         .order("order_index", { ascending: true })
-        .order("name_pt", { ascending: true })
-      if (onlyActive) q = q.eq("is_active", true)
-      const { data, error } = await q
-      if (error) return []
-      return (data as WorkoutCategoryRow[]) ?? []
+        .order("name_pt", { ascending: true });
+      if (onlyActive) q = q.eq("is_active", true);
+      const { data, error } = await q;
+      if (error) return [];
+      return (data as WorkoutCategoryRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
   static async upsertCategory(
     input: UpsertWorkoutCategoryInput,
-    createdById?: string
+    createdById?: string,
   ): Promise<WorkoutCategoryRow | null> {
     try {
-      const parsed = upsertWorkoutCategorySchema.parse(input)
-      const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...parsed }
-      if (!parsed.id && createdById) payload.created_by_id = createdById
-      delete payload.id
+      const parsed = upsertWorkoutCategorySchema.parse(input);
+      const supabase = await this.getSupabase();
+      const payload: Record<string, any> = { ...parsed };
+      if (!parsed.id && createdById) payload.created_by_id = createdById;
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
         q = supabase
           .from("workout_categories")
           .update(payload as never)
-          .eq("id", parsed.id)
+          .eq("id", parsed.id);
       } else {
-        q = supabase.from("workout_categories").insert(payload as never)
+        q = supabase.from("workout_categories").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
 
       void AuditLogService.log({
         adminId: createdById,
-        action: parsed.id ? "workout_category.update" : "workout_category.create",
+        action: parsed.id
+          ? "workout_category.update"
+          : "workout_category.create",
         entity_type: "workout_categories",
         entity_id: data.id,
         details: { name_pt: parsed.name_pt, slug: parsed.slug },
-      })
+      });
 
-      return data as WorkoutCategoryRow
+      return data as WorkoutCategoryRow;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async deleteCategory(id: string, adminId?: string): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from("workout_categories")
         .update({ is_active: false } as never)
-        .eq("id", id)
-      if (error) return false
+        .eq("id", id);
+      if (error) return false;
       void AuditLogService.log({
         adminId,
         action: "workout_category.delete",
         entity_type: "workout_categories",
         entity_id: id,
-      })
-      return true
+      });
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -136,80 +144,86 @@ export class WorkoutService {
   // PROGRAMS
   // ---------------------------------------------------------------------
   static async listPrograms(filters?: {
-    owner_id?: string
-    status?: WorkoutStatusT
-    is_template?: boolean
-    category_id?: string
-    search?: string
-    limit?: number
+    owner_id?: string;
+    status?: WorkoutStatusT;
+    is_template?: boolean;
+    category_id?: string;
+    search?: string;
+    limit?: number;
   }): Promise<WorkoutProgramRow[]> {
     try {
-      const supabase = await this.getSupabase()
-      const limit = filters?.limit ?? 100
+      const supabase = await this.getSupabase();
+      const limit = filters?.limit ?? 100;
       let q: any = supabase
         .from("workout_programs")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(limit)
+        .limit(limit);
 
-      if (filters?.owner_id) q = q.eq("owner_id", filters.owner_id)
-      if (filters?.status) q = q.eq("status", filters.status)
-      if (typeof filters?.is_template !== "undefined") q = q.eq("is_template", filters.is_template)
-      if (filters?.category_id) q = q.eq("category_id", filters.category_id)
+      const actor = await requirePlatformUser();
+      if (actor.role === "coach") {
+        const ids = [actor.userId, ...((await staffStudentIds()) || [])];
+        q = q.or(`is_template.eq.true,owner_id.in.(${ids.join(",")})`);
+      }
+      if (filters?.owner_id) q = q.eq("owner_id", filters.owner_id);
+      if (filters?.status) q = q.eq("status", filters.status);
+      if (typeof filters?.is_template !== "undefined")
+        q = q.eq("is_template", filters.is_template);
+      if (filters?.category_id) q = q.eq("category_id", filters.category_id);
       if (filters?.search) {
-        const s = `%${filters.search}%`
-        q = q.or(`title_pt.ilike.${s},title_en.ilike.${s}`)
+        const s = `%${filters.search}%`;
+        q = q.or(`title_pt.ilike.${s},title_en.ilike.${s}`);
       }
 
-      const { data, error } = await q
-      if (error) return []
-      return (data as WorkoutProgramRow[]) ?? []
+      const { data, error } = await q;
+      if (error) return [];
+      return (data as WorkoutProgramRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
   static async getProgram(id: string): Promise<WorkoutProgramRow | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("workout_programs")
         .select("*")
         .eq("id", id)
-        .maybeSingle()
-      if (error) return null
-      return (data as WorkoutProgramRow | null) ?? null
+        .maybeSingle();
+      if (error) return null;
+      return (data as WorkoutProgramRow | null) ?? null;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async upsertProgram(
     input: UpsertWorkoutProgramInput,
     ownerId: string,
-    adminId?: string
+    adminId?: string,
   ): Promise<WorkoutProgramRow | null> {
     try {
-      const parsed = upsertWorkoutProgramSchema.parse(input)
-      const supabase = await this.getSupabase()
+      const parsed = upsertWorkoutProgramSchema.parse(input);
+      const supabase = await this.getSupabase();
 
-      const payload: Record<string, any> = { ...parsed }
-      if (!parsed.id) payload.owner_id = ownerId
-      else payload.owner_id = ownerId
-      delete payload.id
+      const payload: Record<string, any> = { ...parsed };
+      if (!parsed.id) payload.owner_id = ownerId;
+      else payload.owner_id = ownerId;
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
         q = supabase
           .from("workout_programs")
           .update(payload as never)
-          .eq("id", parsed.id)
+          .eq("id", parsed.id);
       } else {
-        q = supabase.from("workout_programs").insert(payload as never)
+        q = supabase.from("workout_programs").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
 
       void AuditLogService.log({
         adminId: adminId ?? ownerId,
@@ -217,31 +231,31 @@ export class WorkoutService {
         entity_type: "workout_program",
         entity_id: data.id,
         details: { title_pt: parsed.title_pt, title_en: parsed.title_en },
-      })
+      });
 
-      return data as WorkoutProgramRow
+      return data as WorkoutProgramRow;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async deleteProgram(id: string, adminId?: string): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from("workout_programs")
         .update({ status: "archived" } as never)
-        .eq("id", id)
-      if (error) return false
+        .eq("id", id);
+      if (error) return false;
       void AuditLogService.log({
         adminId,
         action: "workout.delete",
         entity_type: "workout_program",
         entity_id: id,
-      })
-      return true
+      });
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -250,444 +264,425 @@ export class WorkoutService {
   // ---------------------------------------------------------------------
   static async listProgramDays(programId: string): Promise<WorkoutDayRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("workout_days")
         .select("*")
         .eq("program_id", programId)
         .order("week_number", { ascending: true })
-        .order("order_index", { ascending: true })
-      if (error) return []
-      return (data as WorkoutDayRow[]) ?? []
+        .order("order_index", { ascending: true });
+      if (error) return [];
+      return (data as WorkoutDayRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
-  static async upsertDay(input: UpsertWorkoutDayInput): Promise<WorkoutDayRow | null> {
+  static async upsertDay(
+    input: UpsertWorkoutDayInput,
+  ): Promise<WorkoutDayRow | null> {
     try {
-      const parsed = upsertWorkoutDaySchema.parse(input)
-      const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...parsed }
-      delete payload.id
+      const parsed = upsertWorkoutDaySchema.parse(input);
+      const supabase = await this.getSupabase();
+      const payload: Record<string, any> = { ...parsed };
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
-        q = supabase.from("workout_days").update(payload as never).eq("id", parsed.id)
+        q = supabase
+          .from("workout_days")
+          .update(payload as never)
+          .eq("id", parsed.id);
       } else {
-        q = supabase.from("workout_days").insert(payload as never)
+        q = supabase.from("workout_days").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
-      return data as WorkoutDayRow
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
+      return data as WorkoutDayRow;
     } catch {
-      return null
+      return null;
     }
   }
 
-  static async reorderDays(programId: string, items: { id: string; order_index: number }[]): Promise<boolean> {
+  static async reorderDays(
+    programId: string,
+    items: { id: string; order_index: number }[],
+  ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       for (const it of items) {
         await supabase
           .from("workout_days")
           .update({ order_index: it.order_index } as never)
           .eq("id", it.id)
-          .eq("program_id", programId)
+          .eq("program_id", programId);
       }
-      return true
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   static async deleteDay(id: string): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
-      const { error } = await supabase.from("workout_days").delete().eq("id", id)
-      if (error) return false
-      return true
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
+        .from("workout_days")
+        .delete()
+        .eq("id", id);
+      if (error) return false;
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   // ---------------------------------------------------------------------
   // EXERCISES IN DAY
   // ---------------------------------------------------------------------
-  static async listDayExercises(dayId: string): Promise<Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>> {
+  static async listDayExercises(
+    dayId: string,
+  ): Promise<Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("workout_exercises")
         .select("*, exercise:exercises(*)")
         .eq("day_id", dayId)
-        .order("order_index", { ascending: true })
-      if (error) return []
-      return (data as Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>) ?? []
-    } catch {
-      return []
+        .order("order_index", { ascending: true });
+      if (error) throw error;
+      return (
+        (data as Array<
+          WorkoutExerciseRow & { exercise?: ExerciseRow | null }
+        >) ?? []
+      );
+    } catch (error) {
+      console.error("[WorkoutService] listDayExercises", error);
+      throw new Error("Não foi possível carregar os dados de treino.");
     }
   }
 
-  static async upsertWorkoutExercise(input: UpsertWorkoutExerciseInput): Promise<WorkoutExerciseRow | null> {
+  static async upsertWorkoutExercise(
+    input: UpsertWorkoutExerciseInput,
+  ): Promise<WorkoutExerciseRow | null> {
     try {
-      const parsed = upsertWorkoutExerciseSchema.parse(input)
-      const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...parsed }
-      delete payload.id
+      const parsed = upsertWorkoutExerciseSchema.parse(input);
+      const supabase = await this.getSupabase();
+      const payload: Record<string, any> = { ...parsed };
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
-        q = supabase.from("workout_exercises").update(payload as never).eq("id", parsed.id)
+        q = supabase
+          .from("workout_exercises")
+          .update(payload as never)
+          .eq("id", parsed.id);
       } else {
-        q = supabase.from("workout_exercises").insert(payload as never)
+        q = supabase.from("workout_exercises").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
-      return data as WorkoutExerciseRow
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
+      return data as WorkoutExerciseRow;
     } catch {
-      return null
+      return null;
     }
   }
 
-  static async reorderExercises(dayId: string, items: { id: string; order_index: number }[]): Promise<boolean> {
+  static async reorderExercises(
+    dayId: string,
+    items: { id: string; order_index: number }[],
+  ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       for (const it of items) {
         await supabase
           .from("workout_exercises")
           .update({ order_index: it.order_index } as never)
           .eq("id", it.id)
-          .eq("day_id", dayId)
+          .eq("day_id", dayId);
       }
-      return true
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   static async removeWorkoutExercise(id: string): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
-      const { error } = await supabase.from("workout_exercises").delete().eq("id", id)
-      if (error) return false
-      return true
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
+        .from("workout_exercises")
+        .delete()
+        .eq("id", id);
+      if (error) return false;
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   // ---------------------------------------------------------------------
   // SESSIONS
   // ---------------------------------------------------------------------
+  private static async localToday(userId: string) {
+    const db = await this.getSupabase();
+    const result = await db
+      .from("profiles")
+      .select("timezone")
+      .eq("id", userId)
+      .single();
+    const profile = checked(result, "workout timezone") as { timezone: string };
+    return getZonedParts(new Date(), profile.timezone);
+  }
   static async startSession(
     userId: string,
     dayId?: string,
     programId?: string,
-    scheduledDate?: string
+    scheduledDate?: string,
   ): Promise<WorkoutSessionRow | null> {
-    try {
-      const supabase = await this.getSupabase()
-      const now = new Date().toISOString()
-      const sd = scheduledDate ?? todayDateOnly()
-
-      const { data, error } = await supabase
-        .from("workout_sessions")
-        .insert({
-          user_id: userId,
-          program_id: programId ?? null,
-          day_id: dayId ?? null,
-          scheduled_date: sd,
-          started_at: now,
-          is_paused: false,
-        } as never)
-        .select()
-        .single()
-
-      if (error || !data) return null
-      return data as WorkoutSessionRow
-    } catch {
-      return null
-    }
+    const today = (await this.localToday(userId)).dateKey;
+    if (scheduledDate && scheduledDate !== today) return null;
+    const plans = await this.getTodayPlans(userId);
+    if (!plans.some((p) => p.day.id === dayId && p.program.id === programId))
+      return null;
+    const db = await this.getSupabase();
+    const result = await (db.rpc as any)("start_student_workout", {
+      p_user_id: userId,
+      p_day_id: dayId,
+      p_program_id: programId,
+      p_date: today,
+    });
+    const rows = checked<WorkoutSessionRow[]>(result, "start session");
+    return rows[0] || null;
   }
-
   static async completeSession(
+    userId: string,
     sessionId: string,
     params?: {
-      feeling?: number
-      rpe?: number
-      notes?: string
-      duration_min?: number
-      calories?: number
-    }
+      feeling?: number;
+      rpe?: number;
+      notes?: string;
+      duration_min?: number;
+      calories?: number;
+    },
   ): Promise<WorkoutSessionRow | null> {
-    try {
-      const supabase = await this.getSupabase()
-      const now = new Date().toISOString()
-
-      // Calcular volume total: soma de (weight_kg * reps_done) de todas as séries
-      let totalVolumeKg: number | null = null
-      try {
-        const { data: setsData } = await supabase
-          .from("exercise_sets_log")
-          .select("weight_kg, reps_done, completed")
-          .eq("session_id", sessionId)
-
-        if (setsData && setsData.length > 0) {
-          const sum = setsData.reduce((acc: number, row: any) => {
-            const w = Number(row.weight_kg ?? 0)
-            const r = Number(row.reps_done ?? 0)
-            if (w > 0 && r > 0) return acc + w * r
-            return acc
-          }, 0)
-          if (sum > 0) totalVolumeKg = Math.round(sum * 100) / 100
-        }
-      } catch {
-        totalVolumeKg = null
-      }
-
-      const updatePayload: Record<string, any> = {
-        completed_at: now,
-        is_paused: false,
-      }
-      if (totalVolumeKg != null) updatePayload.total_volume_kg = totalVolumeKg
-      if (typeof params?.feeling === "number") updatePayload.feeling_scale = params.feeling
-      if (typeof params?.rpe === "number") updatePayload.rpe_avg = params.rpe
-      if (typeof params?.notes === "string") updatePayload.notes = params.notes
-      if (typeof params?.duration_min === "number") updatePayload.duration_min = params.duration_min
-      if (typeof params?.calories === "number") updatePayload.calories_burned = params.calories
-
-      const { data, error } = await supabase
+    const db = await this.getSupabase();
+    const rows = checked<WorkoutSessionRow[]>(
+      await (db.rpc as any)("complete_student_workout", {
+        p_user_id: userId,
+        p_session_id: sessionId,
+        p_input: params || {},
+      }),
+      "complete session",
+    );
+    return rows[0] || null;
+  }
+  static async logSet(
+    userId: string,
+    input: LogWorkoutSetInput,
+  ): Promise<ExerciseSetLogRow | null> {
+    const parsed = logWorkoutSetSchema.parse(input);
+    const db = await this.getSupabase();
+    const rows = checked<ExerciseSetLogRow[]>(
+      await (db.rpc as any)("log_student_workout_set", {
+        p_user_id: userId,
+        p_input: parsed,
+      }),
+      "log set",
+    );
+    return rows[0] || null;
+  }
+  static async sessionLogs(
+    userId: string,
+    sessionId: string,
+  ): Promise<ExerciseSetLogRow[]> {
+    const db = await this.getSupabase();
+    const session = checked(
+      await db
         .from("workout_sessions")
-        .update(updatePayload as never)
+        .select("user_id")
         .eq("id", sessionId)
-        .select()
-        .single()
-
-      if (error || !data) return null
-      return data as WorkoutSessionRow
-    } catch {
-      return null
-    }
-  }
-
-  static async logSet(userId: string, input: LogWorkoutSetInput): Promise<ExerciseSetLogRow | null> {
-    try {
-      const parsed = logWorkoutSetSchema.parse(input)
-      const supabase = await this.getSupabase()
-
-      const { data: sessionData, error: sessionErr } = await supabase
-        .from("workout_sessions")
-        .select("id, user_id")
-        .eq("id", parsed.session_id)
-        .maybeSingle()
-
-      if (sessionErr || !sessionData) return null
-      if ((sessionData as any).user_id !== userId) return null
-
-      const payload: Record<string, any> = {
-        session_id: parsed.session_id,
-        workout_exercise_id: parsed.workout_exercise_id ?? null,
-        exercise_id: parsed.exercise_id,
-        set_number: parsed.set_number,
-        reps_done: parsed.reps_done,
-        weight_kg: parsed.weight_kg ?? null,
-        rpe: parsed.rpe ?? null,
-        duration_sec: parsed.duration_sec ?? null,
-        distance_km: parsed.distance_km ?? null,
-        completed: parsed.completed,
-        failure_at_end: parsed.failure_at_end,
-        logged_at: new Date().toISOString(),
-      }
-
-      const { data, error } = await supabase
-        .from("exercise_sets_log")
-        .insert(payload as never)
-        .select()
-        .single()
-
-      if (error || !data) return null
-      return data as ExerciseSetLogRow
-    } catch {
-      return null
-    }
-  }
-
-  static async getTodaysSession(userId: string): Promise<WorkoutSessionRow | null> {
-    try {
-      const supabase = await this.getSupabase()
-      const today = todayDateOnly()
-      const { data, error } = await supabase
-        .from("workout_sessions")
-        .select("*")
         .eq("user_id", userId)
-        .eq("scheduled_date", today)
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (error) return null
-      return (data as WorkoutSessionRow | null) ?? null
-    } catch {
-      return null
-    }
+        .maybeSingle(),
+      "session owner",
+    );
+    if (!session) return [];
+    return (
+      checked<ExerciseSetLogRow[]>(
+        await db
+          .from("exercise_sets_log")
+          .select("*")
+          .eq("session_id", sessionId)
+          .order("id"),
+        "session logs",
+      ) || []
+    );
   }
-
-  static async getTodaysProgram(userId: string): Promise<{
-    assignment: any
-    kit: any
-    program: WorkoutProgramRow | null
-    day: WorkoutDayRow | null
-    sessionCompletedToday: boolean
-    isRestDay: boolean
-    nextDayLabel: string | null
-  } | null> {
-    try {
-      const supabase = await this.getSupabase()
-      const today = todayDateOnly()
-      const dow = dayOfWeekToday()
-
-      const assignQ = await supabase
+  static async getTodaysSession(
+    userId: string,
+    dayId?: string,
+  ): Promise<WorkoutSessionRow | null> {
+    const db = await this.getSupabase();
+    const today = (await this.localToday(userId)).dateKey;
+    let query: any = db
+      .from("workout_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("scheduled_date", today)
+      .order("started_at", { ascending: false })
+      .limit(1);
+    if (dayId) query = query.eq("day_id", dayId);
+    return checked<WorkoutSessionRow | null>(
+      await query.maybeSingle(),
+      "today session",
+    );
+  }
+  static async getTodayPlans(
+    userId: string,
+  ): Promise<
+    Array<{
+      assignment: any;
+      kit: any;
+      program: WorkoutProgramRow;
+      day: WorkoutDayRow;
+      sessionCompletedToday: boolean;
+      isRestDay: boolean;
+      nextDayLabel: string | null;
+    }>
+  > {
+    const db: any = await this.getSupabase();
+    const local = await this.localToday(userId);
+    const assignments = checked<any[]>(
+      await db
         .from("student_workout_kits")
-        .select(`
-          *,
-          kit:workout_kits(*),
-          program:workout_programs(*)
-        `)
+        .select("*, kit:workout_kits(*)")
         .eq("student_id", userId)
         .eq("status", "active")
-        .lte("start_date", today)
-        .or(`end_date.is.null,end_date.gte.${today}`)
-        .order("assigned_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (assignQ.error || !assignQ.data) return null
-
-      const assignment: any = assignQ.data
-      const kit: any = (assignment as any).kit ?? null
-      const program: WorkoutProgramRow | null = (assignment as any).program ?? null
-
-      let effectiveProgram = program
-      if (!effectiveProgram && kit) {
-        const kitItemQ = await supabase
-          .from("workout_kit_items")
-          .select(`*, program:workout_programs(*)`)
-          .eq("kit_id", kit.id)
-          .order("order_index", { ascending: true })
-          .limit(1)
-          .maybeSingle()
-        if (!kitItemQ.error && kitItemQ.data) {
-          effectiveProgram = (kitItemQ.data as any).program ?? null
-        }
-      }
-
-      if (!effectiveProgram) {
-        return {
-          assignment,
-          kit,
-          program: null,
-          day: null,
-          sessionCompletedToday: false,
-          isRestDay: true,
-          nextDayLabel: null,
-        }
-      }
-
-      // Buscar todos os dias do programa ordenados por order_index
-      const allDaysQ = await supabase
+        .lte("start_date", local.dateKey)
+        .or(`end_date.is.null,end_date.gte.${local.dateKey}`)
+        .order("assigned_at", { ascending: false }),
+      "workout assignments",
+    );
+    const kitIds = assignments
+      .filter((a) => a.kit && !a.kit.is_deleted)
+      .map((a) => a.kit_id);
+    const items = kitIds.length
+      ? checked<any[]>(
+          await db
+            .from("workout_kit_items")
+            .select("*")
+            .in("kit_id", kitIds)
+            .order("order_index"),
+          "workout kit items",
+        )
+      : [];
+    const programIds = Array.from(
+      new Set(
+        assignments
+          .flatMap((a) => [
+            a.program_id,
+            a.kit?.generated_program_id,
+            ...items
+              .filter((i) => i.kit_id === a.kit_id)
+              .map((i) => i.program_id),
+          ])
+          .filter(Boolean),
+      ),
+    );
+    if (!programIds.length) return [];
+    const [programResult, dayResult, sessionResult] = await Promise.all([
+      db
+        .from("workout_programs")
+        .select("*")
+        .in("id", programIds)
+        .eq("status", "active"),
+      db
         .from("workout_days")
         .select("*")
-        .eq("program_id", effectiveProgram.id)
-        .order("order_index", { ascending: true })
-
-      const allDays: WorkoutDayRow[] = allDaysQ.error ? [] : (allDaysQ.data as WorkoutDayRow[]) ?? []
-
-      if (allDays.length === 0) {
-        return {
-          assignment,
-          kit,
-          program: effectiveProgram,
-          day: null,
-          sessionCompletedToday: false,
-          isRestDay: true,
-          nextDayLabel: null,
+        .in("program_id", programIds)
+        .order("order_index"),
+      db
+        .from("workout_sessions")
+        .select("day_id, completed_at")
+        .eq("user_id", userId)
+        .eq("scheduled_date", local.dateKey),
+    ]);
+    const programs = checked<WorkoutProgramRow[]>(
+      programResult,
+      "workout programs",
+    );
+    const days = checked<WorkoutDayRow[]>(dayResult, "workout days");
+    const sessions = checked<any[]>(sessionResult, "workout sessions");
+    const plans: Awaited<ReturnType<typeof WorkoutService.getTodayPlans>> = [];
+    const seen = new Set<string>();
+    for (const assignment of assignments) {
+      if (assignment.kit_id && (!assignment.kit || assignment.kit.is_deleted))
+        continue;
+      const eligible = new Set([
+        assignment.program_id,
+        assignment.kit?.generated_program_id,
+        ...items
+          .filter(
+            (i) =>
+              i.kit_id === assignment.kit_id &&
+              (!i.day_of_week || i.day_of_week === local.weekday),
+          )
+          .map((i) => i.program_id),
+      ]);
+      for (const program of programs.filter((p) => eligible.has(p.id))) {
+        const week = workoutWeek(
+          assignment.start_date,
+          local.dateKey,
+          program.total_weeks,
+        );
+        const selected = selectWorkoutDays(
+          days.filter((d) => d.program_id === program.id),
+          week,
+          local.weekday,
+        );
+        for (const day of selected) {
+          if (seen.has(day.id)) continue;
+          seen.add(day.id);
+          plans.push({
+            assignment,
+            kit: assignment.kit,
+            program,
+            day,
+            sessionCompletedToday: sessions.some(
+              (s) => s.day_id === day.id && s.completed_at,
+            ),
+            isRestDay: false,
+            nextDayLabel: null,
+          });
         }
       }
-
-      // Verificar se já completou treino hoje
-      const sessionQ = await supabase
-        .from("workout_sessions")
-        .select("completed_at, day_id")
-        .eq("user_id", userId)
-        .eq("scheduled_date", today)
-        .not("completed_at", "is", null)
-        .maybeSingle()
-
-      const sessionCompletedToday = !sessionQ.error && sessionQ.data !== null
-
-      // Lógica de disponibilidade baseada em conclusão + calendário:
-      // 1. Se há um dia agendado para hoje E não foi concluído → mostre hoje
-      // 2. Se hoje foi concluído → mostre o próximo dia da sequência (avanço)
-      // 3. Se hoje é dia de descanso (sem dia agendado) → mostre o próximo dia com exercícios
-      const todayDay = allDays.find((d) => d.day_of_week === dow) ?? null
-
-      let selectedDay: WorkoutDayRow | null = null
-      let isRestDay = false
-      let nextDayLabel: string | null = null
-
-      if (todayDay && !sessionCompletedToday) {
-        // Caso 1: treino de hoje disponível
-        selectedDay = todayDay
-      } else if (todayDay && sessionCompletedToday) {
-        // Caso 2: hoje concluído → avançar para o próximo dia da sequência
-        const currentIdx = allDays.findIndex((d) => d.id === todayDay.id)
-        const nextIdx = (currentIdx + 1) % allDays.length
-        selectedDay = allDays[nextIdx] ?? null
-        nextDayLabel = selectedDay?.name_pt ?? selectedDay?.name_en ?? null
-      } else if (!todayDay) {
-        // Caso 3: dia de descanso → encontrar próximo dia com exercícios
-        // Ordena os dias pelo day_of_week relativo a hoje
-        const sorted = [...allDays].sort((a, b) => {
-          const diffA = (a.day_of_week - dow + 7) % 7
-          const diffB = (b.day_of_week - dow + 7) % 7
-          return diffA - diffB
-        })
-        selectedDay = sorted[0] ?? null
-        isRestDay = true
-        nextDayLabel = selectedDay?.name_pt ?? selectedDay?.name_en ?? null
-      }
-
-      return {
-        assignment,
-        kit,
-        program: effectiveProgram,
-        day: selectedDay,
-        sessionCompletedToday,
-        isRestDay,
-        nextDayLabel,
-      }
-    } catch {
-      return null
     }
+    return plans;
   }
-
-  static async userHistory(userId: string, limit: number = 30): Promise<WorkoutSessionRow[]> {
+  static async getTodaysProgram(userId: string) {
+    const plans = await this.getTodayPlans(userId);
+    return plans.find((p) => !p.sessionCompletedToday) || plans[0] || null;
+  }
+  static async userHistory(
+    userId: string,
+    limit: number = 30,
+  ): Promise<WorkoutSessionRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("workout_sessions")
         .select("*")
         .eq("user_id", userId)
         .not("completed_at", "is", null)
         .order("completed_at", { ascending: false })
-        .limit(limit)
-      if (error) return []
-      return (data as WorkoutSessionRow[]) ?? []
-    } catch {
-      return []
+        .limit(limit);
+      if (error) throw error;
+      return (data as WorkoutSessionRow[]) ?? [];
+    } catch (error) {
+      console.error("[WorkoutService] userHistory", error);
+      throw new Error("Não foi possível carregar os dados de treino.");
     }
   }
 
@@ -696,46 +691,52 @@ export class WorkoutService {
   // ---------------------------------------------------------------------
   static async listStudentOverrides(
     studentId: string,
-    filters?: { assignment_id?: string; workout_exercise_id?: string; only_active?: boolean }
+    filters?: {
+      assignment_id?: string;
+      workout_exercise_id?: string;
+      only_active?: boolean;
+    },
   ): Promise<StudentWorkoutOverrideRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       let q: any = supabase
         .from("student_workout_overrides")
         .select("*")
         .eq("student_id", studentId)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false });
 
-      if (filters?.assignment_id) q = q.eq("assignment_id", filters.assignment_id)
-      if (filters?.workout_exercise_id) q = q.eq("workout_exercise_id", filters.workout_exercise_id)
-      if (filters?.only_active) q = q.eq("is_active", true)
+      if (filters?.assignment_id)
+        q = q.eq("assignment_id", filters.assignment_id);
+      if (filters?.workout_exercise_id)
+        q = q.eq("workout_exercise_id", filters.workout_exercise_id);
+      if (filters?.only_active) q = q.eq("is_active", true);
 
-      const { data, error } = await q
-      if (error) return []
-      return (data as StudentWorkoutOverrideRow[]) ?? []
+      const { data, error } = await q;
+      if (error) return [];
+      return (data as StudentWorkoutOverrideRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
   static async upsertStudentOverride(
     input: UpsertStudentWorkoutOverrideInput,
-    adminId?: string
+    adminId?: string,
   ): Promise<StudentWorkoutOverrideRow | null> {
     try {
-      const parsed = upsertStudentWorkoutOverrideSchema.parse(input)
-      const supabase = await this.getSupabase()
+      const parsed = upsertStudentWorkoutOverrideSchema.parse(input);
+      const supabase = await this.getSupabase();
 
-      const payload: Record<string, any> = { ...parsed }
-      if (!parsed.id && adminId) payload.created_by_id = adminId
-      delete payload.id
+      const payload: Record<string, any> = { ...parsed };
+      if (!parsed.id && adminId) payload.created_by_id = adminId;
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
         q = supabase
           .from("student_workout_overrides")
           .update(payload as never)
-          .eq("id", parsed.id)
+          .eq("id", parsed.id);
       } else {
         // Se já existe override ativo para o mesmo aluno + exercício, desativa antes
         const existingQ = await supabase
@@ -744,54 +745,59 @@ export class WorkoutService {
           .eq("student_id", parsed.student_id)
           .eq("workout_exercise_id", parsed.workout_exercise_id)
           .eq("is_active", true)
-          .maybeSingle()
+          .maybeSingle();
 
         if (existingQ.data) {
           await supabase
             .from("student_workout_overrides")
             .update({ is_active: false } as never)
-            .eq("id", (existingQ.data as any).id)
+            .eq("id", (existingQ.data as any).id);
         }
-        q = supabase.from("student_workout_overrides").insert(payload as never)
+        q = supabase.from("student_workout_overrides").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
 
       void AuditLogService.log({
         adminId,
-        action: parsed.id ? "student_workout_override.update" : "student_workout_override.create",
+        action: parsed.id
+          ? "student_workout_override.update"
+          : "student_workout_override.create",
         entity_type: "student_workout_overrides",
         entity_id: data.id,
         details: {
           student_id: parsed.student_id,
           workout_exercise_id: parsed.workout_exercise_id,
         },
-      })
+      });
 
-      return data as StudentWorkoutOverrideRow
+      return data as StudentWorkoutOverrideRow;
     } catch {
-      return null
+      return null;
     }
   }
 
-  static async deleteStudentOverride(id: string, adminId?: string): Promise<boolean> {
+  static async deleteStudentOverride(
+    id: string,
+    adminId?: string,
+  ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from("student_workout_overrides")
         .update({ is_active: false } as never)
-        .eq("id", id)
-      if (error) return false
+        .eq("id", id);
+      if (error) return false;
       void AuditLogService.log({
         adminId,
         action: "student_workout_override.delete",
         entity_type: "student_workout_overrides",
         entity_id: id,
-      })
-      return true
+      });
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -801,21 +807,23 @@ export class WorkoutService {
    */
   static async applyStudentOverrides(
     studentId: string,
-    exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>
+    exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>,
   ): Promise<Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>> {
-    if (exercises.length === 0) return exercises
+    if (exercises.length === 0) return exercises;
     try {
-      const overrides = await this.listStudentOverrides(studentId, { only_active: true })
-      if (overrides.length === 0) return exercises
+      const overrides = await this.listStudentOverrides(studentId, {
+        only_active: true,
+      });
+      if (overrides.length === 0) return exercises;
 
-      const overrideMap = new Map<string, StudentWorkoutOverrideRow>()
+      const overrideMap = new Map<string, StudentWorkoutOverrideRow>();
       for (const ov of overrides) {
-        overrideMap.set(ov.workout_exercise_id, ov)
+        overrideMap.set(ov.workout_exercise_id, ov);
       }
 
       return exercises.map((wex) => {
-        const ov = overrideMap.get(wex.id)
-        if (!ov) return wex
+        const ov = overrideMap.get(wex.id);
+        if (!ov) return wex;
         return {
           ...wex,
           sets: ov.sets ?? wex.sets,
@@ -825,10 +833,10 @@ export class WorkoutService {
           tempo: ov.tempo ?? wex.tempo,
           notes_pt: ov.notes_pt ?? wex.notes_pt,
           notes_en: ov.notes_en ?? wex.notes_en,
-        }
-      })
+        };
+      });
     } catch {
-      return exercises
+      return exercises;
     }
   }
 }

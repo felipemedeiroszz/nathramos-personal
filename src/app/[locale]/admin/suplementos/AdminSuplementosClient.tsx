@@ -1,13 +1,19 @@
-"use client"
+"use client";
 
-import dynamic from "next/dynamic"
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Badge } from "@/components/ui/Badge"
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import {
   Table,
   TableHeader,
@@ -15,8 +21,8 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from "@/components/ui/Table"
-import { EmptyState } from "@/components/ui/EmptyState"
+} from "@/components/ui/Table";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -24,22 +30,36 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/Dialog"
-import { Pill, RefreshCw, Plus, Search, Edit, Trash2, AlertTriangle } from "lucide-react"
-import { upsertSupplementAction, deleteSupplementAction } from "@/app/actions/content"
-import type { SupplementRow } from "@/types"
+} from "@/components/ui/Dialog";
+import {
+  Pill,
+  RefreshCw,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  upsertSupplementAction,
+  deleteSupplementAction,
+} from "@/app/actions/content";
+import type { SupplementRow } from "@/types";
 
 const SupplementUpsertModal = dynamic(
-  () => import("@/components/admin/content/SupplementUpsertModal").catch(() => () => null),
-  { ssr: false }
-)
+  () =>
+    import("@/components/admin/content/SupplementUpsertModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
+);
 
 interface AdminSuplementosClientProps {
-  locale: string
-  userId: string
-  title: string
-  supplements: SupplementRow[]
-  searchValue: string
+  locale: string;
+  userId: string;
+  title: string;
+  supplements: SupplementRow[];
+  searchValue: string;
 }
 
 export function AdminSuplementosClient({
@@ -49,73 +69,92 @@ export function AdminSuplementosClient({
   supplements,
   searchValue,
 }: AdminSuplementosClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const t = useTranslations("adminSupplements")
-  const tCommon = useTranslations("common")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations("adminSupplements");
+  const tCommon = useTranslations("common");
 
-  const [search, setSearch] = useState(searchValue ?? "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingSupplement, setEditingSupplement] = useState<SupplementRow | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [search, setSearch] = useState(searchValue ?? "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingSupplement, setEditingSupplement] =
+    useState<SupplementRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const handleSearch = () => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (search.trim()) {
-      params.set("q", search.trim())
+      params.set("q", search.trim());
     } else {
-      params.delete("q")
+      params.delete("q");
     }
-    router.push(`/${locale}/admin/suplementos?${params.toString()}`)
-  }
+    router.push(`/${locale}/admin/suplementos?${params.toString()}`);
+  };
 
   const handleRefresh = () => {
-    setIsLoading(true)
-    router.refresh()
-    setTimeout(() => setIsLoading(false), 500)
-  }
+    setIsLoading(true);
+    router.refresh();
+    setTimeout(() => setIsLoading(false), 500);
+  };
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US")
+      return new Date(dateStr).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+      );
     } catch {
-      return dateStr
+      return dateStr;
     }
-  }
+  };
 
   function openCreate() {
-    setEditingSupplement(null)
-    setModalOpen(true)
+    setEditingSupplement(null);
+    setModalOpen(true);
   }
 
   function openEdit(supplement: SupplementRow) {
-    setEditingSupplement(supplement)
-    setModalOpen(true)
+    setEditingSupplement(supplement);
+    setModalOpen(true);
   }
 
   async function confirmDelete() {
-    if (!deleteConfirm) return
-    setDeleting(true)
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await deleteSupplementAction(deleteConfirm.id)
+      setDeleteError("");
+      const result = await deleteSupplementAction(deleteConfirm.id);
+      if (!result.success) {
+        setDeleteError(result.message || "Não foi possível excluir.");
+        return;
+      }
+      setDeleteConfirm(null);
+      router.refresh();
+    } catch {
+      setDeleteError("Não foi possível excluir. Tente novamente.");
     } finally {
-      setDeleting(false)
-      setDeleteConfirm(null)
-      router.refresh()
+      setDeleting(false);
     }
   }
 
   function onModalSaved() {
-    setModalOpen(false)
-    setEditingSupplement(null)
-    router.refresh()
+    setModalOpen(false);
+    setEditingSupplement(null);
+    router.refresh();
   }
 
   return (
     <>
       <div className="space-y-6">
+        {deleteError && (
+          <p role="alert" className="rounded-xl border border-border p-3">
+            {deleteError}
+          </p>
+        )}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -130,7 +169,9 @@ export function AdminSuplementosClient({
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
                 </Button>
                 <Button variant="primary" onClick={openCreate}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -177,25 +218,37 @@ export function AdminSuplementosClient({
                       <TableHead>{t("serving")}</TableHead>
                       <TableHead>{t("createdAt")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
-                      <TableHead className="text-right">{t("actions")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("actions")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {supplements.map((supplement) => (
                       <TableRow key={supplement.id}>
                         <TableCell className="font-medium">
-                          {locale === "pt-BR" ? supplement.name_pt : supplement.name_en}
+                          {locale === "pt-BR"
+                            ? supplement.name_pt
+                            : supplement.name_en}
                         </TableCell>
                         <TableCell>
-                          {locale === "pt-BR" ? supplement.category_pt : supplement.category_en}
+                          {locale === "pt-BR"
+                            ? supplement.category_pt
+                            : supplement.category_en}
                         </TableCell>
                         <TableCell>{supplement.brand || "-"}</TableCell>
                         <TableCell>
                           {supplement.serving_size} {supplement.serving_unit}
                         </TableCell>
-                        <TableCell>{formatDate(supplement.created_at)}</TableCell>
                         <TableCell>
-                          <Badge variant={supplement.is_active ? "success" : "outline"}>
+                          {formatDate(supplement.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              supplement.is_active ? "success" : "outline"
+                            }
+                          >
                             {supplement.is_active ? t("active") : t("inactive")}
                           </Badge>
                         </TableCell>
@@ -215,7 +268,10 @@ export function AdminSuplementosClient({
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
                               onClick={() =>
-                                setDeleteConfirm({ id: supplement.id, name: supplement.name_pt })
+                                setDeleteConfirm({
+                                  id: supplement.id,
+                                  name: supplement.name_pt,
+                                })
                               }
                             >
                               <Trash2 className="h-4 w-4" />
@@ -236,14 +292,14 @@ export function AdminSuplementosClient({
         <SupplementUpsertModal
           isOpen={modalOpen}
           onClose={() => {
-            setModalOpen(false)
-            setEditingSupplement(null)
+            setModalOpen(false);
+            setEditingSupplement(null);
           }}
           supplement={editingSupplement ?? undefined}
           onSubmit={async (data) => {
             await upsertSupplementAction(
-              data as Parameters<typeof upsertSupplementAction>[0]
-            )
+              data as Parameters<typeof upsertSupplementAction>[0],
+            );
           }}
           onSaved={onModalSaved}
         />
@@ -263,9 +319,17 @@ export function AdminSuplementosClient({
             </div>
             <DialogDescription>
               {t("confirmDeleteDesc")}{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+              <span className="font-semibold text-text">
+                {deleteConfirm?.name}
+              </span>
+              ?
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-sm text-red-400 px-4">
+              {deleteError}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="secondary"
@@ -274,7 +338,11 @@ export function AdminSuplementosClient({
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
               <Trash2 size={16} className="mr-2" />
               {deleting ? tCommon("loading") : tCommon("delete")}
             </Button>
@@ -282,5 +350,5 @@ export function AdminSuplementosClient({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

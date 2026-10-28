@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/shared/AdminSidebar";
 import { AdminHeader } from "@/components/shared/AdminHeader";
@@ -27,12 +27,26 @@ export function AdminLayoutClient({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      window.removeEventListener("keydown", close);
+    };
+  }, [sidebarOpen]);
+
   const handleLanguageChange = (newLocale: string) => {
     const pathname = window.location.pathname;
     const segments = pathname.split("/").filter(Boolean);
     segments[0] = newLocale;
     const newPath = `/${segments.join("/")}`;
-    router.push(newPath);
+    router.push(`${newPath}${window.location.search}`);
   };
 
   return (
@@ -48,13 +62,14 @@ export function AdminLayoutClient({
 
         {/* Sidebar - Desktop (hidden on mobile) */}
         <div className="hidden md:block">
-          <AdminSidebar locale={locale} onLogout={onLogout} />
+          <AdminSidebar role={role} locale={locale} onLogout={onLogout} />
         </div>
 
         {/* Sidebar - Mobile (drawer) */}
         {sidebarOpen && (
           <div className="fixed inset-y-0 left-0 z-50 w-64 md:hidden">
             <AdminSidebar
+              role={role}
               locale={locale}
               onLogout={onLogout}
               isMobile

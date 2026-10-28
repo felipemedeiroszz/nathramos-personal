@@ -1,3 +1,6 @@
+import { staffStudentIds } from "@/lib/auth/platform";
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -26,7 +29,7 @@ export default async function AdminKitsDietasPage({
   searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
-  searchParams?: { new?: string };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -38,10 +41,12 @@ export default async function AdminKitsDietasPage({
   const subtitle = await safe(
     tAdmin,
     "dietKits.subtitle",
-    "Monte kits de dieta reutilizáveis a partir dos alimentos cadastrados."
+    "Monte kits de dieta reutilizáveis a partir dos alimentos cadastrados.",
   );
 
-  const kits = await DietService.listKits({ limit: 100 });
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("diet_kits", pageParams);
+  const kits = dataPage.rows;
   const foods: DietFoodRow[] = await DietService.listFoods({
     is_active: true,
     limit: 500,
@@ -56,13 +61,16 @@ export default async function AdminKitsDietasPage({
 
   // Alunos disponíveis para vincular aos kits
   const supabase = await createServiceClientSSR();
-  const { data: profiles } = await supabase
+  let profileQuery: any = supabase
     .from("profiles")
     .select("id, full_name, email")
     .eq("role", "student")
     .eq("is_deleted", false)
     .order("full_name", { ascending: true })
     .limit(500);
+  const scope = await staffStudentIds();
+  if (scope !== null) profileQuery = profileQuery.in("id", scope);
+  const { data: profiles } = await profileQuery;
 
   const students = (profiles ?? []).map((p: any) => ({
     id: p.id as string,
@@ -71,7 +79,9 @@ export default async function AdminKitsDietasPage({
   }));
 
   // Vínculos ativos agrupados por kit
-  const assignments = await DietService.listKitAssignments(kits.map((k) => k.id));
+  const assignments = await DietService.listKitAssignments(
+    kits.map((k) => k.id),
+  );
   const assignedByKit: Record<string, string[]> = {};
   for (const a of assignments) {
     if (!assignedByKit[a.kit_id]) assignedByKit[a.kit_id] = [];
@@ -85,6 +95,13 @@ export default async function AdminKitsDietasPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminDietKitsClient
         locale={locale}
         userId={userId}

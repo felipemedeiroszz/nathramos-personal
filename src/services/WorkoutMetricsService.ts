@@ -1,3 +1,5 @@
+import { checked, readPages } from "./StudentRoutineService"
+import { getZonedParts } from "@/lib/notifications/time"
 import { createServiceClientSSR } from "../lib/supabase/server"
 import type { WorkoutSessionRow, ExerciseSetLogRow } from "../types"
 
@@ -94,16 +96,19 @@ export class WorkoutMetricsService {
     try {
       const supabase = await this.getSupabase()
 
+      const profile = checked(await supabase.from("profiles").select("timezone").eq("id", userId).single(), "metrics timezone") as { timezone: string }
+      const dateOnly = (iso: string) => getZonedParts(new Date(iso), profile.timezone).dateKey
       // Sessões concluídas do aluno
-      const sessionsQ: any = await supabase
+      const sessionsQ: any = await readPages<WorkoutSessionRow>(() => supabase
         .from("workout_sessions")
         .select("*")
         .eq("user_id", userId)
         .not("completed_at", "is", null)
-        .order("completed_at", { ascending: true })
+        .order("completed_at", { ascending: true }).order("id"), "metrics sessions")
 
       const sessions: any[] = sessionsQ?.data ?? []
-      if (sessionsQ?.error || sessions.length === 0) return empty
+      if (sessionsQ?.error) throw sessionsQ.error
+      if (sessions.length === 0) return empty
 
       const rows = sessions as WorkoutSessionRow[]
 
@@ -177,12 +182,11 @@ export class WorkoutMetricsService {
 
       // Buscar todos os sets logs para métricas por exercício
       const sessionIds = rows.map((s) => s.id)
-      const setLogsQ: any = await supabase
-        .from("exercise_sets_log")
-        .select("*")
-        .in("session_id", sessionIds)
-
-      const logs = ((setLogsQ?.data ?? []) as ExerciseSetLogRow[])
+      const logs: ExerciseSetLogRow[] = []
+      for (let offset = 0; offset < sessionIds.length; offset += 250) {
+        const result = await readPages<ExerciseSetLogRow>(() => supabase.from("exercise_sets_log").select("*").in("session_id", sessionIds.slice(offset, offset + 250)).eq("completed",true).order("id"), "metrics sets")
+        logs.push(...result.data)
+      }
       if (logs.length === 0) {
         return {
           total_sessions: totalSessions,
@@ -214,6 +218,7 @@ export class WorkoutMetricsService {
         .select("id, name_pt, name_en")
         .in("id", exerciseIds)
 
+      if (exercisesQ?.error) throw exercisesQ.error
       const nameMap = new Map<string, { name_pt: string; name_en: string }>()
       for (const ex of (exercisesQ?.data ?? []) as any[]) {
         nameMap.set(ex.id, { name_pt: ex.name_pt, name_en: ex.name_en })
@@ -286,8 +291,9 @@ export class WorkoutMetricsService {
         recent_volume: recentVolume,
         personal_records: personalRecords,
       }
-    } catch {
-      return empty
+    } catch (error) {
+      console.error("[WorkoutMetrics] summary", error)
+      throw new Error("Não foi possível carregar as métricas de treino.")
     }
   }
 

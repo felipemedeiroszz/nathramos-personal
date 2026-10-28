@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { Bell } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { requireAuthenticated } from "@/lib/auth/access";
+import { requireStudentPage } from "@/lib/auth/platform";
 import { NotificationService } from "@/services/NotificationService";
 import { NotificationsCenterClient } from "@/components/shared/NotificationsCenterClient";
 
@@ -23,7 +23,7 @@ export default async function StudentNotificationsPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("studentNotifications");
-  const userId = await requireAuthenticated();
+  const userId = await requireStudentPage();
   const items = await NotificationService.listForUser(userId, false, 100);
 
   return (

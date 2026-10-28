@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -28,17 +29,27 @@ interface ProgramUpsertModalProps {
 }
 
 const DIFFICULTY_LABELS_PT: Record<string, string> = {
-  beginner: "Iniciante", intermediate: "Intermediário", advanced: "Avançado",
+  beginner: "Iniciante",
+  intermediate: "Intermediário",
+  advanced: "Avançado",
 };
 const DIFFICULTY_LABELS_EN: Record<string, string> = {
-  beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced",
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
 };
 
 const STATUS_LABELS_PT: Record<string, string> = {
-  active: "Ativo", completed: "Concluído", paused: "Pausado", archived: "Arquivado",
+  active: "Ativo",
+  completed: "Concluído",
+  paused: "Pausado",
+  archived: "Arquivado",
 };
 const STATUS_LABELS_EN: Record<string, string> = {
-  active: "Active", completed: "Completed", paused: "Paused", archived: "Archived",
+  active: "Active",
+  completed: "Completed",
+  paused: "Paused",
+  archived: "Archived",
 };
 
 export function ProgramUpsertModal({
@@ -52,10 +63,12 @@ export function ProgramUpsertModal({
 }: ProgramUpsertModalProps) {
   const t = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
-  const difficultyLabels = locale === "pt-BR" ? DIFFICULTY_LABELS_PT : DIFFICULTY_LABELS_EN;
+  const difficultyLabels =
+    locale === "pt-BR" ? DIFFICULTY_LABELS_PT : DIFFICULTY_LABELS_EN;
   const statusLabels = locale === "pt-BR" ? STATUS_LABELS_PT : STATUS_LABELS_EN;
 
   const [form, setForm] = useState({
@@ -126,19 +139,26 @@ export function ProgramUpsertModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     startTransition(async () => {
-      const payload: Record<string, any> = {
-        ...form,
-        category_id: form.category_id || null,
-        tags: form.tags
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
-        cover_image_url: form.cover_image_url || null,
-      };
-      if (!payload.id) delete payload.id;
-      if (onSubmit) await onSubmit(payload);
-      onSaved?.();
+      try {
+        const payload: Record<string, any> = {
+          ...form,
+          category_id: form.category_id || null,
+          tags: form.tags
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean),
+          cover_image_url: form.cover_image_url || null,
+        };
+        if (!payload.id) delete payload.id;
+        if (onSubmit) await onSubmit(payload);
+        onSaved?.();
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : "Falha ao salvar.",
+        );
+      }
     });
   };
 
@@ -148,14 +168,21 @@ export function ProgramUpsertModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
         <ModalTitle>{program ? titleEdit : titleCreate}</ModalTitle>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
       <form onSubmit={handleSubmit}>
+        {saveError && (
+          <p role="alert" className="text-red-500 p-3">
+            {saveError}
+          </p>
+        )}
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -193,7 +220,7 @@ export function ProgramUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Aumentar forca nos exercicios basicos...",
-                  "Increase strength in basic exercises..."
+                  "Increase strength in basic exercises...",
                 )}
               />
             </div>
@@ -207,7 +234,7 @@ export function ProgramUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Aumentar forca nos exercicios basicos...",
-                  "Increase strength in basic exercises..."
+                  "Increase strength in basic exercises...",
                 )}
               />
             </div>
@@ -290,7 +317,7 @@ export function ProgramUpsertModal({
                 onChange={(e) =>
                   update(
                     "est_minutes_per_session",
-                    parseInt(e.target.value || "1", 10)
+                    parseInt(e.target.value || "1", 10),
                   )
                 }
                 required
@@ -337,7 +364,7 @@ export function ProgramUpsertModal({
                 rows={3}
                 placeholder={label(
                   "Observacoes para o aluno...",
-                  "Notes for the student..."
+                  "Notes for the student...",
                 )}
               />
             </div>
@@ -351,7 +378,7 @@ export function ProgramUpsertModal({
                 rows={3}
                 placeholder={label(
                   "Observacoes para o aluno...",
-                  "Notes for the student..."
+                  "Notes for the student...",
                 )}
               />
             </div>
@@ -366,7 +393,7 @@ export function ProgramUpsertModal({
               onChange={(e) => update("tags", e.target.value)}
               placeholder={label(
                 "forca, push-pull-legs, 8semanas",
-                "strength, push-pull-legs, 8weeks"
+                "strength, push-pull-legs, 8weeks",
               )}
             />
           </div>

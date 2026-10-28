@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: diretório filtra pela assinatura selecionada, sem incluir cancelamento antigo
+ok 1 - diretório filtra pela assinatura selecionada, sem incluir cancelamento antigo
+  ---
+  duration_ms: 1973.5691
+  type: 'test'
+  ...
+# Subtest: salvar kit mantém identidade e consumo; erro em item desfaz também a alteração do cabeçalho
+ok 2 - salvar kit mantém identidade e consumo; erro em item desfaz também a alteração do cabeçalho
+  ---
+  duration_ms: 11.1085
+  type: 'test'
+  ...
+# Subtest: sincronizar atribuições atualiza metadados retidos, valida alunos e faz rollback em datas inválidas
+ok 3 - sincronizar atribuições atualiza metadados retidos, valida alunos e faz rollback em datas inválidas
+  ---
+  duration_ms: 11.0482
+  type: 'test'
+  ...
+# Subtest: novo kit inválido não deixa cabeçalho órfão e aluno não atua como editor
+ok 4 - novo kit inválido não deixa cabeçalho órfão e aluno não atua como editor
+  ---
+  duration_ms: 2.6063
+  type: 'test'
+  ...
+# Subtest: kit de suplementos mantém IDs e horários na edição transacional
+ok 5 - kit de suplementos mantém IDs e horários na edição transacional
+  ---
+  duration_ms: 9.5476
+  type: 'test'
+  ...
+# Subtest: cancelamento imediato encerra acesso e diretório não chama assinatura expirada de ativa
+ok 6 - cancelamento imediato encerra acesso e diretório não chama assinatura expirada de ativa
+  ---
+  duration_ms: 5.18
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2170.8568

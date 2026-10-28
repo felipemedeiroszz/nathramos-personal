@@ -5,6 +5,8 @@ import { ShieldAlert } from "lucide-react";
 import { PublicHeader } from "@/components/shared/PublicHeader";
 import { PublicFooter } from "@/components/shared/PublicFooter";
 import { CheckoutClient } from "@/components/payments/CheckoutClient";
+import { ProfileService } from "@/lib/payments/services";
+import { eligibleTrialDays } from "@/lib/payments/validation";
 import { PlanService } from "@/services/PlanService";
 import { createClientSSR } from "@/lib/supabase/server";
 import { canAccessPlatform } from "@/lib/auth/access";
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
   title: "Checkout",
 };
 
-export default async function CheckoutPage({ params: { locale } }: { params: { locale: string } }) {
+export default async function CheckoutPage({ params: { locale }, searchParams = {} }: { params: { locale: string }; searchParams?: {method?: string} }) {
   setRequestLocale(locale);
 
   const t = await getTranslations("payments");
@@ -37,8 +39,11 @@ export default async function CheckoutPage({ params: { locale } }: { params: { l
     redirect(`/${locale}/treinos`);
   }
 
-  const plan = await PlanService.getPrimary();
+  const availablePlan = await PlanService.getPrimary();
+  const plan = availablePlan ? {...availablePlan,trial_days:await eligibleTrialDays(user.id,availablePlan.trial_days)} : null;
 
+  const profile = await ProfileService.getProfile(user.id);
+  const pixNeedsDocument = !profile?.asaas_customer_id && !profile?.cpf;
   const isPt = locale === "pt-BR";
   const planName = plan ? (isPt ? plan.name_pt : plan.name_en) : "";
 
@@ -47,7 +52,7 @@ export default async function CheckoutPage({ params: { locale } }: { params: { l
       process.env.STRIPE_SECRET_KEY &&
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   );
-  const pixAvailable = Boolean(process.env.ASAAS_API_KEY);
+  const pixAvailable = Boolean(process.env.ASAAS_API_KEY && plan?.currency === "BRL");
   const planAvailable = Boolean(plan && plan.is_active && (cardAvailable || pixAvailable));
 
   const priceLabel = plan
@@ -77,12 +82,14 @@ export default async function CheckoutPage({ params: { locale } }: { params: { l
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
                 <ShieldAlert size={24} className="text-primary" />
               </div>
-              <p className="text-text-secondary">{t("paymentError")}</p>
+              <p className="text-text-secondary">{isPt ? "Nenhuma forma de pagamento está disponível para este plano no momento. Consulte a central ou entre em contato com o atendimento." : "No payment method is available for this plan right now. Check your billing center or contact support."}</p>
+              <a className="block text-primary underline" href={`/${locale}/assinatura`}>{isPt ? "Abrir central de pagamentos" : "Open billing center"}</a>
             </div>
           ) : (
             <div className="animate-slide-up [animation-fill-mode:both] [animation-delay:120ms]">
               <CheckoutClient
                 locale={locale}
+                initialMethod={searchParams.method === "pix" ? "pix" : "card"}
                 planId={plan.id}
                 planName={planName}
                 priceLabel={priceLabel}
@@ -91,6 +98,7 @@ export default async function CheckoutPage({ params: { locale } }: { params: { l
                 trialDays={plan.trial_days}
                 cardAvailable={cardAvailable}
                 pixAvailable={pixAvailable}
+                pixNeedsDocument={pixNeedsDocument}
                 labels={{
                   planSummary: t("planSummary"),
                   plan: t("plan"),

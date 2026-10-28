@@ -1,15 +1,22 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +43,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { deleteExerciseAction, saveExerciseAction } from "@/app/actions/workouts";
+import {
+  deleteExerciseAction,
+  saveExerciseAction,
+} from "@/app/actions/workouts";
 import { getWorkoutLabels } from "@/lib/workoutLabels";
 import type { ExerciseRow } from "@/types";
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES, DIFFICULTY_LEVELS } from "@/types";
@@ -44,9 +54,9 @@ import { MUSCLE_GROUPS, EQUIPMENT_TYPES, DIFFICULTY_LEVELS } from "@/types";
 const ExerciseUpsertModal = dynamic(
   () =>
     import("@/components/admin/workout/ExerciseUpsertModal").then(
-      (mod) => mod.ExerciseUpsertModal
+      (mod) => mod.ExerciseUpsertModal,
     ),
-  { ssr: false }
+  { ssr: false },
 );
 
 interface OwnExercisesClientProps {
@@ -66,11 +76,14 @@ export function OwnExercisesClient({
 }: OwnExercisesClientProps) {
   const router = useRouter();
   const localeCode = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const label = (pt: string, en: string) => (localeCode === "pt-BR" ? pt : en);
-  const { muscle: muscleLabels, equipment: equipmentLabels, difficulty: difficultyLabels } =
-    getWorkoutLabels(localeCode);
+  const {
+    muscle: muscleLabels,
+    equipment: equipmentLabels,
+    difficulty: difficultyLabels,
+  } = getWorkoutLabels(localeCode);
 
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
@@ -80,6 +93,7 @@ export function OwnExercisesClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ExerciseRow | null>(null);
   const [details, setDetails] = useState<ExerciseRow | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<ExerciseRow | null>(null);
 
   const filtered = useMemo(() => {
@@ -90,8 +104,10 @@ export function OwnExercisesClient({
         ex.name_pt.toLowerCase().includes(term) ||
         ex.name_en.toLowerCase().includes(term);
       const matchMuscle = !muscleFilter || ex.primary_muscle === muscleFilter;
-      const matchEquipment = !equipmentFilter || ex.equipment === equipmentFilter;
-      const matchDifficulty = !difficultyFilter || ex.difficulty === difficultyFilter;
+      const matchEquipment =
+        !equipmentFilter || ex.equipment === equipmentFilter;
+      const matchDifficulty =
+        !difficultyFilter || ex.difficulty === difficultyFilter;
       return matchSearch && matchMuscle && matchEquipment && matchDifficulty;
     });
   }, [exercises, search, muscleFilter, equipmentFilter, difficultyFilter]);
@@ -129,9 +145,22 @@ export function OwnExercisesClient({
     if (!deleteConfirm) return;
     const id = deleteConfirm.id;
     startTransition(async () => {
-      await deleteExerciseAction(id);
-      setDeleteConfirm(null);
-      router.refresh();
+      setDeleteError(null);
+      try {
+        const result = await deleteExerciseAction(id);
+        if (!result.success) {
+          setDeleteError(result.message);
+          return;
+        }
+        setDeleteConfirm(null);
+        router.refresh();
+      } catch (error) {
+        setDeleteError(
+          error instanceof Error
+            ? error.message
+            : label("Falha ao excluir.", "Deletion failed."),
+        );
+      }
     });
   }
 
@@ -140,7 +169,8 @@ export function OwnExercisesClient({
   }
 
   function instructionsOf(ex: ExerciseRow) {
-    const list = localeCode === "pt-BR" ? ex.instructions_pt : ex.instructions_en;
+    const list =
+      localeCode === "pt-BR" ? ex.instructions_pt : ex.instructions_en;
     return Array.isArray(list) ? list : [];
   }
 
@@ -168,7 +198,10 @@ export function OwnExercisesClient({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={label("Buscar exercício por nome...", "Search exercise by name...")}
+                placeholder={label(
+                  "Buscar exercício por nome...",
+                  "Search exercise by name...",
+                )}
                 className="pl-10"
               />
             </div>
@@ -189,7 +222,9 @@ export function OwnExercisesClient({
               onChange={(e) => setEquipmentFilter(e.target.value)}
               className="md:w-52"
             >
-              <option value="">{label("Equipamento: Todos", "Equipment: All")}</option>
+              <option value="">
+                {label("Equipamento: Todos", "Equipment: All")}
+              </option>
               {EQUIPMENT_TYPES.map((eq) => (
                 <option key={eq} value={eq}>
                   {equipmentLabels[eq] ?? eq}
@@ -209,7 +244,13 @@ export function OwnExercisesClient({
               ))}
             </Select>
             {hasActiveFilters && (
-              <Button type="button" variant="ghost" size="sm" onClick={clearFilters} className="shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="shrink-0"
+              >
                 <X size={16} className="mr-1" />
                 {label("Limpar filtros", "Clear filters")}
               </Button>
@@ -233,16 +274,19 @@ export function OwnExercisesClient({
             <div className="rounded-2xl border border-border/60 bg-surface">
               <EmptyState
                 icon={<Dumbbell size={28} className="text-primary" />}
-                title={label("Nenhum exercício encontrado", "No exercises found")}
+                title={label(
+                  "Nenhum exercício encontrado",
+                  "No exercises found",
+                )}
                 description={
                   hasActiveFilters
                     ? label(
                         "Ajuste a busca ou os filtros para ver mais resultados.",
-                        "Adjust the search or filters to see more results."
+                        "Adjust the search or filters to see more results.",
                       )
                     : label(
                         "Crie seu primeiro exercício com GIF ou imagem.",
-                        "Create your first exercise with a GIF or image."
+                        "Create your first exercise with a GIF or image.",
                       )
                 }
                 action={
@@ -274,11 +318,16 @@ export function OwnExercisesClient({
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-text-secondary">
                         <ImageOff size={28} />
-                        <span className="text-xs">{label("Sem mídia", "No media")}</span>
+                        <span className="text-xs">
+                          {label("Sem mídia", "No media")}
+                        </span>
                       </div>
                     )}
                     {!ex.is_published && (
-                      <Badge variant="outline" className="absolute left-2 top-2">
+                      <Badge
+                        variant="outline"
+                        className="absolute left-2 top-2"
+                      >
                         {label("Rascunho", "Draft")}
                       </Badge>
                     )}
@@ -290,13 +339,22 @@ export function OwnExercisesClient({
                     </h3>
 
                     <div className="flex flex-wrap gap-1.5">
-                      <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
+                      <Badge
+                        variant="outline"
+                        className="px-2 py-0.5 text-[11px]"
+                      >
                         {muscleLabels[ex.primary_muscle] ?? ex.primary_muscle}
                       </Badge>
-                      <Badge variant="outline" className="px-2 py-0.5 text-[11px]">
+                      <Badge
+                        variant="outline"
+                        className="px-2 py-0.5 text-[11px]"
+                      >
                         {equipmentLabels[ex.equipment] ?? ex.equipment}
                       </Badge>
-                      <Badge variant="default" className="px-2 py-0.5 text-[11px]">
+                      <Badge
+                        variant="default"
+                        className="px-2 py-0.5 text-[11px]"
+                      >
                         {difficultyLabels[ex.difficulty] ?? ex.difficulty}
                       </Badge>
                     </div>
@@ -372,23 +430,36 @@ export function OwnExercisesClient({
         label={label}
       />
 
-      <Dialog isOpen={!!deleteConfirm} onClose={() => !isPending && setDeleteConfirm(null)}>
+      <Dialog
+        isOpen={!!deleteConfirm}
+        onClose={() => !isPending && setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-11 h-11 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
                 <AlertTriangle size={22} />
               </div>
-              <DialogTitle>{label("Confirmar exclusão", "Confirm deletion")}</DialogTitle>
+              <DialogTitle>
+                {label("Confirmar exclusão", "Confirm deletion")}
+              </DialogTitle>
             </div>
             <DialogDescription>
-              {label("Tem certeza que deseja excluir o exercício", "Are you sure you want to delete the exercise")}{" "}
+              {label(
+                "Tem certeza que deseja excluir o exercício",
+                "Are you sure you want to delete the exercise",
+              )}{" "}
               <span className="font-semibold text-text">
                 {deleteConfirm ? displayName(deleteConfirm) : ""}
               </span>
               ?
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-red-500">
+              {deleteError}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="secondary"
@@ -397,9 +468,15 @@ export function OwnExercisesClient({
             >
               {label("Cancelar", "Cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isPending}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isPending}
+            >
               <Trash2 size={16} className="mr-2" />
-              {isPending ? label("Excluindo...", "Deleting...") : label("Excluir", "Delete")}
+              {isPending
+                ? label("Excluindo...", "Deleting...")
+                : label("Excluir", "Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -446,7 +523,11 @@ function ExerciseDetailsModal({
     >
       <ModalHeader>
         <ModalTitle className="pr-4 capitalize">{name}</ModalTitle>
-        <ModalClose onClick={onClose} aria-label={label("Fechar", "Close")} autoFocus />
+        <ModalClose
+          onClick={onClose}
+          aria-label={label("Fechar", "Close")}
+          autoFocus
+        />
       </ModalHeader>
 
       <ModalBody className="space-y-4">
@@ -467,13 +548,17 @@ function ExerciseDetailsModal({
         </div>
 
         {description && (
-          <p className="text-sm leading-relaxed text-text-secondary">{description}</p>
+          <p className="text-sm leading-relaxed text-text-secondary">
+            {description}
+          </p>
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <InfoBlock
             label={label("Músculo principal", "Primary muscle")}
-            values={[muscleLabels[exercise.primary_muscle] ?? exercise.primary_muscle]}
+            values={[
+              muscleLabels[exercise.primary_muscle] ?? exercise.primary_muscle,
+            ]}
           />
           <InfoBlock
             label={label("Equipamento", "Equipment")}
@@ -481,16 +566,21 @@ function ExerciseDetailsModal({
           />
           <InfoBlock
             label={label("Dificuldade", "Difficulty")}
-            values={[difficultyLabels[exercise.difficulty] ?? exercise.difficulty]}
+            values={[
+              difficultyLabels[exercise.difficulty] ?? exercise.difficulty,
+            ]}
           />
         </div>
 
-        {Array.isArray(exercise.secondary_muscles) && exercise.secondary_muscles.length > 0 && (
-          <InfoBlock
-            label={label("Músculos secundários", "Secondary muscles")}
-            values={exercise.secondary_muscles.map((m) => muscleLabels[m] ?? m)}
-          />
-        )}
+        {Array.isArray(exercise.secondary_muscles) &&
+          exercise.secondary_muscles.length > 0 && (
+            <InfoBlock
+              label={label("Músculos secundários", "Secondary muscles")}
+              values={exercise.secondary_muscles.map(
+                (m) => muscleLabels[m] ?? m,
+              )}
+            />
+          )}
 
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-text">
@@ -499,17 +589,25 @@ function ExerciseDetailsModal({
           {instructions.length > 0 ? (
             <ol className="space-y-2">
               {instructions.map((step, index) => (
-                <li key={`${index}-${step.slice(0, 12)}`} className="flex gap-3">
+                <li
+                  key={`${index}-${step.slice(0, 12)}`}
+                  className="flex gap-3"
+                >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                     {index + 1}
                   </span>
-                  <p className="text-sm leading-relaxed text-text-secondary">{step}</p>
+                  <p className="text-sm leading-relaxed text-text-secondary">
+                    {step}
+                  </p>
                 </li>
               ))}
             </ol>
           ) : (
             <p className="text-sm italic text-text-secondary/80">
-              {label("Nenhuma instrução informada.", "No instructions provided.")}
+              {label(
+                "Nenhuma instrução informada.",
+                "No instructions provided.",
+              )}
             </p>
           )}
         </div>
@@ -529,7 +627,13 @@ function ExerciseDetailsModal({
   );
 }
 
-function InfoBlock({ label: title, values }: { label: string; values: string[] }) {
+function InfoBlock({
+  label: title,
+  values,
+}: {
+  label: string;
+  values: string[];
+}) {
   return (
     <div className="rounded-xl border border-border/60 bg-surface-secondary/40 p-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
@@ -537,7 +641,11 @@ function InfoBlock({ label: title, values }: { label: string; values: string[] }
       </p>
       <div className="flex flex-wrap gap-1.5">
         {values.filter(Boolean).map((value) => (
-          <Badge key={value} variant="outline" className="px-2 py-0.5 text-[11px]">
+          <Badge
+            key={value}
+            variant="outline"
+            className="px-2 py-0.5 text-[11px]"
+          >
             {value}
           </Badge>
         ))}

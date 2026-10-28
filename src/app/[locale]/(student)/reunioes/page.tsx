@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { requireAuthenticated } from "@/lib/auth/access";
+import { requireStudentPage } from "@/lib/auth/platform";
 import { MentorshipService, type MeetingWithStudent } from "@/services/MentorshipService";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function StudentMeetingsPage({
   const t = await getTranslations("studentMentoring");
   const tStatus = await getTranslations("meetingStatus");
 
-  const userId = await requireAuthenticated();
+  const userId = await requireStudentPage();
 
   const meetings = await MentorshipService.listMeetings({ userId, limit: 100 });
   const now = Date.now();

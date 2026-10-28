@@ -1,3 +1,6 @@
+import { staffStudentIds } from "@/lib/auth/platform";
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -23,8 +26,10 @@ async function safe(t: any, key: string, fb: string) {
 
 export default async function AdminKitsSuplementosPage({
   params: { locale },
+  searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -36,16 +41,20 @@ export default async function AdminKitsSuplementosPage({
   const subtitle = await safe(
     tAdmin,
     "supplementKits.subtitle",
-    "Monte kits de suplementos reutilizáveis a partir dos suplementos cadastrados."
+    "Monte kits de suplementos reutilizáveis a partir dos suplementos cadastrados.",
   );
 
-  const kits = await SupplementService.listKits({ limit: 100 });
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("supplement_kits", pageParams);
+  const kits = dataPage.rows;
   const supplements: SupplementRow[] = await SupplementService.listSupplements({
     is_active: true,
     limit: 300,
   });
 
-  const items = await SupplementService.listKitItemsForKits(kits.map((k) => k.id));
+  const items = await SupplementService.listKitItemsForKits(
+    kits.map((k) => k.id),
+  );
 
   const kitsWithItems: SupplementKitWithItems[] = kits.map((kit) => ({
     ...kit,
@@ -54,13 +63,16 @@ export default async function AdminKitsSuplementosPage({
 
   // Alunos disponíveis para vincular aos kits
   const supabase = await createServiceClientSSR();
-  const { data: profiles } = await supabase
+  let profileQuery: any = supabase
     .from("profiles")
     .select("id, full_name, email")
     .eq("role", "student")
     .eq("is_deleted", false)
     .order("full_name", { ascending: true })
     .limit(500);
+  const scope = await staffStudentIds();
+  if (scope !== null) profileQuery = profileQuery.in("id", scope);
+  const { data: profiles } = await profileQuery;
 
   const students = (profiles ?? []).map((p: any) => ({
     id: p.id as string,
@@ -69,7 +81,9 @@ export default async function AdminKitsSuplementosPage({
   }));
 
   // Vínculos ativos agrupados por kit
-  const assignments = await SupplementService.listKitAssignments(kits.map((k) => k.id));
+  const assignments = await SupplementService.listKitAssignments(
+    kits.map((k) => k.id),
+  );
   const assignedByKit: Record<string, string[]> = {};
   for (const a of assignments) {
     if (!assignedByKit[a.kit_id]) assignedByKit[a.kit_id] = [];
@@ -83,6 +97,13 @@ export default async function AdminKitsSuplementosPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminSupplementKitsClient
         locale={locale}
         userId={userId}

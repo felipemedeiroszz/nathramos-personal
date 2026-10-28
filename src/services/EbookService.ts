@@ -180,7 +180,7 @@ export class EbookService {
 
   static async getPaidEbookIds(userId: string): Promise<string[]> {
     const purchases = await this.getPurchases(userId)
-    return purchases.filter((p) => p.status === "paid").map((p) => p.ebook_id)
+    return purchases.filter((p) => ["paid", "partially_refunded"].includes(p.status)).map((p) => p.ebook_id)
   }
 
   static async createPendingPurchase(input: {

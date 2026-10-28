@@ -1,0 +1,12 @@
+src/lib/analytics/chart-svg.ts 84ms
+src/lib/analytics/copy.ts 30ms
+src/lib/analytics/export.ts 98ms
+src/lib/analytics/model.ts 13ms
+src/services/AnalyticsService.ts 4ms
+src/components/admin/analytics/AnalyticsClient.tsx 123ms
+src/app/[locale]/admin/relatorios/page.tsx 3ms
+src/app/api/admin/analytics/export/route.ts 7ms
+src/components/shared/AdminSidebar.tsx 18ms
+tests/analytics.test.mjs 48ms
+tests/preview-analytics-ui.mjs 21ms
+next.config.mjs 5ms

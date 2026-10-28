@@ -1,12 +1,21 @@
-import createNextIntlPlugin from 'next-intl/plugin';
+import createNextIntlPlugin from "next-intl/plugin";
 
-const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
+const withNextIntl = createNextIntlPlugin("./src/i18n.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  experimental: {
+    serverComponentsExternalPackages: ["pdfkit", "exceljs", "sharp"],
+    outputFileTracingIncludes: {
+      "/api/admin/analytics/export": [
+        "./public/report-fonts/**",
+        "./node_modules/pdfkit/js/data/**",
+      ],
+    },
+  },
   images: {
     remotePatterns: [
       {

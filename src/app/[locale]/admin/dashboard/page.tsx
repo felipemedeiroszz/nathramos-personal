@@ -1,12 +1,20 @@
+import { AdminWorkQueue } from "@/components/admin/AdminWorkQueue";
+import { adminCurrency } from "@/lib/admin/reporting";
+import { AdminCurrencySelector } from "@/components/admin/billing/AdminCurrencySelector";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations, getLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/access";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Chart } from "@/components/ui/Chart";
-import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Users,
   UserCheck,
@@ -33,20 +41,21 @@ type Metric = {
   labelKey: string;
   fallback: string;
   value: string | number;
-  delta: string;
-  deltaPositive: boolean;
-  deltaGood: boolean;
+
   icon: React.ReactNode;
 };
 
 export default async function AdminDashboardPage({
   params: { locale },
+  searchParams,
 }: {
   params: { locale: LocaleKey };
+  searchParams: { currency?: string };
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
-  await requireRole(["admin", "coach"], "/dashboard");
+  const actor = await requireRole(["admin", "coach"], "/dashboard");
+  if (actor.role === "coach") return <AdminWorkQueue locale={locale} />;
 
   const safe = async (ns: string, key: string, fb: string) => {
     try {
@@ -57,15 +66,30 @@ export default async function AdminDashboardPage({
   };
 
   const pageTitle = await safe("admin", "title", "Painel Administrativo");
-  const pageSubtitle = await safe("admin", "subtitle", "Visão geral da plataforma, alunos e receita");
+  const pageSubtitle = await safe(
+    "admin",
+    "subtitle",
+    "Visão geral da plataforma, alunos e receita",
+  );
   const thisMonth = await safe("admin", "thisMonth", "este mês");
 
   // Buscar métricas reais do banco
-  const metricsData = await AdminMetricsService.getDashboardMetrics();
-  const revenueData = await AdminMetricsService.getRevenueData(12);
-  const subscriptionStatusData = await AdminMetricsService.getSubscriptionStatusData();
-  const topPlans = await AdminMetricsService.getTopPlans(5);
-  const lastPayments = await AdminMetricsService.getRecentPayments(5);
+  const currency = adminCurrency(searchParams.currency);
+  const [
+    metricsData,
+    revenueData,
+    subscriptionStatusData,
+    topPlans,
+    lastPayments,
+    growthData,
+  ] = await Promise.all([
+    AdminMetricsService.getDashboardMetrics(currency),
+    AdminMetricsService.getRevenueData(12, currency),
+    AdminMetricsService.getSubscriptionStatusData(currency),
+    AdminMetricsService.getTopPlans(5, currency),
+    AdminMetricsService.getRecentPayments(5, currency, locale),
+    AdminMetricsService.getGrowthData(currency),
+  ]);
 
   const formatCurrency = (cents: number, currency: string) => {
     const value = cents / 100;
@@ -80,94 +104,117 @@ export default async function AdminDashboardPage({
       labelKey: "totalStudents",
       fallback: "Total de Alunos",
       value: metricsData.totalStudents,
-      delta: "0%",
-      deltaPositive: true,
-      deltaGood: true,
+
       icon: <Users size={22} />,
     },
     {
       labelKey: "activeStudents",
       fallback: "Alunos Ativos",
       value: metricsData.activeStudents,
-      delta: "0%",
-      deltaPositive: true,
-      deltaGood: true,
+
       icon: <UserCheck size={22} />,
     },
     {
       labelKey: "pendingStudents",
       fallback: "Pendentes",
       value: metricsData.pendingStudents,
-      delta: "0%",
-      deltaPositive: false,
-      deltaGood: true,
+
       icon: <Clock size={22} />,
     },
     {
       labelKey: "pastDueStudents",
       fallback: "Atrasados",
       value: metricsData.pastDueStudents,
-      delta: "0%",
-      deltaPositive: true,
-      deltaGood: false,
+
       icon: <AlertTriangle size={22} />,
     },
     {
       labelKey: "blockedStudents",
       fallback: "Bloqueados",
       value: metricsData.blockedStudents,
-      delta: "0%",
-      deltaPositive: false,
-      deltaGood: true,
+
       icon: <Ban size={22} />,
     },
     {
       labelKey: "monthlyRevenue",
       fallback: "Receita do Mês",
       value: formatCurrency(metricsData.monthlyRevenue, metricsData.currency),
-      delta: "0%",
-      deltaPositive: true,
-      deltaGood: true,
+
       icon: <Banknote size={22} />,
     },
     {
       labelKey: "activeSubscriptions",
       fallback: "Assinaturas Ativas",
       value: metricsData.activeSubscriptions,
-      delta: "0%",
-      deltaPositive: true,
-      deltaGood: true,
+
       icon: <CreditCard size={22} />,
     },
     {
       labelKey: "monthlyCancellations",
       fallback: "Cancelamentos do Mês",
       value: metricsData.monthlyCancellations,
-      delta: "0%",
-      deltaPositive: false,
-      deltaGood: true,
+
       icon: <UserX size={22} />,
     },
   ];
 
-  const revenueTitle = await safe("admin", "revenueChartTitle", "Evolução da Receita (últimos 12 meses)");
-  const vsTitle = await safe("admin", "studentsVsCancelsChartTitle", "Novos Alunos vs Cancelamentos (últimos 6 meses)");
-  const subsTitle = await safe("admin", "subscriptionStatusTitle", "Status de Assinaturas");
-  const topPlansTitle = await safe("admin", "topPlansTitle", "Top 5 Planos Vendidos");
-  const lastPaymentsTitle = await safe("admin", "lastPaymentsTitle", "Últimos Pagamentos");
+  const revenueTitle = await safe(
+    "admin",
+    "revenueChartTitle",
+    "Evolução da Receita (últimos 12 meses)",
+  );
+  const vsTitle = await safe(
+    "admin",
+    "studentsVsCancelsChartTitle",
+    "Novos Alunos vs Cancelamentos (últimos 6 meses)",
+  );
+  const subsTitle = await safe(
+    "admin",
+    "subscriptionStatusTitle",
+    "Status de Assinaturas",
+  );
+  const topPlansTitle = await safe("admin", "topPlansTitle", "Planos em uso");
+  const lastPaymentsTitle = await safe(
+    "admin",
+    "lastPaymentsTitle",
+    "Últimos Pagamentos",
+  );
 
-  const statusLabel: Record<string, { label: string; variant: "success" | "warning" | "error" | "default" }> = {
-    paid: { label: await safe("admin", "paymentStatusPaid", "Aprovado"), variant: "success" },
-    pending: { label: await safe("admin", "paymentStatusPending", "Pendente"), variant: "warning" },
-    failed: { label: await safe("admin", "paymentStatusFailed", "Falhou"), variant: "error" },
+  const statusLabel: Record<
+    string,
+    { label: string; variant: "success" | "warning" | "error" | "default" }
+  > = {
+    paid: {
+      label: await safe("admin", "paymentStatusPaid", "Aprovado"),
+      variant: "success",
+    },
+    pending: {
+      label: await safe("admin", "paymentStatusPending", "Pendente"),
+      variant: "warning",
+    },
+    refunded: { label: "Reembolsado", variant: "default" },
+    partially_refunded: { label: "Reembolso parcial", variant: "default" },
+    processing: { label: "Processando", variant: "warning" },
+    canceled: { label: "Cancelado", variant: "default" },
+    expired: { label: "Expirado", variant: "error" },
+    failed: {
+      label: await safe("admin", "paymentStatusFailed", "Falhou"),
+      variant: "error",
+    },
   };
 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
+      <AdminWorkQueue locale={locale} />
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">{pageTitle}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{pageSubtitle}</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-text">
+          {pageTitle}
+        </h1>
+        <p className="text-sm md:text-base text-text-secondary">
+          {pageSubtitle}
+        </p>
       </header>
+      <AdminCurrencySelector currency={currency} />
 
       <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {metrics.map((m) => (
@@ -181,20 +228,6 @@ export default async function AdminDashboardPage({
                 <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   {m.icon}
                 </div>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5">
-                <span
-                  className={
-                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold " +
-                    (m.deltaGood
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : "bg-red-500/10 text-red-400")
-                  }
-                >
-                  {m.deltaPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  {m.delta}
-                </span>
-                <span className="text-xs text-text-secondary">{thisMonth}</span>
               </div>
             </CardContent>
           </Card>
@@ -226,7 +259,24 @@ export default async function AdminDashboardPage({
             </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-80 w-full rounded-xl" />
+            <Chart
+              type="bar"
+              data={growthData}
+              xKey="name"
+              series={[
+                {
+                  key: "students",
+                  label: "Novos alunos",
+                  color: "hsl(var(--primary))",
+                },
+                {
+                  key: "cancellations",
+                  label: "Cancelamentos",
+                  color: "#f87171",
+                },
+              ]}
+              className="h-80"
+            />
           </CardContent>
         </Card>
       </section>
@@ -239,7 +289,13 @@ export default async function AdminDashboardPage({
             </div>
           </CardHeader>
           <CardContent>
-            <Chart type="pie" data={subscriptionStatusData} xKey="name" yKey="value" className="h-72" />
+            <Chart
+              type="pie"
+              data={subscriptionStatusData}
+              xKey="name"
+              yKey="value"
+              className="h-72"
+            />
           </CardContent>
         </Card>
 
@@ -251,6 +307,11 @@ export default async function AdminDashboardPage({
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
+              {!topPlans.length && (
+                <li className="text-sm text-text-secondary">
+                  Nenhum plano em uso nesta moeda.
+                </li>
+              )}
               {topPlans.map((p, idx) => (
                 <li
                   key={p.name}
@@ -260,7 +321,9 @@ export default async function AdminDashboardPage({
                     <span className="w-6 h-6 rounded-full bg-surface-secondary flex items-center justify-center text-xs font-semibold text-text-secondary shrink-0">
                       {idx + 1}
                     </span>
-                    <span className="font-medium text-text truncate">{p.name}</span>
+                    <span className="font-medium text-text truncate">
+                      {p.name}
+                    </span>
                   </div>
                   <Badge variant="default">{p.value}</Badge>
                 </li>
@@ -277,6 +340,11 @@ export default async function AdminDashboardPage({
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
+              {!lastPayments.length && (
+                <li className="text-sm text-text-secondary">
+                  Nenhum pagamento no período.
+                </li>
+              )}
               {lastPayments.map((p, idx) => {
                 const s = statusLabel[p.status] || statusLabel.pending;
                 return (
@@ -289,7 +357,9 @@ export default async function AdminDashboardPage({
                       <p className="text-xs text-text-secondary">{p.date}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-semibold text-text text-sm">{p.value}</span>
+                      <span className="font-semibold text-text text-sm">
+                        {p.value}
+                      </span>
                       <Badge variant={s.variant}>{s.label}</Badge>
                     </div>
                   </li>

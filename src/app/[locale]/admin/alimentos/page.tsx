@@ -1,3 +1,5 @@
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -26,6 +28,7 @@ export default async function AdminAlimentosPage({
 }: {
   params: { locale: (typeof locales)[number] };
   searchParams?: {
+    page?: string;
     q?: string;
     active?: string;
     category?: string;
@@ -36,13 +39,13 @@ export default async function AdminAlimentosPage({
   setRequestLocale(locale);
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
 
   const title = await safe(tAdminNav, "foods", "Alimentos");
   const subtitle = await safe(
     tAdmin,
     "foods.subtitle",
-    "Cadastre alimentos com valores nutricionais para montar kits de dieta."
+    "Cadastre alimentos com valores nutricionais para montar kits de dieta.",
   );
 
   const q = searchParams?.q ?? "";
@@ -59,9 +62,12 @@ export default async function AdminAlimentosPage({
   if (q && q.trim().length > 0) filters.search = q.trim();
   if (activeParam === "1") filters.is_active = true;
   if (activeParam === "0") filters.is_active = false;
-  if (categoryParam && categoryParam.trim().length > 0) filters.category = categoryParam.trim();
+  if (categoryParam && categoryParam.trim().length > 0)
+    filters.category = categoryParam.trim();
 
-  const foods: DietFoodRow[] = await DietService.listFoods(filters);
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("diet_foods", pageParams);
+  const foods = dataPage.rows;
 
   return (
     <div className="space-y-6 w-full">
@@ -70,6 +76,13 @@ export default async function AdminAlimentosPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminAlimentosClient
         locale={locale}
         userId={userId}

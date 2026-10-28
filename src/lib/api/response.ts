@@ -51,6 +51,7 @@ export class ApiNotFoundError extends Error {
 }
 
 export function handleApiError(error: unknown) {
+  if (error instanceof SyntaxError) return errorResponse("JSON inválido.",400,"INVALID_JSON")
   if (error instanceof ApiAuthError) {
     return errorResponse(error.message, 401, "UNAUTHENTICATED")
   }

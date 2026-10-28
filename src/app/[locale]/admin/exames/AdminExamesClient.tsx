@@ -1,13 +1,19 @@
-"use client"
+"use client";
 
-import dynamic from "next/dynamic"
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Badge } from "@/components/ui/Badge"
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import {
   Table,
   TableHeader,
@@ -15,8 +21,8 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from "@/components/ui/Table"
-import { EmptyState } from "@/components/ui/EmptyState"
+} from "@/components/ui/Table";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -24,30 +30,49 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/Dialog"
-import { FileText, RefreshCw, Plus, Search, Edit, Trash2, Calendar, User, AlertTriangle, MessageSquare, CheckCircle, Clock } from "lucide-react"
-import { upsertExamAction, deleteExamAction } from "@/app/actions/content"
-import type { ExamRow, ExamCategoryRow } from "@/types"
+} from "@/components/ui/Dialog";
+import {
+  FileText,
+  RefreshCw,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Calendar,
+  User,
+  AlertTriangle,
+  MessageSquare,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import { upsertExamAction, deleteExamAction } from "@/app/actions/content";
+import type { ExamRow, ExamCategoryRow } from "@/types";
 
 const ExamUpsertModal = dynamic(
-  () => import("@/components/admin/content/ExamUpsertModal").catch(() => () => null),
-  { ssr: false }
-)
+  () =>
+    import("@/components/admin/content/ExamUpsertModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
+);
 
 const ExamReviewModal = dynamic(
-  () => import("@/components/admin/content/ExamReviewModal").catch(() => () => null),
-  { ssr: false }
-)
+  () =>
+    import("@/components/admin/content/ExamReviewModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
+);
 
 interface AdminExamesClientProps {
-  locale: string
-  userId: string
-  title: string
-  exams: ExamRow[]
-  searchValue: string
-  categories?: ExamCategoryRow[]
-  studentOptions?: { id: string; name: string; email: string }[]
-  studentNames?: Record<string, string>
+  locale: string;
+  userId: string;
+  title: string;
+  exams: ExamRow[];
+  searchValue: string;
+  categories?: ExamCategoryRow[];
+  studentOptions?: { id: string; name: string; email: string }[];
+  studentNames?: Record<string, string>;
 }
 
 export function AdminExamesClient({
@@ -60,80 +85,98 @@ export function AdminExamesClient({
   studentOptions = [],
   studentNames = {},
 }: AdminExamesClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const t = useTranslations("adminExams")
-  const tCommon = useTranslations("common")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations("adminExams");
+  const tCommon = useTranslations("common");
 
-  const [search, setSearch] = useState(searchValue ?? "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingExam, setEditingExam] = useState<ExamRow | null>(null)
-  const [reviewExam, setReviewExam] = useState<ExamRow | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [search, setSearch] = useState(searchValue ?? "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingExam, setEditingExam] = useState<ExamRow | null>(null);
+  const [reviewExam, setReviewExam] = useState<ExamRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const handleSearch = () => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (search.trim()) {
-      params.set("q", search.trim())
+      params.set("q", search.trim());
     } else {
-      params.delete("q")
+      params.delete("q");
     }
-    router.push(`/${locale}/admin/exames?${params.toString()}`)
-  }
+    router.push(`/${locale}/admin/exames?${params.toString()}`);
+  };
 
   const handleRefresh = () => {
-    setIsLoading(true)
-    router.refresh()
-    setTimeout(() => setIsLoading(false), 500)
-  }
+    setIsLoading(true);
+    router.refresh();
+    setTimeout(() => setIsLoading(false), 500);
+  };
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US")
+      return new Date(dateStr).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+      );
     } catch {
-      return dateStr
+      return dateStr;
     }
-  }
+  };
 
   const formatFileSize = (bytes: number | null | undefined) => {
-    if (!bytes) return "-"
-    const mb = bytes / (1024 * 1024)
-    return `${mb.toFixed(2)} MB`
-  }
+    if (!bytes) return "-";
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
 
   function openCreate() {
-    setEditingExam(null)
-    setModalOpen(true)
+    setEditingExam(null);
+    setModalOpen(true);
   }
 
   function openEdit(exam: ExamRow) {
-    setEditingExam(exam)
-    setModalOpen(true)
+    setEditingExam(exam);
+    setModalOpen(true);
   }
 
   async function confirmDelete() {
-    if (!deleteConfirm) return
-    setDeleting(true)
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await deleteExamAction(deleteConfirm.id)
+      setDeleteError("");
+      const result = await deleteExamAction(deleteConfirm.id);
+      if (!result.success) {
+        setDeleteError(result.message || "Não foi possível excluir.");
+        return;
+      }
+      setDeleteConfirm(null);
+      router.refresh();
+    } catch {
+      setDeleteError("Não foi possível excluir. Tente novamente.");
     } finally {
-      setDeleting(false)
-      setDeleteConfirm(null)
-      router.refresh()
+      setDeleting(false);
     }
   }
 
   function onModalSaved() {
-    setModalOpen(false)
-    setEditingExam(null)
-    router.refresh()
+    setModalOpen(false);
+    setEditingExam(null);
+    router.refresh();
   }
 
   return (
     <>
       <div className="space-y-6">
+        {deleteError && (
+          <p role="alert" className="rounded-xl border border-border p-3">
+            {deleteError}
+          </p>
+        )}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -148,7 +191,9 @@ export function AdminExamesClient({
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
                 </Button>
                 <Button variant="primary" onClick={openCreate}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -195,18 +240,23 @@ export function AdminExamesClient({
                       <TableHead>{t("examDate")}</TableHead>
                       <TableHead>{t("file")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
-                      <TableHead className="text-right">{t("actions")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("actions")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {exams.map((exam) => (
                       <TableRow key={exam.id}>
-                        <TableCell className="font-medium">{exam.title}</TableCell>
+                        <TableCell className="font-medium">
+                          {exam.title}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-text-secondary" />
                             <span className="text-sm">
-                              {studentNames[exam.user_id] || `${exam.user_id.slice(0, 8)}...`}
+                              {studentNames[exam.user_id] ||
+                                `${exam.user_id.slice(0, 8)}...`}
                             </span>
                           </div>
                         </TableCell>
@@ -220,8 +270,12 @@ export function AdminExamesClient({
                         <TableCell>
                           {exam.file_name ? (
                             <div className="flex flex-col gap-1 text-xs">
-                              <span className="truncate max-w-[150px]">{exam.file_name}</span>
-                              <span className="text-text-secondary">{formatFileSize(exam.file_size_bytes)}</span>
+                              <span className="truncate max-w-[150px]">
+                                {exam.file_name}
+                              </span>
+                              <span className="text-text-secondary">
+                                {formatFileSize(exam.file_size_bytes)}
+                              </span>
                             </div>
                           ) : (
                             <span className="text-text-secondary">-</span>
@@ -252,7 +306,12 @@ export function AdminExamesClient({
                             >
                               <MessageSquare className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" title={tCommon("edit")} onClick={() => openEdit(exam)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title={tCommon("edit")}
+                              onClick={() => openEdit(exam)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -260,7 +319,12 @@ export function AdminExamesClient({
                               size="sm"
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
-                              onClick={() => setDeleteConfirm({ id: exam.id, name: exam.title })}
+                              onClick={() =>
+                                setDeleteConfirm({
+                                  id: exam.id,
+                                  name: exam.title,
+                                })
+                              }
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -280,16 +344,16 @@ export function AdminExamesClient({
         <ExamUpsertModal
           isOpen={modalOpen}
           onClose={() => {
-            setModalOpen(false)
-            setEditingExam(null)
+            setModalOpen(false);
+            setEditingExam(null);
           }}
           exam={editingExam ?? undefined}
           categories={categories}
           studentOptions={studentOptions}
           onSubmit={async (data) => {
             await upsertExamAction(
-              data as Parameters<typeof upsertExamAction>[0]
-            )
+              data as Parameters<typeof upsertExamAction>[0],
+            );
           }}
           onSaved={onModalSaved}
         />
@@ -318,9 +382,18 @@ export function AdminExamesClient({
               <DialogTitle>{t("confirmDelete")}</DialogTitle>
             </div>
             <DialogDescription>
-              {t("confirmDeleteDesc")} <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+              {t("confirmDeleteDesc")}{" "}
+              <span className="font-semibold text-text">
+                {deleteConfirm?.name}
+              </span>
+              ?
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-sm text-red-400 px-4">
+              {deleteError}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="secondary"
@@ -329,7 +402,11 @@ export function AdminExamesClient({
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
               <Trash2 size={16} className="mr-2" />
               {deleting ? tCommon("loading") : tCommon("delete")}
             </Button>
@@ -337,5 +414,5 @@ export function AdminExamesClient({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

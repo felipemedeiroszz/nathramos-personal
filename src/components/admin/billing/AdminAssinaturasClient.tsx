@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Search, Users, RotateCcw, Ban } from "lucide-react";
@@ -63,7 +63,8 @@ export function AdminAssinaturasClient({
   const t = useTranslations("adminAssinaturas");
   const locale = useLocale();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setPending] = useState(false);
+  const running = useRef(false);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [providerFilter, setProviderFilter] = useState("all");
@@ -75,8 +76,10 @@ export function AdminAssinaturasClient({
     const term = search.trim().toLowerCase();
     return subscriptions.filter((s) => {
       if (statusFilter !== "all" && s.status !== statusFilter) return false;
-      if (providerFilter !== "all" && (s.provider ?? "—") !== providerFilter) return false;
-      if (term && !(s.student_name ?? "").toLowerCase().includes(term)) return false;
+      if (providerFilter !== "all" && (s.provider ?? "—") !== providerFilter)
+        return false;
+      if (term && !(s.student_name ?? "").toLowerCase().includes(term))
+        return false;
       return true;
     });
   }, [subscriptions, statusFilter, providerFilter, search]);
@@ -84,11 +87,14 @@ export function AdminAssinaturasClient({
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     try {
-      return new Date(value).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
+      return new Date(value).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+        {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        },
+      );
     } catch {
       return "—";
     }
@@ -100,15 +106,29 @@ export function AdminAssinaturasClient({
       currency: currency || "BRL",
     }).format((cents || 0) / 100);
 
-  function run(id: string, fn: () => Promise<{ success: boolean; message?: string }>) {
+  async function run(
+    id: string,
+    fn: () => Promise<{ success: boolean; message?: string }>,
+  ) {
+    if (running.current) return;
+    running.current = true;
+    setPending(true);
     setBusyId(id);
     setError(null);
-    startTransition(async () => {
+    try {
       const result = await fn();
-      if (!result.success) setError(result.message ?? null);
-      router.refresh();
+      if (!result.success)
+        setError(result.message || "Não foi possível concluir a operação.");
+      else router.refresh();
+    } catch {
+      setError(
+        "Não foi possível concluir a operação. Confira o status antes de tentar novamente.",
+      );
+    } finally {
+      running.current = false;
+      setPending(false);
       setBusyId(null);
-    });
+    }
   }
 
   function handleCancel(sub: AdminSubscriptionRow) {
@@ -121,7 +141,9 @@ export function AdminAssinaturasClient({
   }
 
   function handleStatusChange(sub: AdminSubscriptionRow, status: string) {
-    run(sub.id, () => updateSubscriptionStatusAction(sub.id, status as SubscriptionStatusT));
+    run(sub.id, () =>
+      updateSubscriptionStatusAction(sub.id, status as SubscriptionStatusT),
+    );
   }
 
   return (
@@ -177,7 +199,9 @@ export function AdminAssinaturasClient({
       </div>
 
       {error && (
-        <p className="px-4 py-3 text-sm text-red-400 border-b border-border">{error}</p>
+        <p className="px-4 py-3 text-sm text-red-400 border-b border-border">
+          {error}
+        </p>
       )}
 
       {filtered.length === 0 ? (
@@ -193,10 +217,16 @@ export function AdminAssinaturasClient({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("colStudent")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("colPlan")}</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  {t("colPlan")}
+                </TableHead>
                 <TableHead>{t("colAmount")}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t("colProvider")}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t("colPeriodEnd")}</TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t("colProvider")}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t("colPeriodEnd")}
+                </TableHead>
                 <TableHead>{t("colStatus")}</TableHead>
                 <TableHead className="text-right">{t("colActions")}</TableHead>
               </TableRow>
@@ -206,7 +236,8 @@ export function AdminAssinaturasClient({
                 const isEnded =
                   sub.status === "canceled" ||
                   sub.status === "expired" ||
-                  sub.status === "inactive";
+                  sub.status === "inactive" ||
+                  sub.cancel_at_period_end;
                 return (
                   <TableRow key={sub.id}>
                     <TableCell>
@@ -238,8 +269,20 @@ export function AdminAssinaturasClient({
                         </Badge>
                         <Select
                           value={sub.status}
-                          disabled={busyId === sub.id || isPending}
-                          onChange={(e) => handleStatusChange(sub, e.target.value)}
+                          disabled={
+                            busyId === sub.id ||
+                            isPending ||
+                            !!sub.provider ||
+                            !!sub.external_id
+                          }
+                          title={
+                            sub.provider
+                              ? "Status sincronizado pelo provedor de pagamento"
+                              : undefined
+                          }
+                          onChange={(e) =>
+                            handleStatusChange(sub, e.target.value)
+                          }
                           className="h-8 w-32 text-xs"
                           aria-label={t("changeStatus")}
                         >
@@ -256,7 +299,7 @@ export function AdminAssinaturasClient({
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={busyId === sub.id}
+                          disabled={busyId === sub.id || isPending}
                           onClick={() => handleReactivate(sub)}
                         >
                           <RotateCcw size={14} className="mr-1" />
@@ -266,7 +309,7 @@ export function AdminAssinaturasClient({
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={busyId === sub.id}
+                          disabled={busyId === sub.id || isPending}
                           onClick={() => handleCancel(sub)}
                         >
                           <Ban size={14} className="mr-1" />

@@ -1,0 +1,8 @@
+PASS admin pt-BR 390 charts/download/print checks
+PASS admin pt-BR 1280 charts/download/print checks
+PASS admin en-US 390 charts/download/print checks
+PASS admin en-US 1280 charts/download/print checks
+PASS coach pt-BR 390 charts/download/print checks
+PASS coach pt-BR 1280 charts/download/print checks
+PASS coach en-US 390 charts/download/print checks
+PASS coach en-US 1280 charts/download/print checks

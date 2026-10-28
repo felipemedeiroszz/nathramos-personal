@@ -35,13 +35,15 @@ export function AssinaturaStatusCard({
   const router = useRouter();
   const [active, setActive] = useState(initialActive);
   const [checking, setChecking] = useState(false);
+  const [checkError,setCheckError] = useState(false);
   const doneRef = useRef(initialActive);
 
   const check = useCallback(async () => {
     if (doneRef.current) return;
     try {
       const res = await fetch("/api/subscription/status", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) {setCheckError(true);return;}
+      setCheckError(false);
       const data = await res.json().catch(() => null);
       if (data?.canAccessPlatform) {
         doneRef.current = true;
@@ -49,7 +51,7 @@ export function AssinaturaStatusCard({
         router.refresh();
       }
     } catch {
-      // silencioso: tenta novamente no próximo ciclo
+      setCheckError(true);
     }
   }, [router]);
 
@@ -68,7 +70,10 @@ export function AssinaturaStatusCard({
   return (
     <div className="animate-slide-up [animation-fill-mode:both] space-y-5 rounded-2xl border border-border/60 bg-surface p-8 text-center md:p-10">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-        {active ? (
+        <Link className="block text-sm text-primary underline" href={`/${locale}/assinatura`}>{locale === "pt-BR" ? "Abrir central de pagamentos e acompanhar a cobrança" : "Open billing center and track payment"}</Link>
+      {checkError && <p role="status" className="text-sm text-text-secondary">{locale === "pt-BR" ? "Não foi possível consultar agora. Verifique sua conexão e tente novamente; não repita o pagamento." : "Unable to check right now. Check your connection and retry; do not pay again."}</p>}
+      {!active && <p className="text-sm text-text-secondary">{locale === "pt-BR" ? "Não pague novamente antes de verificar a tentativa existente. No cartão, conclua a autenticação do seu banco. No PIX, consulte a confirmação na central." : "Do not pay again before checking the existing attempt. For cards, complete bank authentication. For PIX, check confirmation in the billing center."}</p>}
+      {active ? (
           <CheckCircle2 size={30} className="text-primary" />
         ) : (
           <Clock size={30} className="text-primary" />
@@ -86,7 +91,7 @@ export function AssinaturaStatusCard({
       {active ? (
         <div className="pt-2">
           <Link
-            href={`/${locale}/treinos`}
+            href={`/${locale}/dashboard`}
             className="inline-flex h-13 items-center justify-center rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-[0_0_35px_hsl(var(--primary)/0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_0_55px_hsl(var(--primary)/0.5)]"
           >
             {labels.successCta}

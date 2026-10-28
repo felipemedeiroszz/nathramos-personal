@@ -11,10 +11,10 @@ export const createCheckoutSchema = z.object({
   locale: z.enum(["pt-BR", "en-US"]).default("pt-BR"),
   success_url: z
     .string({ required_error: "URL de sucesso é obrigatória." })
-    .url({ message: "URL de sucesso inválida." }),
+    .url({ message: "URL de sucesso inválida." }).optional(),
   cancel_url: z
     .string({ required_error: "URL de cancelamento é obrigatória." })
-    .url({ message: "URL de cancelamento inválida." }),
+    .url({ message: "URL de cancelamento inválida." }).optional(),
   coupon_code: z.string().trim().max(50).optional().or(z.literal("")),
   success_path: z.string().trim().min(1).optional(),
   cancel_path: z.string().trim().min(1).optional(),
@@ -79,6 +79,7 @@ export const checkoutIntentSchema = z.object({
 export type CheckoutIntentInput = z.infer<typeof checkoutIntentSchema>
 
 export const checkoutSubscribeSchema = z.object({
+  setup_intent_id: z.string().startsWith("seti_"),
   plan_id: uuidSchema,
   payment_method_id: z.string({ required_error: "Método de pagamento é obrigatório." }).min(3),
 })

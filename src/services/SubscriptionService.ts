@@ -169,6 +169,10 @@ export class SubscriptionService {
   ): Pick<SubscriptionRow, "status" | "grace_until" | "block_reason"> {
     const now = new Date()
     const periodEnd = parseISO(sub.current_period_end)
+    const prepaidPix = sub.provider === "asaas" && (sub.source === "asaas_pix" || sub.external_id?.startsWith("pay_"))
+    if (prepaidPix && periodEnd.getTime() <= now.getTime()) {
+      return { status: "blocked", grace_until: null, block_reason: "pix_period_expired_payment_required" }
+    }
     const graceUntil = addDays(periodEnd, SUBSCRIPTION_GRACE_DAYS)
 
     if (isAfter(now, graceUntil)) {

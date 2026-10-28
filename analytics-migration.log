@@ -1,0 +1,94 @@
+TAP version 13
+# Subtest: coach só gerencia seus alunos; somente admin pode redistribuir carteira
+ok 1 - coach só gerencia seus alunos; somente admin pode redistribuir carteira
+  ---
+  duration_ms: 2228.8403
+  type: 'test'
+  ...
+# Subtest: RLS nega leitura de outro aluno mesmo com políticas legadas de coach
+ok 2 - RLS nega leitura de outro aluno mesmo com políticas legadas de coach
+  ---
+  duration_ms: 5.3265
+  type: 'test'
+  ...
+# Subtest: histórico registra antes/depois e rejeita edição de versão desatualizada
+ok 3 - histórico registra antes/depois e rejeita edição de versão desatualizada
+  ---
+  duration_ms: 7.4043
+  type: 'test'
+  ...
+# Subtest: fila de trabalho é calculada no banco dentro da carteira
+ok 4 - fila de trabalho é calculada no banco dentro da carteira
+  ---
+  duration_ms: 6.9112
+  type: 'test'
+  ...
+# Subtest: paginação busca todos os registros antes do limite e impede coach de consultar financeiro
+ok 5 - paginação busca todos os registros antes do limite e impede coach de consultar financeiro
+  ---
+  duration_ms: 14.0325
+  type: 'test'
+  ...
+# Subtest: CSV neutraliza fórmulas e mantém aspas e quebras de linha; filtros validam datas e moeda
+ok 6 - CSV neutraliza fórmulas e mantém aspas e quebras de linha; filtros validam datas e moeda
+  ---
+  duration_ms: 90.1238
+  type: 'test'
+  ...
+# Subtest: sincronização de atribuições rejeita snapshot antigo sem arquivar vínculos
+ok 7 - sincronização de atribuições rejeita snapshot antigo sem arquivar vínculos
+  ---
+  duration_ms: 12.6419
+  type: 'test'
+  ...
+# Subtest: RLS bloqueia escrita global do coach e edição de prescrição alheia
+ok 8 - RLS bloqueia escrita global do coach e edição de prescrição alheia
+  ---
+  duration_ms: 5.2453
+  type: 'test'
+  ...
+# Subtest: conferência financeira separa moedas e respeita o dia em São Paulo
+ok 9 - conferência financeira separa moedas e respeita o dia em São Paulo
+  ---
+  duration_ms: 5.8247
+  type: 'test'
+  ...
+# Subtest: reordenação de treino é atômica, mantém versão e rejeita item de outro kit
+ok 10 - reordenação de treino é atômica, mantém versão e rejeita item de outro kit
+  ---
+  duration_ms: 26.3626
+  type: 'test'
+  ...
+# Subtest: ação de remover atribuição verifica carteira antes de usar service role
+ok 11 - ação de remover atribuição verifica carteira antes de usar service role
+  ---
+  duration_ms: 73.6263
+  type: 'test'
+  ...
+# Subtest: conferência de gateway considera estorno e não grava status ou expõe payload
+ok 12 - conferência de gateway considera estorno e não grava status ou expõe payload
+  ---
+  duration_ms: 34.2542
+  type: 'test'
+  ...
+# Subtest: recorrência ativa no Asaas não é tratada como pagamento quitado
+ok 13 - recorrência ativa no Asaas não é tratada como pagamento quitado
+  ---
+  duration_ms: 14.5187
+  type: 'test'
+  ...
+# Subtest: exportação mantém o corte de criação entre páginas
+ok 14 - exportação mantém o corte de criação entre páginas
+  ---
+  duration_ms: 7.1245
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2951.604

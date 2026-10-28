@@ -57,7 +57,12 @@ const brandMap: Record<string, CardBrand> = {
   hipercard: "hipercard",
 };
 
-export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: CardCheckoutFormProps) {
+export function CardCheckoutForm({
+  planId,
+  clientSecret,
+  labels,
+  onSuccess,
+}: CardCheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -87,55 +92,78 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
 
     setSubmitting(true);
 
-    const { error: setupError, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-      payment_method: {
-        card: cardNumber,
-        billing_details: { name: holder },
-      },
-    });
-
-    if (setupError) {
-      setError(setupError.message ?? labels.paymentError);
-      setSubmitting(false);
-      return;
-    }
-
-    const paymentMethodId =
-      typeof setupIntent?.payment_method === "string"
-        ? setupIntent.payment_method
-        : setupIntent?.payment_method?.id;
-
-    if (!paymentMethodId) {
-      setError(labels.paymentError);
-      setSubmitting(false);
-      return;
-    }
-
     try {
+      const { error: setupError, setupIntent } = await stripe.confirmCardSetup(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardNumber,
+            billing_details: { name: holder },
+          },
+        },
+      );
+
+      if (setupError) {
+        setError(setupError.message ?? labels.paymentError);
+        setSubmitting(false);
+        return;
+      }
+
+      const paymentMethodId =
+        typeof setupIntent?.payment_method === "string"
+          ? setupIntent.payment_method
+          : setupIntent?.payment_method?.id;
+
+      if (!paymentMethodId) {
+        setError(labels.paymentError);
+        setSubmitting(false);
+        return;
+      }
+
       const res = await fetch("/api/payments/checkout/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, payment_method_id: paymentMethodId }),
+        body: JSON.stringify({
+          plan_id: planId,
+          payment_method_id: paymentMethodId,
+          setup_intent_id: setupIntent?.id,
+        }),
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setError(typeof data?.error === "string" ? data.error : labels.paymentError);
+        setError(
+          typeof data?.error === "string" ? data.error : labels.paymentError,
+        );
         setSubmitting(false);
         return;
       }
 
       if (data?.requires_action && data?.client_secret) {
-        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-          data.client_secret as string
-        );
-        if (confirmError || (paymentIntent && paymentIntent.status !== "succeeded")) {
+        const { error: confirmError, paymentIntent } =
+          await stripe.confirmCardPayment(data.client_secret as string);
+        if (
+          confirmError ||
+          (paymentIntent && paymentIntent.status !== "succeeded")
+        ) {
           setError(confirmError?.message ?? labels.paymentError);
           setSubmitting(false);
           return;
         }
       }
 
+      const verification = await fetch("/api/payments/checkout/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription_id: data.subscription_id }),
+      });
+      const verified = await verification.json();
+      if (
+        !verification.ok ||
+        !["active", "trialing"].includes(verified.status)
+      ) {
+        throw new Error(labels.paymentError);
+      }
       onSuccess();
     } catch {
       setError(labels.paymentError);
@@ -148,7 +176,7 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
       "rounded-xl border bg-background/60 px-4 py-3 transition-all duration-300",
       focusedField === field
         ? "border-primary/60 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]"
-        : "border-border/60 hover:border-primary/30"
+        : "border-border/60 hover:border-primary/30",
     );
 
   return (
@@ -166,7 +194,10 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-secondary" htmlFor="cardHolder">
+          <label
+            className="text-sm font-medium text-text-secondary"
+            htmlFor="cardHolder"
+          >
             {labels.holder}
           </label>
           <input
@@ -182,13 +213,15 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
               "w-full rounded-xl border bg-background/60 px-4 py-3 text-base text-text outline-none transition-all duration-300 placeholder:text-text-secondary/50",
               focusedField === "name"
                 ? "border-primary/60 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]"
-                : "border-border/60 hover:border-primary/30"
+                : "border-border/60 hover:border-primary/30",
             )}
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-secondary">{labels.number}</label>
+          <label className="text-sm font-medium text-text-secondary">
+            {labels.number}
+          </label>
           <div className={fieldWrapper("number")}>
             <CardNumberElement
               options={{
@@ -208,7 +241,9 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-secondary">{labels.expiry}</label>
+            <label className="text-sm font-medium text-text-secondary">
+              {labels.expiry}
+            </label>
             <div className={fieldWrapper("expiry")}>
               <CardExpiryElement
                 options={{ style: elementStyle }}
@@ -218,7 +253,9 @@ export function CardCheckoutForm({ planId, clientSecret, labels, onSuccess }: Ca
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-secondary">{labels.cvv}</label>
+            <label className="text-sm font-medium text-text-secondary">
+              {labels.cvv}
+            </label>
             <div className={fieldWrapper("cvv")}>
               <CardCvcElement
                 options={{ style: elementStyle, placeholder: "•••" }}

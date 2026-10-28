@@ -146,7 +146,7 @@ export function Sidebar({ locale }: SidebarProps) {
             <span className="font-medium">{t("account")}</span>
           </Link>
           <Link
-            href={`/${locale}/account?tab=subscription`}
+            href={`/${locale}/assinatura`}
             aria-current={onAccountPage && isMembershipTab ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",

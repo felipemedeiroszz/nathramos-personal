@@ -1,0 +1,2 @@
+PASS: foco inicial, ciclo Tab/Shift+Tab, Escape em modal aninhado, restauração de foco e rolagem.
+PASS: envio permanece pendente até terminar e impede requisições duplicadas.

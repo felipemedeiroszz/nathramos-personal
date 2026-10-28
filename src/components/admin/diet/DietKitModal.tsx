@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -15,7 +16,14 @@ import {
   ModalBody,
   ModalFooter,
 } from "@/components/ui/Modal";
-import { CheckCircle, Loader2, Plus, Trash2, UtensilsCrossed, XCircle } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  Plus,
+  Trash2,
+  UtensilsCrossed,
+  XCircle,
+} from "lucide-react";
 import { saveDietKitAction } from "@/app/actions/content";
 import type { DietKitWithItems, DietFoodRow } from "@/types";
 import type { MealTypeT } from "@/lib/supabase/types";
@@ -34,6 +42,7 @@ const MEAL_TYPE_OPTIONS: { value: MealTypeT; pt: string; en: string }[] = [
 ];
 
 interface KitItemDraft {
+  id?: string;
   uid: string;
   food_id: string;
   quantity: string;
@@ -83,12 +92,15 @@ export function DietKitModal({
   const t = useTranslations("adminDietKits");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
 
   const [form, setForm] = useState(emptyForm);
   const [items, setItems] = useState<KitItemDraft[]>([]);
   const [selectedFood, setSelectedFood] = useState("");
-  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [status, setStatus] = useState<{
+    type: "ok" | "err";
+    msg: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -113,6 +125,7 @@ export function DietKitModal({
       setItems(
         (kit.items ?? []).map((item) => ({
           uid: newUid(),
+          id: item.id,
           food_id: item.food_id ?? "",
           quantity: item.quantity != null ? String(item.quantity) : "",
           unit: item.unit ?? "",
@@ -120,7 +133,7 @@ export function DietKitModal({
           time_of_day: item.time_of_day ?? "",
           notes_pt: item.notes_pt ?? "",
           notes_en: item.notes_en ?? "",
-        }))
+        })),
       );
     } else {
       setForm(emptyForm);
@@ -158,7 +171,7 @@ export function DietKitModal({
 
   function updateItem(uid: string, key: keyof KitItemDraft, value: any) {
     setItems((prev) =>
-      prev.map((item) => (item.uid === uid ? { ...item, [key]: value } : item))
+      prev.map((item) => (item.uid === uid ? { ...item, [key]: value } : item)),
     );
   }
 
@@ -176,6 +189,7 @@ export function DietKitModal({
 
       const res = await saveDietKitAction({
         kit: {
+          revision: kit?.revision,
           id: form.id,
           name_pt: form.name_pt,
           name_en: form.name_en,
@@ -191,6 +205,7 @@ export function DietKitModal({
           is_featured: form.is_featured,
         },
         items: items.map((item, index) => ({
+          id: item.id,
           food_id: item.food_id,
           quantity: item.quantity ? Number(item.quantity) : null,
           unit: item.unit || null,
@@ -212,16 +227,34 @@ export function DietKitModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
+      className="max-w-3xl max-h-[90vh] overflow-y-auto"
+    >
       <ModalHeader>
         <ModalTitle>{kit ? t("editKit") : t("newKit")}</ModalTitle>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
+      {kit && (
+        <a
+          className="block mb-3 text-sm text-primary underline"
+          href={`/${locale}/admin/historico?kind=diet_kits&record=${kit.id}`}
+        >
+          {locale === "en-US"
+            ? "Compare saved versions"
+            : "Comparar versões salvas"}
+        </a>
+      )}
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("namePt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("namePt")}
+              </label>
               <Input
                 value={form.name_pt}
                 onChange={(e) => update("name_pt", e.target.value)}
@@ -230,7 +263,9 @@ export function DietKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("nameEn")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("nameEn")}
+              </label>
               <Input
                 value={form.name_en}
                 onChange={(e) => update("name_en", e.target.value)}
@@ -241,7 +276,9 @@ export function DietKitModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("goalPt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("goalPt")}
+              </label>
               <Input
                 value={form.goal_pt}
                 onChange={(e) => update("goal_pt", e.target.value)}
@@ -249,21 +286,30 @@ export function DietKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("goalEn")}</label>
-              <Input value={form.goal_en} onChange={(e) => update("goal_en", e.target.value)} />
+              <label className="text-sm font-medium text-text">
+                {t("goalEn")}
+              </label>
+              <Input
+                value={form.goal_en}
+                onChange={(e) => update("goal_en", e.target.value)}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("shortDescPt")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("shortDescPt")}
+              </label>
               <Input
                 value={form.short_desc_pt}
                 onChange={(e) => update("short_desc_pt", e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("shortDescEn")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("shortDescEn")}
+              </label>
               <Input
                 value={form.short_desc_en}
                 onChange={(e) => update("short_desc_en", e.target.value)}
@@ -272,7 +318,9 @@ export function DietKitModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("descPt")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("descPt")}
+            </label>
             <Textarea
               value={form.description_pt}
               onChange={(e) => update("description_pt", e.target.value)}
@@ -281,7 +329,9 @@ export function DietKitModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("descEn")}</label>
+            <label className="text-sm font-medium text-text">
+              {t("descEn")}
+            </label>
             <Textarea
               value={form.description_en}
               onChange={(e) => update("description_en", e.target.value)}
@@ -291,7 +341,9 @@ export function DietKitModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("coverUrl")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("coverUrl")}
+              </label>
               <Input
                 value={form.cover_image_url}
                 onChange={(e) => update("cover_image_url", e.target.value)}
@@ -299,7 +351,9 @@ export function DietKitModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("tags")}</label>
+              <label className="text-sm font-medium text-text">
+                {t("tags")}
+              </label>
               <Input
                 value={form.tags}
                 onChange={(e) => update("tags", e.target.value)}
@@ -333,7 +387,9 @@ export function DietKitModal({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <UtensilsCrossed size={16} className="text-primary" />
-                <span className="text-sm font-semibold text-text">{t("kitItems")}</span>
+                <span className="text-sm font-semibold text-text">
+                  {t("kitItems")}
+                </span>
                 <Badge variant="outline">{items.length}</Badge>
               </div>
             </div>
@@ -364,7 +420,9 @@ export function DietKitModal({
             </div>
 
             {foods.length === 0 && (
-              <p className="text-xs text-text-secondary">{t("noFoodsAvailable")}</p>
+              <p className="text-xs text-text-secondary">
+                {t("noFoodsAvailable")}
+              </p>
             )}
 
             {items.length === 0 ? (
@@ -393,29 +451,41 @@ export function DietKitModal({
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs text-text-secondary">{t("quantity")}</label>
+                        <label className="text-xs text-text-secondary">
+                          {t("quantity")}
+                        </label>
                         <Input
                           type="number"
                           min={0}
                           step={0.1}
                           value={item.quantity}
-                          onChange={(e) => updateItem(item.uid, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(item.uid, "quantity", e.target.value)
+                          }
                           placeholder="100"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-text-secondary">{t("unit")}</label>
+                        <label className="text-xs text-text-secondary">
+                          {t("unit")}
+                        </label>
                         <Input
                           value={item.unit}
-                          onChange={(e) => updateItem(item.uid, "unit", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(item.uid, "unit", e.target.value)
+                          }
                           placeholder="g"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-text-secondary">{t("mealType")}</label>
+                        <label className="text-xs text-text-secondary">
+                          {t("mealType")}
+                        </label>
                         <Select
                           value={item.meal_type}
-                          onChange={(e) => updateItem(item.uid, "meal_type", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(item.uid, "meal_type", e.target.value)
+                          }
                         >
                           {MEAL_TYPE_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -425,19 +495,27 @@ export function DietKitModal({
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-text-secondary">{t("timeOfDay")}</label>
+                        <label className="text-xs text-text-secondary">
+                          {t("timeOfDay")}
+                        </label>
                         <Input
                           value={item.time_of_day}
-                          onChange={(e) => updateItem(item.uid, "time_of_day", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(item.uid, "time_of_day", e.target.value)
+                          }
                           placeholder="12:30"
                         />
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-text-secondary">{t("notes")}</label>
+                      <label className="text-xs text-text-secondary">
+                        {t("notes")}
+                      </label>
                       <Input
                         value={item.notes_pt}
-                        onChange={(e) => updateItem(item.uid, "notes_pt", e.target.value)}
+                        onChange={(e) =>
+                          updateItem(item.uid, "notes_pt", e.target.value)
+                        }
                       />
                     </div>
                   </div>
@@ -454,13 +532,22 @@ export function DietKitModal({
                   : "border-red-500/30 bg-red-500/10 text-red-500"
               }`}
             >
-              {status.type === "ok" ? <CheckCircle size={16} /> : <XCircle size={16} />}
+              {status.type === "ok" ? (
+                <CheckCircle size={16} />
+              ) : (
+                <XCircle size={16} />
+              )}
               {status.msg}
             </div>
           )}
         </ModalBody>
         <ModalFooter>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isPending}
+          >
             {tCommon("cancel")}
           </Button>
           <Button type="submit" disabled={isPending}>

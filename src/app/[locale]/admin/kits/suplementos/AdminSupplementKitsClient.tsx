@@ -4,7 +4,13 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -45,16 +51,19 @@ import type { SupplementKitWithItems, SupplementRow } from "@/types";
 import type { AssignStudentOption } from "@/components/admin/supplement/AssignSupplementKitModal";
 
 const SupplementKitModal = dynamic(
-  () => import("@/components/admin/supplement/SupplementKitModal").catch(() => () => null),
-  { ssr: false }
+  () =>
+    import("@/components/admin/supplement/SupplementKitModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
 );
 
 const AssignSupplementKitModal = dynamic(
   () =>
     import("@/components/admin/supplement/AssignSupplementKitModal").catch(
-      () => () => null
+      () => () => null,
     ),
-  { ssr: false }
+  { ssr: false },
 );
 
 interface AdminSupplementKitsClientProps {
@@ -87,10 +96,20 @@ export function AdminSupplementKitsClient({
   const [featuredFilter, setFeaturedFilter] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingKit, setEditingKit] = useState<SupplementKitWithItems | null>(null);
-  const [assignKit, setAssignKit] = useState<SupplementKitWithItems | null>(null);
-  const [expandedKitId, setExpandedKitId] = useState<string | null>(kits[0]?.id ?? null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [editingKit, setEditingKit] = useState<SupplementKitWithItems | null>(
+    null,
+  );
+  const [assignKit, setAssignKit] = useState<SupplementKitWithItems | null>(
+    null,
+  );
+  const [expandedKitId, setExpandedKitId] = useState<string | null>(
+    kits[0]?.id ?? null,
+  );
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const supplementName = (id?: string | null) => {
@@ -106,9 +125,11 @@ export function AdminSupplementKitsClient({
       kit.name_en.toLowerCase().includes(search.toLowerCase()) ||
       (kit.goal_pt ?? "").toLowerCase().includes(search.toLowerCase());
     const matchPublished =
-      !publishedFilter || (publishedFilter === "1" ? kit.is_published : !kit.is_published);
+      !publishedFilter ||
+      (publishedFilter === "1" ? kit.is_published : !kit.is_published);
     const matchFeatured =
-      !featuredFilter || (featuredFilter === "1" ? kit.is_featured : !kit.is_featured);
+      !featuredFilter ||
+      (featuredFilter === "1" ? kit.is_featured : !kit.is_featured);
     return matchSearch && matchPublished && matchFeatured;
   });
 
@@ -129,12 +150,21 @@ export function AdminSupplementKitsClient({
   async function confirmDelete() {
     if (!deleteConfirm) return;
     setDeleting(true);
+    setOperationError(null);
     try {
-      await deleteSupplementKitAction(deleteConfirm.id);
-    } finally {
-      setDeleting(false);
+      const result = await deleteSupplementKitAction(deleteConfirm.id);
+      if (!result.success) {
+        setOperationError(result.message);
+        return;
+      }
       setDeleteConfirm(null);
       router.refresh();
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Falha ao excluir.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -196,7 +226,12 @@ export function AdminSupplementKitsClient({
                 />
               </div>
             </div>
-            <Button variant="primary" size="md" className="shrink-0" onClick={openCreate}>
+            <Button
+              variant="primary"
+              size="md"
+              className="shrink-0"
+              onClick={openCreate}
+            >
               <Plus size={18} className="mr-2" />
               {t("newKit")}
             </Button>
@@ -230,7 +265,8 @@ export function AdminSupplementKitsClient({
                               alt={kit.name_pt}
                               className="absolute inset-0 w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
                               }}
                             />
                           ) : (
@@ -261,7 +297,9 @@ export function AdminSupplementKitsClient({
                             <h3 className="text-lg font-bold text-text leading-tight">
                               {kit.name_pt}
                             </h3>
-                            <p className="text-xs text-text-secondary">{kit.name_en}</p>
+                            <p className="text-xs text-text-secondary">
+                              {kit.name_en}
+                            </p>
                           </div>
 
                           <p className="text-sm text-text-secondary leading-relaxed line-clamp-2">
@@ -270,7 +308,9 @@ export function AdminSupplementKitsClient({
 
                           <div className="flex items-center justify-between mt-auto pt-3 border-t border-border">
                             <div className="flex flex-wrap items-center gap-2">
-                              {kit.goal_pt && <Badge variant="outline">{kit.goal_pt}</Badge>}
+                              {kit.goal_pt && (
+                                <Badge variant="outline">{kit.goal_pt}</Badge>
+                              )}
                               <Badge variant="outline">
                                 {kit.items.length} {t("itemsCount")}
                               </Badge>
@@ -302,17 +342,28 @@ export function AdminSupplementKitsClient({
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                title={expanded ? t("hideItems") : t("showItems")}
+                                title={
+                                  expanded ? t("hideItems") : t("showItems")
+                                }
                                 onClick={() => toggleExpand(kit.id)}
                               >
-                                {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                {expanded ? (
+                                  <ChevronUp size={15} />
+                                ) : (
+                                  <ChevronDown size={15} />
+                                )}
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-500"
                                 title={tCommon("delete")}
-                                onClick={() => setDeleteConfirm({ id: kit.id, name: kit.name_pt })}
+                                onClick={() =>
+                                  setDeleteConfirm({
+                                    id: kit.id,
+                                    name: kit.name_pt,
+                                  })
+                                }
                               >
                                 <Trash2 size={15} />
                               </Button>
@@ -327,7 +378,9 @@ export function AdminSupplementKitsClient({
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div>
-                              <CardTitle className="text-base">{t("kitItems")}</CardTitle>
+                              <CardTitle className="text-base">
+                                {t("kitItems")}
+                              </CardTitle>
                               <CardDescription className="text-xs">
                                 {kit.items.length} {t("itemsCount")}
                               </CardDescription>
@@ -341,7 +394,11 @@ export function AdminSupplementKitsClient({
                                 <UserPlus size={14} className="mr-1" />
                                 {t("assignStudents")}
                               </Button>
-                              <Button variant="secondary" size="sm" onClick={() => openEdit(kit)}>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => openEdit(kit)}
+                              >
                                 <Edit size={14} className="mr-1" />
                                 {tCommon("edit")}
                               </Button>
@@ -351,7 +408,12 @@ export function AdminSupplementKitsClient({
                         <CardContent>
                           {kit.items.length === 0 ? (
                             <EmptyState
-                              icon={<Pill size={22} className="text-text-secondary" />}
+                              icon={
+                                <Pill
+                                  size={22}
+                                  className="text-text-secondary"
+                                />
+                              }
                               title={t("noItems")}
                               description={t("noItemsDesc")}
                               className="py-4"
@@ -395,7 +457,8 @@ export function AdminSupplementKitsClient({
                                         {item.frequency_per_day}x
                                       </TableCell>
                                       <TableCell className="text-text-secondary text-sm">
-                                        {(item.times_of_day ?? []).join(", ") || "-"}
+                                        {(item.times_of_day ?? []).join(", ") ||
+                                          "-"}
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -434,12 +497,16 @@ export function AdminSupplementKitsClient({
           onClose={() => setAssignKit(null)}
           kit={assignKit}
           students={students}
+          fingerprint={assignKit.assignment_fingerprint}
           assignedStudentIds={assignedByKit[assignKit.id] ?? []}
           onSaved={() => router.refresh()}
         />
       )}
 
-      <Dialog isOpen={!!deleteConfirm} onClose={() => !deleting && setDeleteConfirm(null)}>
+      <Dialog
+        isOpen={!!deleteConfirm}
+        onClose={() => !deleting && setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
@@ -450,14 +517,30 @@ export function AdminSupplementKitsClient({
             </div>
             <DialogDescription>
               {t("confirmDeleteDesc")}{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+              <span className="font-semibold text-text">
+                {deleteConfirm?.name}
+              </span>
+              ?
             </DialogDescription>
           </DialogHeader>
+          {operationError && (
+            <p role="alert" className="text-red-500">
+              {operationError}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleting}
+            >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
               <Trash2 size={16} className="mr-2" />
               {deleting ? tCommon("loading") : tCommon("delete")}
             </Button>

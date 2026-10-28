@@ -1,3 +1,5 @@
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -26,6 +28,7 @@ export default async function AdminEbooksPage({
 }: {
   params: { locale: (typeof locales)[number] };
   searchParams?: {
+    page?: string;
     q?: string;
     published?: string;
     free?: string;
@@ -37,13 +40,13 @@ export default async function AdminEbooksPage({
   const tAdmin = await getTranslations("admin");
   const tAdminNav = await getTranslations("adminNav");
   const tCommon = await getTranslations("common");
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId } = await requireRole(["admin"], "/dashboard");
 
   const title = await safe(tAdminNav, "ebooks", "E-books");
   const subtitle = await safe(
     tAdmin,
     "ebooks.subtitle",
-    "Gerencie a biblioteca de e-books"
+    "Gerencie a biblioteca de e-books",
   );
 
   const q = searchParams?.q ?? "";
@@ -64,11 +67,16 @@ export default async function AdminEbooksPage({
   if (publishedParam === "0") filters.is_published = false;
   if (freeParam === "1") filters.is_free = true;
   if (freeParam === "0") filters.is_free = false;
-  if (languageParam && (languageParam === "pt-BR" || languageParam === "en-US")) {
+  if (
+    languageParam &&
+    (languageParam === "pt-BR" || languageParam === "en-US")
+  ) {
     filters.language = languageParam;
   }
 
-  const ebooks: EbookRow[] = await EbookService.listEbooks(filters);
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("ebooks", pageParams);
+  const ebooks = dataPage.rows;
 
   return (
     <div className="space-y-6 w-full">
@@ -77,6 +85,13 @@ export default async function AdminEbooksPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminEbooksClient
         locale={locale}
         userId={userId}

@@ -68,6 +68,8 @@ export function AdminFinanceiroClient({
   };
 
   const kpis = [
+    { label: locale === "pt-BR" ? "Estornos confirmados no mês" : "Confirmed monthly refunds", value: formatMoney(overview.month_refunded_cents), icon: <RotateCcw size={18} /> },
+    { label: locale === "pt-BR" ? "Após estornos, antes de taxas" : "After refunds, before fees", value: formatMoney(overview.month_after_refunds_cents), icon: <Banknote size={18} /> },
     { label: t("mrr"), value: formatMoney(overview.mrr_cents), icon: <TrendingUp size={18} />, accent: true },
     { label: t("monthRevenue"), value: formatMoney(overview.month_revenue_cents), icon: <Banknote size={18} /> },
     { label: t("yearRevenue"), value: formatMoney(overview.year_revenue_cents), icon: <Banknote size={18} /> },

@@ -6,6 +6,7 @@ import { requireAuthenticated, getCurrentRole, canAccessPlatform } from "@/lib/a
 import { getMaintenanceStatus } from "@/services/PlatformSettingsService";
 import { createClientSSR } from "@/lib/supabase/server";
 import { StudentLayoutClient } from "@/components/shared/StudentLayoutClient";
+import { SubscriptionService } from "@/lib/payments/services";
 import { logoutAction } from "@/app/actions/account";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,9 @@ export default async function StudentLayout({
   const access = await canAccessPlatform(userId);
   const isAdmin = role === "admin" || role === "coach";
   const subscriptionAllowed = isAdmin || access.allowed;
+  const subscription = !isAdmin && subscriptionAllowed ? await SubscriptionService.getActive(userId) : null;
+  const pixExpiresAt = subscription?.provider === "asaas" && (subscription.source === "asaas_pix" || subscription.external_id?.startsWith("pay_"))
+    ? subscription.current_period_end : null;
 
   // Modo manutenção: bloqueia apenas alunos (admin/coach continuam com acesso).
   const maintenanceStatus = await getMaintenanceStatus();
@@ -73,6 +77,7 @@ export default async function StudentLayout({
       lastName={lastName}
       photoUrl={photoUrl}
       subscriptionAllowed={subscriptionAllowed}
+      accessExpiresAt={pixExpiresAt}
       maintenance={maintenance}
       onLogout={logoutAction}
     >

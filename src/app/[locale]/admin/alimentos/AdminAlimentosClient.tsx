@@ -1,13 +1,19 @@
-"use client"
+"use client";
 
-import dynamic from "next/dynamic"
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Badge } from "@/components/ui/Badge"
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import {
   Table,
   TableHeader,
@@ -15,8 +21,8 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from "@/components/ui/Table"
-import { EmptyState } from "@/components/ui/EmptyState"
+} from "@/components/ui/Table";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -24,23 +30,37 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/Dialog"
-import { Apple, RefreshCw, Plus, Search, Edit, Trash2, AlertTriangle } from "lucide-react"
-import { upsertDietFoodAction, deleteDietFoodAction } from "@/app/actions/content"
-import type { DietFoodRow } from "@/types"
+} from "@/components/ui/Dialog";
+import {
+  Apple,
+  RefreshCw,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  upsertDietFoodAction,
+  deleteDietFoodAction,
+} from "@/app/actions/content";
+import type { DietFoodRow } from "@/types";
 
 const DietFoodUpsertModal = dynamic(
-  () => import("@/components/admin/diet/DietFoodUpsertModal").catch(() => () => null),
-  { ssr: false }
-)
+  () =>
+    import("@/components/admin/diet/DietFoodUpsertModal").catch(
+      () => () => null,
+    ),
+  { ssr: false },
+);
 
 interface AdminAlimentosClientProps {
-  locale: string
-  userId: string
-  title: string
-  foods: DietFoodRow[]
-  searchValue: string
-  initialCreateOpen?: boolean
+  locale: string;
+  userId: string;
+  title: string;
+  foods: DietFoodRow[];
+  searchValue: string;
+  initialCreateOpen?: boolean;
 }
 
 export function AdminAlimentosClient({
@@ -51,83 +71,101 @@ export function AdminAlimentosClient({
   searchValue,
   initialCreateOpen = false,
 }: AdminAlimentosClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const t = useTranslations("adminFoods")
-  const tCommon = useTranslations("common")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations("adminFoods");
+  const tCommon = useTranslations("common");
 
-  const [search, setSearch] = useState(searchValue ?? "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [modalOpen, setModalOpen] = useState(initialCreateOpen)
-  const [editingFood, setEditingFood] = useState<DietFoodRow | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [search, setSearch] = useState(searchValue ?? "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(initialCreateOpen);
+  const [editingFood, setEditingFood] = useState<DietFoodRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const closeModal = () => {
-    setModalOpen(false)
-    setEditingFood(null)
+    setModalOpen(false);
+    setEditingFood(null);
     if (searchParams.get("new")) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete("new")
-      const qs = params.toString()
-      router.replace(`/${locale}/admin/alimentos${qs ? `?${qs}` : ""}`)
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("new");
+      const qs = params.toString();
+      router.replace(`/${locale}/admin/alimentos${qs ? `?${qs}` : ""}`);
     }
-  }
+  };
 
   const handleSearch = () => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString());
     if (search.trim()) {
-      params.set("q", search.trim())
+      params.set("q", search.trim());
     } else {
-      params.delete("q")
+      params.delete("q");
     }
-    router.push(`/${locale}/admin/alimentos?${params.toString()}`)
-  }
+    router.push(`/${locale}/admin/alimentos?${params.toString()}`);
+  };
 
   const handleRefresh = () => {
-    setIsLoading(true)
-    router.refresh()
-    setTimeout(() => setIsLoading(false), 500)
-  }
+    setIsLoading(true);
+    router.refresh();
+    setTimeout(() => setIsLoading(false), 500);
+  };
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US")
+      return new Date(dateStr).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+      );
     } catch {
-      return dateStr
+      return dateStr;
     }
-  }
+  };
 
   function openCreate() {
-    setEditingFood(null)
-    setModalOpen(true)
+    setEditingFood(null);
+    setModalOpen(true);
   }
 
   function openEdit(food: DietFoodRow) {
-    setEditingFood(food)
-    setModalOpen(true)
+    setEditingFood(food);
+    setModalOpen(true);
   }
 
   async function confirmDelete() {
-    if (!deleteConfirm) return
-    setDeleting(true)
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await deleteDietFoodAction(deleteConfirm.id)
+      setDeleteError("");
+      const result = await deleteDietFoodAction(deleteConfirm.id);
+      if (!result.success) {
+        setDeleteError(result.message || "Não foi possível excluir.");
+        return;
+      }
+      setDeleteConfirm(null);
+      router.refresh();
+    } catch {
+      setDeleteError("Não foi possível excluir. Tente novamente.");
     } finally {
-      setDeleting(false)
-      setDeleteConfirm(null)
-      router.refresh()
+      setDeleting(false);
     }
   }
 
   function onModalSaved() {
-    closeModal()
-    router.refresh()
+    closeModal();
+    router.refresh();
   }
 
   return (
     <>
       <div className="space-y-6">
+        {deleteError && (
+          <p role="alert" className="rounded-xl border border-border p-3">
+            {deleteError}
+          </p>
+        )}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -142,7 +180,9 @@ export function AdminAlimentosClient({
                   onClick={handleRefresh}
                   disabled={isLoading}
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
                 </Button>
                 <Button variant="primary" onClick={openCreate}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -189,7 +229,9 @@ export function AdminAlimentosClient({
                       <TableHead>{t("calories")}</TableHead>
                       <TableHead>{t("createdAt")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
-                      <TableHead className="text-right">{t("actions")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("actions")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -199,7 +241,9 @@ export function AdminAlimentosClient({
                           {locale === "pt-BR" ? food.name_pt : food.name_en}
                         </TableCell>
                         <TableCell>
-                          {locale === "pt-BR" ? food.category_pt : food.category_en}
+                          {locale === "pt-BR"
+                            ? food.category_pt
+                            : food.category_en}
                         </TableCell>
                         <TableCell>
                           {food.serving_size} {food.serving_unit}
@@ -207,7 +251,9 @@ export function AdminAlimentosClient({
                         <TableCell>{food.calories_kcal} kcal</TableCell>
                         <TableCell>{formatDate(food.created_at)}</TableCell>
                         <TableCell>
-                          <Badge variant={food.is_active ? "success" : "outline"}>
+                          <Badge
+                            variant={food.is_active ? "success" : "outline"}
+                          >
                             {food.is_active ? t("active") : t("inactive")}
                           </Badge>
                         </TableCell>
@@ -227,7 +273,10 @@ export function AdminAlimentosClient({
                               title={tCommon("delete")}
                               className="text-red-500 hover:text-red-500"
                               onClick={() =>
-                                setDeleteConfirm({ id: food.id, name: food.name_pt })
+                                setDeleteConfirm({
+                                  id: food.id,
+                                  name: food.name_pt,
+                                })
                               }
                             >
                               <Trash2 className="h-4 w-4" />
@@ -251,8 +300,8 @@ export function AdminAlimentosClient({
           food={editingFood ?? undefined}
           onSubmit={async (data) => {
             await upsertDietFoodAction(
-              data as Parameters<typeof upsertDietFoodAction>[0]
-            )
+              data as Parameters<typeof upsertDietFoodAction>[0],
+            );
           }}
           onSaved={onModalSaved}
         />
@@ -272,9 +321,17 @@ export function AdminAlimentosClient({
             </div>
             <DialogDescription>
               {t("confirmDeleteDesc")}{" "}
-              <span className="font-semibold text-text">{deleteConfirm?.name}</span>?
+              <span className="font-semibold text-text">
+                {deleteConfirm?.name}
+              </span>
+              ?
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-sm text-red-400 px-4">
+              {deleteError}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="secondary"
@@ -283,7 +340,11 @@ export function AdminAlimentosClient({
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
               <Trash2 size={16} className="mr-2" />
               {deleting ? tCommon("loading") : tCommon("delete")}
             </Button>
@@ -291,7 +352,7 @@ export function AdminAlimentosClient({
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }
 
-export default AdminAlimentosClient
+export default AdminAlimentosClient;

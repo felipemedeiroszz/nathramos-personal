@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: coach só gerencia seus alunos; somente admin pode redistribuir carteira
+ok 1 - coach só gerencia seus alunos; somente admin pode redistribuir carteira
+  ---
+  duration_ms: 2102.8191
+  type: 'test'
+  ...
+# Subtest: RLS nega leitura de outro aluno mesmo com políticas legadas de coach
+ok 2 - RLS nega leitura de outro aluno mesmo com políticas legadas de coach
+  ---
+  duration_ms: 5.4228
+  type: 'test'
+  ...
+# Subtest: histórico registra antes/depois e rejeita edição de versão desatualizada
+ok 3 - histórico registra antes/depois e rejeita edição de versão desatualizada
+  ---
+  duration_ms: 13.3476
+  type: 'test'
+  ...
+# Subtest: fila de trabalho é calculada no banco dentro da carteira
+ok 4 - fila de trabalho é calculada no banco dentro da carteira
+  ---
+  duration_ms: 5.6871
+  type: 'test'
+  ...
+# Subtest: paginação busca todos os registros antes do limite e impede coach de consultar financeiro
+ok 5 - paginação busca todos os registros antes do limite e impede coach de consultar financeiro
+  ---
+  duration_ms: 9.7581
+  type: 'test'
+  ...
+# Subtest: CSV neutraliza fórmulas e mantém aspas e quebras de linha; filtros validam datas e moeda
+ok 6 - CSV neutraliza fórmulas e mantém aspas e quebras de linha; filtros validam datas e moeda
+  ---
+  duration_ms: 81.3714
+  type: 'test'
+  ...
+# Subtest: sincronização de atribuições rejeita snapshot antigo sem arquivar vínculos
+ok 7 - sincronização de atribuições rejeita snapshot antigo sem arquivar vínculos
+  ---
+  duration_ms: 10.6133
+  type: 'test'
+  ...
+# Subtest: RLS bloqueia escrita global do coach e edição de prescrição alheia
+ok 8 - RLS bloqueia escrita global do coach e edição de prescrição alheia
+  ---
+  duration_ms: 4.6928
+  type: 'test'
+  ...
+# Subtest: conferência financeira separa moedas e respeita o dia em São Paulo
+ok 9 - conferência financeira separa moedas e respeita o dia em São Paulo
+  ---
+  duration_ms: 5.6607
+  type: 'test'
+  ...
+# Subtest: reordenação de treino é atômica, mantém versão e rejeita item de outro kit
+ok 10 - reordenação de treino é atômica, mantém versão e rejeita item de outro kit
+  ---
+  duration_ms: 24.8554
+  type: 'test'
+  ...
+# Subtest: ação de remover atribuição verifica carteira antes de usar service role
+ok 11 - ação de remover atribuição verifica carteira antes de usar service role
+  ---
+  duration_ms: 68.022
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2752.291

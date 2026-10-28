@@ -1,6 +1,7 @@
 "use client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -41,10 +42,14 @@ function slugify(str: string): string {
 }
 
 const DIFFICULTY_LABELS_PT: Record<string, string> = {
-  beginner: "Iniciante", intermediate: "Intermediário", advanced: "Avançado",
+  beginner: "Iniciante",
+  intermediate: "Intermediário",
+  advanced: "Avançado",
 };
 const DIFFICULTY_LABELS_EN: Record<string, string> = {
-  beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced",
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
 };
 
 export function KitUpsertModal({
@@ -58,10 +63,12 @@ export function KitUpsertModal({
 }: KitUpsertModalProps) {
   const t = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
-  const difficultyLabels = locale === "pt-BR" ? DIFFICULTY_LABELS_PT : DIFFICULTY_LABELS_EN;
+  const difficultyLabels =
+    locale === "pt-BR" ? DIFFICULTY_LABELS_PT : DIFFICULTY_LABELS_EN;
 
   const [form, setForm] = useState({
     id: kit?.id,
@@ -152,19 +159,27 @@ export function KitUpsertModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     startTransition(async () => {
-      const payload: Record<string, any> = {
-        ...form,
-        category_id: form.category_id || null,
-        tags: form.tags
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
-        cover_image_url: form.cover_image_url || null,
-      };
-      if (!payload.id) delete payload.id;
-      if (onSubmit) await onSubmit(payload);
-      onSaved?.();
+      try {
+        const payload: Record<string, any> = {
+          ...form,
+          revision: kit?.revision,
+          category_id: form.category_id || null,
+          tags: form.tags
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean),
+          cover_image_url: form.cover_image_url || null,
+        };
+        if (!payload.id) delete payload.id;
+        if (onSubmit) await onSubmit(payload);
+        onSaved?.();
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : "Falha ao salvar.",
+        );
+      }
     });
   };
 
@@ -174,14 +189,31 @@ export function KitUpsertModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isPending) onClose();
+      }}
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
         <ModalTitle>{kit ? titleEdit : titleCreate}</ModalTitle>
-        <ModalClose onClick={onClose} />
+        <ModalClose disabled={isPending} onClick={onClose} />
       </ModalHeader>
+      {kit && (
+        <a
+          className="block mb-3 text-sm text-primary underline"
+          href={`/${locale}/admin/historico?kind=workout_kits&record=${kit.id}`}
+        >
+          {locale === "en-US"
+            ? "Compare saved versions"
+            : "Comparar versões salvas"}
+        </a>
+      )}
       <form onSubmit={handleSubmit}>
+        {saveError && (
+          <p role="alert" className="text-red-500 p-3">
+            {saveError}
+          </p>
+        )}
         <ModalBody className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -193,7 +225,7 @@ export function KitUpsertModal({
                 onChange={(e) => update("name_pt", e.target.value)}
                 placeholder={label(
                   "Kit Transformacao 12 semanas",
-                  "Transformation Kit 12 weeks"
+                  "Transformation Kit 12 weeks",
                 )}
                 required
               />
@@ -207,7 +239,7 @@ export function KitUpsertModal({
                 onChange={(e) => update("name_en", e.target.value)}
                 placeholder={label(
                   "Kit Transformacao 12 semanas",
-                  "Transformation Kit 12 weeks"
+                  "Transformation Kit 12 weeks",
                 )}
                 required
               />
@@ -287,7 +319,7 @@ export function KitUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Pacote completo com 3 programas...",
-                  "Complete package with 3 programs..."
+                  "Complete package with 3 programs...",
                 )}
               />
             </div>
@@ -301,7 +333,7 @@ export function KitUpsertModal({
                 rows={2}
                 placeholder={label(
                   "Pacote completo com 3 programas...",
-                  "Complete package with 3 programs..."
+                  "Complete package with 3 programs...",
                 )}
               />
             </div>
@@ -318,7 +350,7 @@ export function KitUpsertModal({
                 rows={3}
                 placeholder={label(
                   "Kit completo para transformacao corporal...",
-                  "Complete kit for body transformation..."
+                  "Complete kit for body transformation...",
                 )}
               />
             </div>
@@ -332,7 +364,7 @@ export function KitUpsertModal({
                 rows={3}
                 placeholder={label(
                   "Kit completo para transformacao corporal...",
-                  "Complete kit for body transformation..."
+                  "Complete kit for body transformation...",
                 )}
               />
             </div>
@@ -380,7 +412,7 @@ export function KitUpsertModal({
                 onChange={(e) =>
                   update(
                     "est_minutes_per_session",
-                    parseInt(e.target.value || "1", 10)
+                    parseInt(e.target.value || "1", 10),
                   )
                 }
                 required
@@ -409,7 +441,7 @@ export function KitUpsertModal({
               onChange={(e) => update("tags", e.target.value)}
               placeholder={label(
                 "transformacao, emagrecimento, 12semanas",
-                "transformation, fat-loss, 12weeks"
+                "transformation, fat-loss, 12weeks",
               )}
             />
           </div>

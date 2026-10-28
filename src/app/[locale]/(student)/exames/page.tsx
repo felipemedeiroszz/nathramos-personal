@@ -4,7 +4,7 @@ import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { requireAuthenticated } from "@/lib/auth/access";
+import { requireStudentPage } from "@/lib/auth/platform";
 import { ExamService } from "@/services/ExamService";
 import type { ExamCategoryRow, ExamRow } from "@/types";
 import { StudentExamsClient } from "./StudentExamsClient";
@@ -23,7 +23,7 @@ export default async function ExamsPage({
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
 
-  const userId = await requireAuthenticated();
+  const userId = await requireStudentPage();
 
   const exams: ExamRow[] = await ExamService.listExams({
     user_id: userId,

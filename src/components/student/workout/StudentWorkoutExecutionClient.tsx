@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -14,6 +14,7 @@ import type {
   WorkoutDayRow,
   WorkoutExerciseRow,
   ExerciseRow,
+  ExerciseSetLogRow,
 } from "@/types";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export interface StudentWorkoutExecutionClientProps {
   sessionId: string;
   exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>;
   locale?: string;
+  initialLogs?: ExerciseSetLogRow[];
 }
 
 type SetState = {
@@ -39,6 +41,7 @@ export function StudentWorkoutExecutionClient({
   sessionId,
   exercises,
   locale = "pt-BR",
+  initialLogs = [],
 }: StudentWorkoutExecutionClientProps) {
   const tWorkout = useTranslations("workout");
   const tMuscle = useTranslations("muscleGroups");
@@ -46,7 +49,15 @@ export function StudentWorkoutExecutionClient({
   const tDiff = useTranslations("difficultyLevels");
   const tCommon = useTranslations("common");
 
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setPending] = useState(false);
+  const saving = useRef(false);
+  async function startTransition(action: () => Promise<void>) {
+    if (saving.current) return;
+    saving.current = true; setPending(true);
+    try { await action(); }
+    catch { setToast({ type: "err", msg: "Não foi possível salvar. Tente novamente." }); setCompleting(false); }
+    finally { saving.current = false; setPending(false); }
+  }
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const [activeTimer, setActiveTimer] = useState<{ key: string; seconds: number } | null>(null);
   const [feeling, setFeeling] = useState<number>(0);
@@ -61,16 +72,16 @@ export function StudentWorkoutExecutionClient({
       const list: SetState[] = [];
       for (let i = 1; i <= Math.max(1, wex.sets || 0); i++) {
         list.push({
-          reps_done: "",
-          weight_kg: wex.weight_kg != null ? String(wex.weight_kg) : "",
-          logged: false,
+          reps_done: initialLogs.find(l => l.workout_exercise_id === wex.id && l.set_number === i)?.reps_done.toString() || "",
+          weight_kg: String(initialLogs.find(l => l.workout_exercise_id === wex.id && l.set_number === i)?.weight_kg ?? wex.weight_kg ?? ""),
+          logged: initialLogs.some(l => l.workout_exercise_id === wex.id && l.set_number === i && l.completed),
           logKey: `${wex.id}:${i}`,
         });
       }
       map[wex.id] = list;
     }
     return map;
-  }, [exercises]);
+  }, [exercises, initialLogs]);
 
   const [setsByExercise, setSetsByExercise] = useState<Record<string, SetState[]>>(initialSets);
 
@@ -121,7 +132,7 @@ export function StudentWorkoutExecutionClient({
   };
 
   const completeSession = async () => {
-    if (completing) return;
+    if (completing || saving.current) return;
     setCompleting(true);
     startTransition(async () => {
       const res = await completeWorkoutSessionAction({

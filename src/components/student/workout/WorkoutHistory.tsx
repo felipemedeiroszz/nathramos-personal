@@ -26,7 +26,7 @@ export function WorkoutHistory({ locale, userId }: WorkoutHistoryProps) {
   useEffect(() => {
     async function fetchHistory() {
       try {
-        const response = await fetch(`/${locale}/api/workout/history?userId=${userId}`, {
+        const response = await fetch(`/api/workout/history?userId=${userId}`, {
           cache: "no-store",
         });
         if (!response.ok) throw new Error("Failed to fetch");

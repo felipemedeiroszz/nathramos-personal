@@ -21,6 +21,8 @@ export function getStripeClient(): Stripe {
     stripeInstance = new Stripe(apiKey, {
       apiVersion: "2025-02-24.acacia",
       typescript: true,
+      timeout: 15000,
+      maxNetworkRetries: 2,
     })
   }
   return stripeInstance
@@ -28,6 +30,7 @@ export function getStripeClient(): Stripe {
 
 export interface CreateCheckoutSessionInput {
   priceId: string
+  idempotencyKey?: string
   customerId?: string
   userId: string
   planId: string
@@ -40,6 +43,7 @@ export interface CreateCheckoutSessionInput {
 
 export interface CheckoutSessionResult {
   sessionId: string
+  expiresAt: string
   url: string
 }
 
@@ -66,19 +70,21 @@ export const StripeProvider = {
         metadata: {
           user_id: input.userId,
           plan_id: input.planId,
+          ...(input.metadata ?? {}),
         },
         ...(input.trialDays && input.trialDays > 0
           ? { trial_period_days: input.trialDays }
           : {}),
       },
       allow_promotion_codes: true,
-      ...(input.customerId ? { customer: input.customerId } : { customer_creation: "always" }),
+      ...(input.customerId ? { customer: input.customerId } : {}),
     }
 
     if (input.couponCode && input.couponCode.length > 0) {
       try {
         const promo = await stripe.promotionCodes.list({ code: input.couponCode, active: true, limit: 1 })
         if (promo.data.length > 0) {
+          delete params.allow_promotion_codes
           params.discounts = [{ promotion_code: promo.data[0].id }]
         }
       } catch {
@@ -86,11 +92,11 @@ export const StripeProvider = {
       }
     }
 
-    const session = await stripe.checkout.sessions.create(params)
+    const session = await stripe.checkout.sessions.create(params, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined)
     if (!session.url) {
       throw new Error("Stripe não retornou URL de checkout.")
     }
-    return { sessionId: session.id, url: session.url }
+    return { sessionId: session.id, url: session.url, expiresAt: new Date(session.expires_at * 1000).toISOString() }
   },
 
   async getOrCreateCustomer(input: {
@@ -107,8 +113,8 @@ export const StripeProvider = {
         if (!(existing as Stripe.DeletedCustomer).deleted) {
           return input.existingCustomerId
         }
-      } catch {
-        // cliente inexistente: cria um novo abaixo
+      } catch (error) {
+        if (!(error instanceof Stripe.errors.StripeInvalidRequestError) || error.code !== "resource_missing") throw error
       }
     }
 
@@ -116,7 +122,7 @@ export const StripeProvider = {
       email: input.email || undefined,
       name: input.name || undefined,
       metadata: { user_id: input.userId },
-    })
+    }, { idempotencyKey: `customer:${input.userId}:${input.existingCustomerId || "initial"}` })
     return created.id
   },
 
@@ -151,6 +157,7 @@ export const StripeProvider = {
     userId: string
     planId: string
     trialDays?: number
+    idempotencyKey?: string
   }): Promise<Stripe.Subscription> {
     const stripe = getStripeClient()
 
@@ -163,12 +170,12 @@ export const StripeProvider = {
       items: [{ price: input.priceId }],
       default_payment_method: input.paymentMethodId,
       payment_behavior: "allow_incomplete",
-      expand: ["latest_invoice"],
-      metadata: { user_id: input.userId, plan_id: input.planId },
+      expand: ["latest_invoice.payment_intent"],
+      metadata: { user_id: input.userId, plan_id: input.planId, ...(input.idempotencyKey ? {checkout_id:input.idempotencyKey} : {}) },
       ...(input.trialDays && input.trialDays > 0
         ? { trial_period_days: input.trialDays }
         : {}),
-    })
+    }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined)
 
     return subscription
   },
@@ -176,6 +183,7 @@ export const StripeProvider = {
   async createOneTimeCheckoutSession(input: {
     userId: string
     customerId?: string
+    idempotencyKey?: string
     customerEmail?: string
     amountCents: number
     currency: string
@@ -215,11 +223,11 @@ export const StripeProvider = {
         : { customer_creation: "always" }),
     }
 
-    const session = await stripe.checkout.sessions.create(params)
+    const session = await stripe.checkout.sessions.create(params, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined)
     if (!session.url) {
       throw new Error("Stripe não retornou URL de checkout.")
     }
-    return { sessionId: session.id, url: session.url }
+    return { sessionId: session.id, url: session.url, expiresAt: new Date(session.expires_at * 1000).toISOString() }
   },
 
   async cancelSubscription(externalSubscriptionId: string): Promise<void> {

@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser()
     const profile = await ProfileService.getProfile(userId)
 
+    if (!profile || profile.is_deleted || profile.role !== "student") return errorResponse("Conta indisponível para pagamento.",403)
+
     const customerId = await StripeProvider.getOrCreateCustomer({
       userId,
       email: user?.email ?? (profile as any)?.email ?? "",

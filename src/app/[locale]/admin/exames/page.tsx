@@ -1,3 +1,6 @@
+import { staffStudentIds } from "@/lib/auth/platform";
+import { getAdminDataPage } from "@/lib/admin/data-page";
+import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -26,10 +29,7 @@ export default async function AdminExamesPage({
   searchParams,
 }: {
   params: { locale: (typeof locales)[number] };
-  searchParams?: {
-    q?: string;
-    category?: string;
-  };
+  searchParams?: Record<string, string | undefined>;
 }) {
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -42,7 +42,7 @@ export default async function AdminExamesPage({
   const subtitle = await safe(
     tAdmin,
     "exams.subtitle",
-    "Gerencie os exames dos alunos"
+    "Gerencie os exames dos alunos",
   );
 
   const q = searchParams?.q ?? "";
@@ -59,16 +59,21 @@ export default async function AdminExamesPage({
     filters.category = categoryParam.trim();
   }
 
-  const exams: ExamRow[] = await ExamService.listExams(filters);
+  const pageParams = searchParams || {};
+  const dataPage = await getAdminDataPage("exams", pageParams);
+  const exams = dataPage.rows;
   const categories = await ExamService.listCategories();
 
   // createServiceClientSSR é assíncrono e precisa ser aguardado antes de usar .from().
   const supabase = await createServiceClientSSR();
-  const { data: profiles } = await supabase
+  let profileQuery: any = supabase
     .from("profiles")
     .select("id, full_name, email")
     .order("full_name", { ascending: true })
     .limit(200);
+  const scope = await staffStudentIds();
+  if (scope !== null) profileQuery = profileQuery.in("id", scope);
+  const { data: profiles } = await profileQuery;
 
   const studentOptions = (profiles ?? []).map((p: any) => ({
     id: p.id,
@@ -89,6 +94,13 @@ export default async function AdminExamesPage({
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </header>
 
+      <AdminDataControls
+        params={pageParams}
+        total={dataPage.total}
+        page={dataPage.page}
+        size={dataPage.size}
+        locale={locale}
+      />
       <AdminExamesClient
         locale={locale}
         userId={userId}

@@ -35,7 +35,7 @@ export function TodayWorkoutCard({ locale, userId }: TodayWorkoutCardProps) {
   useEffect(() => {
     async function fetchTodayWorkout() {
       try {
-        const response = await fetch(`/${locale}/api/workout/today`, {
+        const response = await fetch(`/api/workout/today`, {
           cache: "no-store",
         });
         if (!response.ok) throw new Error("Failed to fetch");

@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireManagedStudent,
+  requirePlatformUser,
+} from "@/lib/auth/platform";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { getCurrentRole, requireAuthenticated } from "@/lib/auth/access";
@@ -7,14 +11,19 @@ import { ExamService } from "@/services/ExamService";
 import { studentExamUploadSchema } from "@/schemas/exams";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_MIME = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+const ALLOWED_MIME = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+];
 
 function safeFileName(name: string): string {
   return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
 }
 
 export async function uploadExamAction(formData: FormData) {
-  const userId = await requireAuthenticated();
+  const { userId } = await requirePlatformUser();
 
   const parsed = studentExamUploadSchema.safeParse({
     title: String(formData.get("title") ?? "").trim(),
@@ -30,14 +39,20 @@ export async function uploadExamAction(formData: FormData) {
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { success: false as const, message: "Selecione um arquivo para envio." };
+    return {
+      success: false as const,
+      message: "Selecione um arquivo para envio.",
+    };
   }
   if (file.size > MAX_FILE_BYTES) {
     return { success: false as const, message: "Arquivo maior que 20MB." };
   }
   const mime = file.type || "application/pdf";
   if (!ALLOWED_MIME.includes(mime)) {
-    return { success: false as const, message: "Formato de arquivo não suportado." };
+    return {
+      success: false as const,
+      message: "Formato de arquivo não suportado.",
+    };
   }
 
   const ext = mime === "application/pdf" ? "pdf" : mime.split("/")[1];
@@ -62,7 +77,7 @@ export async function uploadExamAction(formData: FormData) {
       file_mime_type: mime,
       results_summary: {},
     },
-    userId
+    userId,
   );
 
   if (!saved) {
@@ -76,7 +91,7 @@ export async function uploadExamAction(formData: FormData) {
 }
 
 export async function deleteMyExamAction(id: string) {
-  const userId = await requireAuthenticated();
+  const { userId } = await requirePlatformUser();
 
   const exam = await ExamService.getExam(id);
   if (!exam || exam.user_id !== userId) {
@@ -97,7 +112,7 @@ export async function deleteMyExamAction(id: string) {
 }
 
 export async function getExamFileUrlAction(id: string) {
-  const userId = await requireAuthenticated();
+  const { userId } = await requirePlatformUser();
 
   const exam = await ExamService.getExam(id);
   if (!exam) {
@@ -109,13 +124,17 @@ export async function getExamFileUrlAction(id: string) {
   if (exam.user_id !== userId && !isStaff) {
     return { success: false as const, message: "Acesso negado." };
   }
+  if (role === "coach") await requireManagedStudent(exam.user_id);
   if (!exam.file_bucket_path) {
     return { success: false as const, message: "Exame sem arquivo anexado." };
   }
 
   const url = await ExamService.getSignedUrl(exam.file_bucket_path);
   if (!url) {
-    return { success: false as const, message: "Não foi possível gerar o link do arquivo." };
+    return {
+      success: false as const,
+      message: "Não foi possível gerar o link do arquivo.",
+    };
   }
   return { success: true as const, url };
 }

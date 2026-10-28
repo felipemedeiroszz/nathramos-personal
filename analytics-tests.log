@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: analytics agrega períodos e moedas sem misturar coorte de sessões
+ok 1 - analytics agrega períodos e moedas sem misturar coorte de sessões
+  ---
+  duration_ms: 2271.0049
+  type: 'test'
+  ...
+# Subtest: coach recebe apenas sua carteira e nenhuma estrutura financeira
+ok 2 - coach recebe apenas sua carteira e nenhuma estrutura financeira
+  ---
+  duration_ms: 12.1839
+  type: 'test'
+  ...
+# Subtest: detalhes paginam sem truncar contadores e datas usam São Paulo
+ok 3 - detalhes paginam sem truncar contadores e datas usam São Paulo
+  ---
+  duration_ms: 13.425
+  type: 'test'
+  ...
+# Subtest: RPC não é executável diretamente com sessão autenticada, mesmo forjando ator admin
+ok 4 - RPC não é executável diretamente com sessão autenticada, mesmo forjando ator admin
+  ---
+  duration_ms: 2.0606
+  type: 'test'
+  ...
+# Subtest: filtros rejeitam datas impossíveis, intervalos excessivos e métricas sem denominador não viram zero
+ok 5 - filtros rejeitam datas impossíveis, intervalos excessivos e métricas sem denominador não viram zero
+  ---
+  duration_ms: 84.4745
+  type: 'test'
+  ...
+# Subtest: PDF e Excel são arquivos reais; planilha preserva valores, fórmulas e permissões
+ok 6 - PDF e Excel são arquivos reais; planilha preserva valores, fórmulas e permissões
+  ---
+  duration_ms: 764.2567
+  type: 'test'
+  ...
+# Subtest: serviço bloqueia aluno e filtros forjados de coach antes de abrir conexão privilegiada
+ok 7 - serviço bloqueia aluno e filtros forjados de coach antes de abrir conexão privilegiada
+  ---
+  duration_ms: 14.786
+  type: 'test'
+  ...
+# Subtest: endpoint de exportação autentica, limita detalhamento e envia downloads sem cache
+ok 8 - endpoint de exportação autentica, limita detalhamento e envia downloads sem cache
+  ---
+  duration_ms: 41.6234
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4227.1604

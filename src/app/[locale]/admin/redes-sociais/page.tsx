@@ -21,7 +21,7 @@ export default async function AdminRedesSociaisPage({
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminSocial = await getTranslations("adminSocial");
-  await requireRole(["admin", "coach"], "/dashboard");
+  await requireRole(["admin"], "/dashboard");
 
   const links = await SocialLinksService.list();
 
@@ -36,7 +36,9 @@ export default async function AdminRedesSociaisPage({
     <div className="space-y-6 w-full">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{tAdminSocial("subtitle")}</p>
+        <p className="text-sm md:text-base text-text-secondary">
+          {tAdminSocial("subtitle")}
+        </p>
       </header>
 
       <AdminSocialLinksClient title={title} links={links} />

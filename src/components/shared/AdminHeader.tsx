@@ -12,11 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/DropdownMenu";
-import {
-  ChevronDown,
-  LogOut,
-  Menu,
-} from "lucide-react";
+import { ChevronDown, LogOut, Menu, Globe } from "lucide-react";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 
 interface AdminHeaderProps {
@@ -47,8 +43,8 @@ export function AdminHeader({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const locales = [
-    { code: "pt-BR", label: "Português", flag: "🇧🇷" },
-    { code: "en-US", label: "English", flag: "🇺🇸" },
+    { code: "pt-BR", label: "Português" },
+    { code: "en-US", label: "English" },
   ];
 
   const currentLocale = locales.find((l) => l.code === locale) || locales[0];
@@ -81,7 +77,8 @@ export function AdminHeader({
     suplementos: { key: "supplementKits", fallback: "Kits de Suplementos" },
   };
 
-  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   // Resolve o rótulo traduzido com fallback seguro (evita exibir a chave crua).
   const resolveNavLabel = (key: string, fallback: string): string => {
@@ -116,7 +113,9 @@ export function AdminHeader({
       },
     ];
 
-    const rest = segments.slice(adminIndex + 1).filter((segment) => segment !== "new");
+    const rest = segments
+      .slice(adminIndex + 1)
+      .filter((segment) => segment !== "new");
     const pathParts: string[] = [];
 
     for (let i = 0; i < rest.length; i++) {
@@ -144,7 +143,10 @@ export function AdminHeader({
           ? "Detalhes"
           : prettifySegment(segment);
 
-      breadcrumbs.push({ label, href: `/${locale}/admin/${pathParts.join("/")}` });
+      breadcrumbs.push({
+        label,
+        href: `/${locale}/admin/${pathParts.join("/")}`,
+      });
     }
 
     return breadcrumbs;
@@ -190,7 +192,7 @@ export function AdminHeader({
           <DropdownMenu
             trigger={
               <Button variant="ghost" size="sm" className="gap-2">
-                <span className="text-lg">{currentLocale.flag}</span>
+                <Globe size={18} aria-hidden="true" />
                 <span className="hidden md:inline">{currentLocale.label}</span>
                 <ChevronDown size={14} />
               </Button>
@@ -208,7 +210,7 @@ export function AdminHeader({
                   }}
                   className={cn(loc.code === locale && "bg-surface-secondary")}
                 >
-                  <span className="mr-2 text-lg">{loc.flag}</span>
+                  <Globe size={18} className="mr-2" aria-hidden="true" />
                   {loc.label}
                 </DropdownMenuItem>
               ))}
@@ -219,7 +221,12 @@ export function AdminHeader({
           <NotificationBell locale={locale} />
 
           {/* User menu - simplified for now */}
-          <Button variant="ghost" size="sm" onClick={onLogout} className="gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLogout}
+            className="gap-2"
+          >
             <Avatar
               src={photoUrl || undefined}
               alt={firstName || "User"}
@@ -230,9 +237,7 @@ export function AdminHeader({
               <p className="text-sm font-medium text-text">
                 {firstName || "Admin"}
               </p>
-              <p className="text-xs text-text-secondary capitalize">
-                {role}
-              </p>
+              <p className="text-xs text-text-secondary capitalize">{role}</p>
             </div>
             <LogOut size={14} className="hidden md:block ml-2" />
           </Button>

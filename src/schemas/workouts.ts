@@ -1,42 +1,87 @@
-import { z } from "zod"
+import { z } from "zod";
 import type {
   MuscleGroupT,
   EquipmentT,
   DifficultyT,
   WorkoutStatusT,
   ExerciseSourceT,
-} from "../lib/supabase/types"
+} from "../lib/supabase/types";
 
 const MUSCLE_GROUPS_ARR = [
-  "chest", "back", "shoulders", "biceps", "triceps", "forearms",
-  "core", "abs", "obliques", "quads", "hamstrings", "glutes",
-  "calves", "adductors", "abductors", "lower_back", "traps",
-  "full_body", "cardio",
-] as const
+  "chest",
+  "back",
+  "shoulders",
+  "biceps",
+  "triceps",
+  "forearms",
+  "core",
+  "abs",
+  "obliques",
+  "quads",
+  "hamstrings",
+  "glutes",
+  "calves",
+  "adductors",
+  "abductors",
+  "lower_back",
+  "traps",
+  "full_body",
+  "cardio",
+] as const;
 
 const EQUIPMENT_ARR = [
-  "body_weight", "barbell", "dumbbell", "kettlebell", "cable",
-  "machine", "smith", "resistance_band", "medicine_ball", "bosu_ball",
-  "foam_roller", "treadmill", "elliptical", "bike", "rowing",
-  "jump_rope", "bench", "pull_up_bar", "other",
-] as const
+  "body_weight",
+  "barbell",
+  "dumbbell",
+  "kettlebell",
+  "cable",
+  "machine",
+  "smith",
+  "resistance_band",
+  "medicine_ball",
+  "bosu_ball",
+  "foam_roller",
+  "treadmill",
+  "elliptical",
+  "bike",
+  "rowing",
+  "jump_rope",
+  "bench",
+  "pull_up_bar",
+  "other",
+] as const;
 
-const DIFFICULTY_ARR = ["beginner", "intermediate", "advanced"] as const
-const WORKOUT_STATUS_ARR = ["active", "completed", "paused", "archived"] as const
-const EXERCISE_SOURCE_ARR = ["exercisedb", "custom"] as const
+const DIFFICULTY_ARR = ["beginner", "intermediate", "advanced"] as const;
+const WORKOUT_STATUS_ARR = [
+  "active",
+  "completed",
+  "paused",
+  "archived",
+] as const;
+const EXERCISE_SOURCE_ARR = ["exercisedb", "custom"] as const;
 
-const muscleGroupSchema = z.enum(MUSCLE_GROUPS_ARR) as z.ZodType<MuscleGroupT>
-const equipmentSchema = z.enum(EQUIPMENT_ARR) as z.ZodType<EquipmentT>
-const difficultySchema = z.enum(DIFFICULTY_ARR) as z.ZodType<DifficultyT>
-const workoutStatusSchema = z.enum(WORKOUT_STATUS_ARR) as z.ZodType<WorkoutStatusT>
-const exerciseSourceSchema = z.enum(EXERCISE_SOURCE_ARR) as z.ZodType<ExerciseSourceT>
+const muscleGroupSchema = z.enum(MUSCLE_GROUPS_ARR) as z.ZodType<MuscleGroupT>;
+const equipmentSchema = z.enum(EQUIPMENT_ARR) as z.ZodType<EquipmentT>;
+const difficultySchema = z.enum(DIFFICULTY_ARR) as z.ZodType<DifficultyT>;
+const workoutStatusSchema = z.enum(
+  WORKOUT_STATUS_ARR,
+) as z.ZodType<WorkoutStatusT>;
+const exerciseSourceSchema = z.enum(
+  EXERCISE_SOURCE_ARR,
+) as z.ZodType<ExerciseSourceT>;
 
-const uuidSchema = z.string().uuid({ message: "ID inválido." })
+const uuidSchema = z.string().uuid({ message: "ID inválido." });
 
 export const upsertExerciseSchema = z.object({
   source: exerciseSourceSchema.default("exercisedb"),
-  name_pt: z.string().trim().min(1, { message: "Nome em português é obrigatório." }),
-  name_en: z.string().trim().min(1, { message: "Nome em inglês é obrigatório." }),
+  name_pt: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome em português é obrigatório." }),
+  name_en: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome em inglês é obrigatório." }),
   description_pt: z.string().trim().default(""),
   description_en: z.string().trim().default(""),
   instructions_pt: z.array(z.string()).default([]),
@@ -54,12 +99,18 @@ export const upsertExerciseSchema = z.object({
   is_published: z.boolean().default(true),
   external_id: z.string().trim().optional().nullable(),
   id: uuidSchema.optional(),
-})
-export type UpsertExerciseInput = z.infer<typeof upsertExerciseSchema>
+});
+export type UpsertExerciseInput = z.infer<typeof upsertExerciseSchema>;
 
 export const upsertWorkoutCategorySchema = z.object({
-  name_pt: z.string().trim().min(1, { message: "Nome em português é obrigatório." }),
-  name_en: z.string().trim().min(1, { message: "Nome em inglês é obrigatório." }),
+  name_pt: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome em português é obrigatório." }),
+  name_en: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome em inglês é obrigatório." }),
   slug: z.string().trim().min(1, { message: "Slug é obrigatório." }),
   description_pt: z.string().trim().default(""),
   description_en: z.string().trim().default(""),
@@ -68,12 +119,20 @@ export const upsertWorkoutCategorySchema = z.object({
   order_index: z.coerce.number().int().default(0),
   is_active: z.boolean().default(true),
   id: uuidSchema.optional(),
-})
-export type UpsertWorkoutCategoryInput = z.infer<typeof upsertWorkoutCategorySchema>
+});
+export type UpsertWorkoutCategoryInput = z.infer<
+  typeof upsertWorkoutCategorySchema
+>;
 
 export const upsertWorkoutProgramSchema = z.object({
-  title_pt: z.string().trim().min(1, { message: "Título em português é obrigatório." }),
-  title_en: z.string().trim().min(1, { message: "Título em inglês é obrigatório." }),
+  title_pt: z
+    .string()
+    .trim()
+    .min(1, { message: "Título em português é obrigatório." }),
+  title_en: z
+    .string()
+    .trim()
+    .min(1, { message: "Título em inglês é obrigatório." }),
   goal_pt: z.string().trim().default(""),
   goal_en: z.string().trim().default(""),
   difficulty: difficultySchema.default("beginner"),
@@ -90,24 +149,32 @@ export const upsertWorkoutProgramSchema = z.object({
   start_date: z.string().trim().optional().nullable(),
   end_date: z.string().trim().optional().nullable(),
   id: uuidSchema.optional(),
-})
-export type UpsertWorkoutProgramInput = z.infer<typeof upsertWorkoutProgramSchema>
+});
+export type UpsertWorkoutProgramInput = z.infer<
+  typeof upsertWorkoutProgramSchema
+>;
 
 export const upsertWorkoutDaySchema = z.object({
   program_id: uuidSchema,
   week_number: z.coerce.number().int().min(1).default(1),
   day_of_week: z.coerce.number().int().min(1).max(7).default(1),
   order_index: z.coerce.number().int().default(0),
-  name_pt: z.string().trim().min(1, { message: "Nome do dia em português é obrigatório." }),
-  name_en: z.string().trim().min(1, { message: "Nome do dia em inglês é obrigatório." }),
+  name_pt: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome do dia em português é obrigatório." }),
+  name_en: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome do dia em inglês é obrigatório." }),
   focus_pt: z.string().trim().optional().nullable(),
   focus_en: z.string().trim().optional().nullable(),
   est_minutes: z.coerce.number().int().positive().default(45),
   warmup_minutes: z.coerce.number().int().nonnegative().default(5),
   cooldown_minutes: z.coerce.number().int().nonnegative().default(5),
   id: uuidSchema.optional(),
-})
-export type UpsertWorkoutDayInput = z.infer<typeof upsertWorkoutDaySchema>
+});
+export type UpsertWorkoutDayInput = z.infer<typeof upsertWorkoutDaySchema>;
 
 export const upsertWorkoutExerciseSchema = z.object({
   day_id: uuidSchema,
@@ -122,13 +189,22 @@ export const upsertWorkoutExerciseSchema = z.object({
   notes_en: z.string().trim().optional().nullable(),
   drop_sets: z.coerce.number().int().nonnegative().default(0),
   id: uuidSchema.optional(),
-})
-export type UpsertWorkoutExerciseInput = z.infer<typeof upsertWorkoutExerciseSchema>
+});
+export type UpsertWorkoutExerciseInput = z.infer<
+  typeof upsertWorkoutExerciseSchema
+>;
 
 export const upsertWorkoutKitSchema = z.object({
+  revision: z.number().int().positive().optional(),
   category_id: uuidSchema.optional().nullable(),
-  name_pt: z.string().trim().min(1, { message: "Nome do kit em português é obrigatório." }),
-  name_en: z.string().trim().min(1, { message: "Nome do kit em inglês é obrigatório." }),
+  name_pt: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome do kit em português é obrigatório." }),
+  name_en: z
+    .string()
+    .trim()
+    .min(1, { message: "Nome do kit em inglês é obrigatório." }),
   slug: z.string().trim().min(1, { message: "Slug é obrigatório." }),
   description_pt: z.string().trim().default(""),
   description_en: z.string().trim().default(""),
@@ -143,16 +219,16 @@ export const upsertWorkoutKitSchema = z.object({
   is_published: z.boolean().default(true),
   is_featured: z.boolean().default(false),
   id: uuidSchema.optional(),
-})
-export type UpsertWorkoutKitInput = z.infer<typeof upsertWorkoutKitSchema>
+});
+export type UpsertWorkoutKitInput = z.infer<typeof upsertWorkoutKitSchema>;
 
-export const KIT_CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F"] as const
-export type KitCategoryLabel = (typeof KIT_CATEGORY_LABELS)[number]
+export const KIT_CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F"] as const;
+export type KitCategoryLabel = (typeof KIT_CATEGORY_LABELS)[number];
 
-export const kitCategoryLabelSchema = z.enum(KIT_CATEGORY_LABELS)
+export const kitCategoryLabelSchema = z.enum(KIT_CATEGORY_LABELS);
 
 /** Dias da semana: 1 = Segunda ... 7 = Domingo (mesma convenção de workout_days). */
-export const kitDayOfWeekSchema = z.coerce.number().int().min(1).max(7)
+export const kitDayOfWeekSchema = z.coerce.number().int().min(1).max(7);
 
 export const upsertWorkoutKitItemSchema = z
   .object({
@@ -172,17 +248,22 @@ export const upsertWorkoutKitItemSchema = z
         code: z.ZodIssueCode.custom,
         message: "É obrigatório informar um programa ou um exercício.",
         path: ["program_id"],
-      })
+      });
     }
-  })
-export type UpsertWorkoutKitItemInput = z.infer<typeof upsertWorkoutKitItemSchema>
+  });
+export type UpsertWorkoutKitItemInput = z.infer<
+  typeof upsertWorkoutKitItemSchema
+>;
 
 export const assignStudentWorkoutSchema = z
   .object({
     student_id: uuidSchema,
     kit_id: uuidSchema.optional().nullable(),
     program_id: uuidSchema.optional().nullable(),
-    start_date: z.string().trim().min(1, { message: "Data de início é obrigatória." }),
+    start_date: z
+      .string()
+      .trim()
+      .min(1, { message: "Data de início é obrigatória." }),
     end_date: z.string().trim().optional().nullable(),
     notes: z.string().trim().optional().nullable(),
   })
@@ -190,12 +271,15 @@ export const assignStudentWorkoutSchema = z
     if (!data.kit_id && !data.program_id) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "É obrigatório informar pelo menos um entre kit_id ou program_id.",
+        message:
+          "É obrigatório informar pelo menos um entre kit_id ou program_id.",
         path: ["kit_id"],
-      })
+      });
     }
-  })
-export type AssignStudentWorkoutInput = z.infer<typeof assignStudentWorkoutSchema>
+  });
+export type AssignStudentWorkoutInput = z.infer<
+  typeof assignStudentWorkoutSchema
+>;
 
 export const logWorkoutSetSchema = z.object({
   session_id: uuidSchema,
@@ -209,8 +293,8 @@ export const logWorkoutSetSchema = z.object({
   distance_km: z.coerce.number().nonnegative().optional().nullable(),
   completed: z.boolean().default(true),
   failure_at_end: z.boolean().default(false),
-})
-export type LogWorkoutSetInput = z.infer<typeof logWorkoutSetSchema>
+});
+export type LogWorkoutSetInput = z.infer<typeof logWorkoutSetSchema>;
 
 export const upsertStudentWorkoutOverrideSchema = z.object({
   student_id: uuidSchema,
@@ -225,5 +309,7 @@ export const upsertStudentWorkoutOverrideSchema = z.object({
   notes_en: z.string().trim().optional().nullable(),
   is_active: z.boolean().default(true),
   id: uuidSchema.optional(),
-})
-export type UpsertStudentWorkoutOverrideInput = z.infer<typeof upsertStudentWorkoutOverrideSchema>
+});
+export type UpsertStudentWorkoutOverrideInput = z.infer<
+  typeof upsertStudentWorkoutOverrideSchema
+>;
