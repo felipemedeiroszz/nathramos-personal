@@ -1,3 +1,4 @@
+import { DatabaseOperationError } from "@/lib/supabase/errors";
 import {
   requirePlatformUser,
   requireManagedStudent,
@@ -55,8 +56,7 @@ export class StudentService {
       p_locale: filters?.locale || "pt-BR",
     });
     if (error || !data) {
-      console.error("[StudentService] directory", error);
-      throw new Error("Não foi possível carregar os alunos.");
+      throw new DatabaseOperationError("admin.students",error);
     }
     return data as {
       students: StudentWithSubscription[];

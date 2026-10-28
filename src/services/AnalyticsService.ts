@@ -1,4 +1,5 @@
 import "server-only";
+import { DatabaseOperationError } from "@/lib/supabase/errors";
 import { requirePlatformUser, AccessError } from "@/lib/auth/platform";
 import { createServiceClientSSR } from "@/lib/supabase/server";
 import {
@@ -32,10 +33,7 @@ export async function getAnalyticsReport(params: AnalyticsParams, size = 25) {
     p_size: size,
   });
   if (error || !data) {
-    console.error("[analytics] report", error?.code);
-    throw new Error(
-      "Não foi possível carregar o relatório. Verifique a implantação da migração de relatórios.",
-    );
+    throw new DatabaseOperationError("admin.analytics",error);
   }
   const report = data as AnalyticsReport;
   if (actor.role === "coach" && report.financial !== null)

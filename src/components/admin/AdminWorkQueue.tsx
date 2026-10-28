@@ -1,3 +1,4 @@
+import { DatabaseOperationError } from "@/lib/supabase/errors";
 import Link from "next/link";
 import { requirePlatformUser } from "@/lib/auth/platform";
 import { createServiceClientSSR } from "@/lib/supabase/server";
@@ -7,7 +8,7 @@ export async function AdminWorkQueue({ locale }: { locale: string }) {
   const { data, error } = await (db.rpc as any)("admin_work_queue", {
     p_actor: actor.userId,
   });
-  if (error) throw new Error("Não foi possível carregar as pendências.");
+  if (error) throw new DatabaseOperationError("admin.work_queue",error);
   const en = locale === "en-US";
   const labels: Record<string, string> = en
     ? {

@@ -40,6 +40,7 @@ export const metadata: Metadata = {
     icon: "/logo.png",
   },
   manifest: "/manifest.webmanifest",
+  other: { "mobile-web-app-capable": "yes" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

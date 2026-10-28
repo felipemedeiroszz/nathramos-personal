@@ -24,3 +24,7 @@ payments.test.mjs aplica as migrações e testa transações de confirmação, a
 ## Central financeira do aluno
 
 student-billing.test.mjs verifica acesso, isolamento do histórico, exportação real em Excel/CSV e recuperação de tentativas. preview-student-billing-ui.mjs verifica os componentes reais em navegador com fixtures, sem chamadas bancárias externas. Consulte CENTRAL-PAGAMENTOS-ALUNO.md.
+
+## Diagnóstico do painel
+
+admin-diagnostics.test.mjs verifica classificação de falhas, isolamento do endpoint administrativo e inspeção SQL do esquema/permissões. Consulte DIAGNOSTICO-PAINEL-ADMIN.md para investigar o ambiente publicado.

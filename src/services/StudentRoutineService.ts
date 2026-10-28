@@ -1,4 +1,5 @@
 import "server-only"
+import { DatabaseOperationError } from "@/lib/supabase/errors"
 import { createServiceClientSSR } from "@/lib/supabase/server"
 import { getZonedParts, shiftDateKey } from "@/lib/notifications/time"
 import { isAssignmentCurrent, foodNutrition, supplementSlots, sumNutrition, type Nutrition } from "@/lib/student/routine"
@@ -21,8 +22,7 @@ export interface RoutineData {
 }
 export function checked<T>(result: { data: T | null; error: unknown }, operation: string): T {
   if (result.error) {
-    console.error(`[StudentRoutine] ${operation}`, result.error)
-    throw new Error("Não foi possível carregar ou salvar os dados. Tente novamente.")
+    throw new DatabaseOperationError(operation,result.error as {code?:string;status?:number})
   }
   return result.data as T
 }

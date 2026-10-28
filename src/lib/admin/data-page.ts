@@ -1,4 +1,5 @@
 import "server-only";
+import { DatabaseOperationError } from "@/lib/supabase/errors";
 import { requireRole } from "@/lib/auth/access";
 import { createServiceClientSSR } from "@/lib/supabase/server";
 import { z } from "zod";
@@ -69,7 +70,7 @@ export async function getAdminDataPage(
     p_page: Math.max(1, Number.parseInt(params.page || "1", 10) || 1),
     p_size: size,
   });
-  if (error) throw new Error("Não foi possível carregar esta página.");
+  if (error) throw new DatabaseOperationError(`admin.catalog.${kind}`,error);
   return data as {
     rows: any[];
     total: number;
