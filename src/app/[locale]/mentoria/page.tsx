@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "@/components/mentoring/mentoring.css";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
@@ -13,6 +14,8 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import {
+  ArrowUpRight,
+  MessageCircle,
   Search,
   Target,
   RefreshCcw,
@@ -62,42 +65,86 @@ export default async function MentoriaPage({
   return (
     <>
       <PublicShell locale={locale}>
-        <main className="animate-fade-in">
-          <section className="public-inner-hero relative overflow-hidden border-b border-border">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/5 to-transparent pointer-events-none" />
-            <div className="mx-auto max-w-7xl px-4 md:px-6 py-20 md:py-28 relative">
-              <div className="max-w-3xl space-y-6">
-                <Badge className="inline-flex items-center gap-2">
-                  <Crown size={14} />
-                  {tn("mentoring")}
-                </Badge>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-text text-balance leading-tight">
-                  {t("heroTitle")}
-                </h1>
-                <p className="text-lg md:text-xl text-text-secondary max-w-2xl">
-                  {t("heroSubtitle")}
+        <main className="mentoring-public">
+          <section className="mentoring-hero border-b border-white/[.07]">
+            <div className="public-wrap grid items-center gap-12 py-16 lg:grid-cols-[1.1fr_1fr] lg:gap-20 lg:py-24">
+              <div>
+                <p className="public-eyebrow">
+                  {locale === "en-US"
+                    ? "MENTORING · PERSONAL GUIDANCE"
+                    : "MENTORIA · ACOMPANHAMENTO DE PERTO"}
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button asChild size="lg">
-                    <Link href={`/${locale}/cadastro`}>{t("ctaButton")}</Link>
-                  </Button>
-                  <Button asChild variant="secondary" size="lg">
-                    <Link href={`/${locale}/sobre`}>{tc("contact")}</Link>
-                  </Button>
+                <h1 className="text-[clamp(2.7rem,5vw,4.7rem)] leading-[1.06]">
+                  {locale === "en-US" ? "Every step," : "Em cada passo,"}
+                  <br />
+                  <span className="text-yellow-300">
+                    {locale === "en-US"
+                      ? "a little closer."
+                      : "mais perto de você."}
+                  </span>
+                </h1>
+                <p className="public-copy mt-6 max-w-lg">{t("heroSubtitle")}</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href={`/${locale}/cadastro`} className="public-cta">
+                    {t("ctaButton")}
+                    <ArrowUpRight size={17} />
+                  </Link>
+                  <Link
+                    href={`/${locale}/conversas`}
+                    className="public-cta-secondary"
+                  >
+                    {locale === "en-US"
+                      ? "I’m already a student"
+                      : "Já sou aluno"}
+                    <MessageCircle size={16} />
+                  </Link>
                 </div>
-                <div className="flex items-center gap-3 pt-2">
-                  <Badge variant="outline" className="text-xs">
-                    <span className="flex items-center gap-1">
-                      <Star size={12} className="fill-primary text-primary" />
-                      10 vagas por ciclo
-                    </span>
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    <span className="flex items-center gap-1">
-                      <CalendarClock size={12} />
-                      90 dias de imersão
-                    </span>
-                  </Badge>
+                <p className="mt-6 text-xs text-zinc-500">
+                  {locale === "en-US"
+                    ? "Conversations, meetings and guidance in one space."
+                    : "Conversas, encontros e orientação em um só espaço."}
+                </p>
+              </div>
+              <div className="mentoring-chat-preview" data-reveal>
+                <div className="flex items-center gap-3 border-b border-white/[.08] p-5">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-yellow-300/20 bg-yellow-300/5 text-yellow-300">
+                    <MessageCircle size={20} />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {locale === "en-US"
+                        ? "Your coaching space"
+                        : "Seu espaço de acompanhamento"}
+                    </p>
+                    <p className="mt-1 text-[10px] text-zinc-500">
+                      {locale === "en-US"
+                        ? "Illustrative conversation"
+                        : "Conversa ilustrativa"}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-5 p-6 sm:p-8">
+                  <p className="text-center text-[9px] uppercase tracking-widest text-zinc-600">
+                    {locale === "en-US"
+                      ? "GUIDANCE THAT FITS YOUR DAY"
+                      : "ORIENTAÇÃO QUE CABE NO SEU DIA"}
+                  </p>
+                  <div className="ml-8 rounded-2xl rounded-br-sm border border-yellow-300/15 bg-yellow-300/10 p-4 text-sm leading-7 text-zinc-200">
+                    {locale === "en-US"
+                      ? "How can I organize my workouts this week? 💪"
+                      : "Como posso organizar meus treinos nesta semana? 💪"}
+                  </div>
+                  <div className="mr-8 rounded-2xl rounded-bl-sm border border-white/[.08] bg-white/[.03] p-4 text-sm leading-7 text-zinc-400">
+                    {locale === "en-US"
+                      ? "Tell me about your available days so we can review your routine together. 🎯"
+                      : "Me conte quais dias você tem disponíveis para revisarmos sua rotina juntos. 🎯"}
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-black/20 px-4 py-3 text-xs text-zinc-600">
+                    <MessageCircle size={15} />
+                    {locale === "en-US"
+                      ? "Questions, progress and your next steps…"
+                      : "Dúvidas, avanços e seus próximos passos…"}
+                  </div>
                 </div>
               </div>
             </div>

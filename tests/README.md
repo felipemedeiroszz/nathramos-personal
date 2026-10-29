@@ -40,6 +40,10 @@ admin-diagnostics.test.mjs verifica classificação de falhas, isolamento do end
 `node tests/preview-student-system.mjs` renderiza as telas e estados de acesso com fixtures locais em 1440 e 390 px. Verifica alimentação, hidratação, peso/sono, séries, falhas de gravação, menu mobile e renovação com acesso bloqueado, além de cenários em inglês. Ações, fetch e Realtime são substituídos: o teste não altera serviços remotos. Os previews ficam em `artifacts/student-design-system/`. Requer Playwright com Chrome; configure `PLAYWRIGHT_MODULE` se necessário.
 
 
+## Chat de mentoria
+
+`node tests/preview-mentor-chat.mjs` verifica o componente real em duas sessões de navegador com transporte e gravação em memória: emojis, chegada imediata, deduplicação da mensagem otimista, recuperação após reconectar e rascunho preservado após falha. Nenhuma conversa real é alterada. Requer CSS gerado por `npm run build` e Playwright/Chrome (`PLAYWRIGHT_MODULE`). Capturas em `artifacts/public-site/chat-fixture/`.
+
 ## Notificações push
 
 `push-notifications.test.mjs` cobre exibição pelo Service Worker, cliques, cache privado, inscrições concorrentes, desativação persistida e requisitos móveis. `node tests/preview-push-worker.mjs` verifica o Service Worker real em um navegador isolado no localhost, sem enviar push para pessoas. Consulte `NOTIFICACOES-PUSH.md` para o diagnóstico e a homologação em Android/iPhone.
