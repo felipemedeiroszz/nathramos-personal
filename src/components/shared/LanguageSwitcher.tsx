@@ -3,7 +3,7 @@
 import { useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { locales, type Locale } from "@/i18n/config";
-import { useState } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import Image from "next/image";
 
@@ -17,21 +17,38 @@ export function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  useEffect(() => {
+    if (!isOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [isOpen]);
 
   const switchLocale = (newLocale: Locale) => {
     const segments = pathname.split("/");
     segments[1] = newLocale;
     const newPath = segments.join("/");
-    window.location.href = newPath;
+    router.push(newPath + window.location.search + window.location.hash);
     setIsOpen(false);
   };
 
   return (
     <div className="relative">
       <button
+        ref={trigger}
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-secondary transition-colors text-text"
         aria-label="Change language"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
       >
         <div className="relative w-7 h-7 rounded-md overflow-hidden">
           <Image
@@ -53,9 +70,13 @@ export function LanguageSwitcher() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+          <div
+            id={panelId}
+            className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+          >
             {locales.map((loc) => (
               <button
+                type="button"
                 key={loc}
                 onClick={() => switchLocale(loc)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${

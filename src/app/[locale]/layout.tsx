@@ -38,6 +38,9 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: "/logo.png",
+    apple: [
+      { url: "/icons-pwa/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
   },
   manifest: "/manifest.webmanifest",
   other: { "mobile-web-app-capable": "yes" },

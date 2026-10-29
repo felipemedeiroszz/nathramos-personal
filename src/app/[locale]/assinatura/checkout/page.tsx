@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { ShieldAlert } from "lucide-react";
-import { PublicHeader } from "@/components/shared/PublicHeader";
-import { PublicFooter } from "@/components/shared/PublicFooter";
+import { PublicShell } from "@/components/public/PublicShell";
+import "@/components/payments/checkout.css";
 import { CheckoutClient } from "@/components/payments/CheckoutClient";
 import { ProfileService } from "@/lib/payments/services";
 import { eligibleTrialDays } from "@/lib/payments/validation";
@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   title: "Checkout",
 };
 
-export default async function CheckoutPage({ params: { locale }, searchParams = {} }: { params: { locale: string }; searchParams?: {method?: string} }) {
+export default async function CheckoutPage({
+  params: { locale },
+  searchParams = {},
+}: {
+  params: { locale: string };
+  searchParams?: { method?: string };
+}) {
   setRequestLocale(locale);
 
   const t = await getTranslations("payments");
@@ -40,7 +46,12 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
   }
 
   const availablePlan = await PlanService.getPrimary();
-  const plan = availablePlan ? {...availablePlan,trial_days:await eligibleTrialDays(user.id,availablePlan.trial_days)} : null;
+  const plan = availablePlan
+    ? {
+        ...availablePlan,
+        trial_days: await eligibleTrialDays(user.id, availablePlan.trial_days),
+      }
+    : null;
 
   const profile = await ProfileService.getProfile(user.id);
   const pixNeedsDocument = !profile?.asaas_customer_id && !profile?.cpf;
@@ -49,11 +60,15 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
 
   const cardAvailable = Boolean(
     plan?.stripe_price_id &&
-      process.env.STRIPE_SECRET_KEY &&
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   );
-  const pixAvailable = Boolean(process.env.ASAAS_API_KEY && plan?.currency === "BRL");
-  const planAvailable = Boolean(plan && plan.is_active && (cardAvailable || pixAvailable));
+  const pixAvailable = Boolean(
+    process.env.ASAAS_API_KEY && plan?.currency === "BRL",
+  );
+  const planAvailable = Boolean(
+    plan && plan.is_active && (cardAvailable || pixAvailable),
+  );
 
   const priceLabel = plan
     ? formatCurrency(plan.price_cents / 100, plan.currency, locale as Locale)
@@ -65,16 +80,19 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
   const cycleLabel = plan ? tp(`cycle_${plan.billing_cycle_days}` as any) : "";
 
   return (
-    <>
-      <PublicHeader locale={locale} />
-
-      <main className="animate-fade-in px-4 md:px-6 pt-20 pb-20 md:pt-28">
-        <div className="mx-auto max-w-5xl space-y-8">
-          <div className="mx-auto max-w-2xl text-center space-y-3 animate-slide-up [animation-fill-mode:both]">
+    <PublicShell locale={locale}>
+      <main className="checkout-page">
+        <div className="space-y-8">
+          <div className="checkout-heading space-y-3">
+            <p className="checkout-eyebrow">
+              {isPt ? "ASSINATURA · FINALIZAR" : "SUBSCRIPTION · CHECKOUT"}
+            </p>
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-text">
               {t("checkoutTitle")}
             </h1>
-            <p className="text-base text-text-secondary">{t("checkoutSubtitle")}</p>
+            <p className="text-base text-text-secondary">
+              {t("checkoutSubtitle")}
+            </p>
           </div>
 
           {!planAvailable || !plan ? (
@@ -82,8 +100,17 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
                 <ShieldAlert size={24} className="text-primary" />
               </div>
-              <p className="text-text-secondary">{isPt ? "Nenhuma forma de pagamento está disponível para este plano no momento. Consulte a central ou entre em contato com o atendimento." : "No payment method is available for this plan right now. Check your billing center or contact support."}</p>
-              <a className="block text-primary underline" href={`/${locale}/assinatura`}>{isPt ? "Abrir central de pagamentos" : "Open billing center"}</a>
+              <p className="text-text-secondary">
+                {isPt
+                  ? "Nenhuma forma de pagamento está disponível para este plano no momento. Consulte a central ou entre em contato com o atendimento."
+                  : "No payment method is available for this plan right now. Check your billing center or contact support."}
+              </p>
+              <a
+                className="block text-primary underline"
+                href={`/${locale}/assinatura`}
+              >
+                {isPt ? "Abrir central de pagamentos" : "Open billing center"}
+              </a>
             </div>
           ) : (
             <div className="animate-slide-up [animation-fill-mode:both] [animation-delay:120ms]">
@@ -113,7 +140,7 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
                   paymentError: t("paymentError"),
                   secureNote: t("secureNote"),
                   totalDueToday: t("totalDueToday"),
-                  trialNote: t("trialNote"),
+                  trialNote: t("trialNote", { days: plan.trial_days }),
                   card: {
                     number: t("cardNumber"),
                     holder: t("cardHolder"),
@@ -148,8 +175,6 @@ export default async function CheckoutPage({ params: { locale }, searchParams = 
           )}
         </div>
       </main>
-
-      <PublicFooter locale={locale} />
-    </>
+    </PublicShell>
   );
 }

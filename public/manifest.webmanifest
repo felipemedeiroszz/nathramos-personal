@@ -2,7 +2,7 @@
   "name": "Nath Ramos Personal Trainer",
   "short_name": "Nath Ramos",
   "description": "Acompanhamento fitness personalizado premium.",
-  "start_url": "/dashboard",
+  "start_url": "/pt-BR/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -84,17 +84,18 @@
     {
       "name": "Dashboard",
       "short_name": "Home",
-      "url": "/dashboard"
+      "url": "/pt-BR/dashboard"
     },
     {
       "name": "Treino",
       "short_name": "Treino",
-      "url": "/dashboard/treino"
+      "url": "/pt-BR/treinos"
     },
     {
       "name": "Dieta",
       "short_name": "Dieta",
-      "url": "/dashboard/dieta"
+      "url": "/pt-BR/dietas"
     }
-  ]
+  ],
+  "id": "/dashboard"
 }

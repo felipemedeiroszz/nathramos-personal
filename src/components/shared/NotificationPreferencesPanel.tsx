@@ -1,24 +1,43 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
-import { AlertCircle, Bell, CheckCircle2, Loader2, Moon, Save, Smartphone } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+  Loader2,
+  Moon,
+  Save,
+  Smartphone,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Switch } from "@/components/ui/Switch";
 import {
   disablePush,
   enablePush,
   notificationPermission,
-  pushSupported,
+  pushAvailability,
+  syncPushSubscription,
 } from "@/lib/push/client";
 import {
   saveNotificationPreferencesAction,
   saveNotifySettingsAction,
+  getNotificationPreferencesAction,
 } from "@/app/actions/notifications";
 import { NOTIFICATION_TYPES } from "@/schemas/notifications";
-import type { NotificationPreferences, NotifySettings } from "@/services/NotificationService";
+import type {
+  NotificationPreferences,
+  NotifySettings,
+} from "@/services/NotificationService";
 import { cn } from "@/lib/utils";
 
 interface NotificationPreferencesPanelProps {
@@ -41,23 +60,54 @@ export function NotificationPreferencesPanel({
 }: NotificationPreferencesPanelProps) {
   const t = useTranslations("studentNotifications");
   const common = useTranslations("common");
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const en = useLocale() === "en-US";
+  const [registered, setRegistered] = useState(false);
+  const [availability, setAvailability] =
+    useState<ReturnType<typeof pushAvailability>>(null);
 
   const [pushEnabled, setPushEnabled] = useState(settings.push_enabled);
   const [quietEnabled, setQuietEnabled] = useState(
-    Boolean(settings.quiet_hours_start && settings.quiet_hours_end)
+    Boolean(settings.quiet_hours_start && settings.quiet_hours_end),
   );
-  const [quietStart, setQuietStart] = useState(toInputTime(settings.quiet_hours_start) || "22:00");
-  const [quietEnd, setQuietEnd] = useState(toInputTime(settings.quiet_hours_end) || "08:00");
-  const [email, setEmail] = useState<Record<string, boolean>>({ ...preferences.email } as Record<string, boolean>);
-  const [push, setPush] = useState<Record<string, boolean>>({ ...preferences.push } as Record<string, boolean>);
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [quietStart, setQuietStart] = useState(
+    toInputTime(settings.quiet_hours_start) || "22:00",
+  );
+  const [quietEnd, setQuietEnd] = useState(
+    toInputTime(settings.quiet_hours_end) || "08:00",
+  );
+  const [email, setEmail] = useState<Record<string, boolean>>({
+    ...preferences.email,
+  } as Record<string, boolean>);
+  const [push, setPush] = useState<Record<string, boolean>>({
+    ...preferences.push,
+  } as Record<string, boolean>);
+  const [permission, setPermission] = useState<
+    NotificationPermission | "unsupported"
+  >("default");
   const [devicesCount, setDevicesCount] = useState(devices);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   useEffect(() => {
+    let active = true;
     setPermission(notificationPermission());
+    setAvailability(pushAvailability());
+    syncPushSubscription().then(async (ok) => {
+      if (!active) return;
+      setRegistered(ok);
+      if (ok) {
+        try {
+          const current = await getNotificationPreferencesAction();
+          if (active) setDevicesCount(current.devices);
+        } catch {
+          /* Keep the server-rendered count when refresh fails. */
+        }
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleEnablePush = async () => {
@@ -66,12 +116,22 @@ export function NotificationPreferencesPanel({
       const ok = await enablePush();
       setPermission(notificationPermission());
       if (ok) {
+        const result = await saveNotifySettingsAction({
+          push_enabled: true,
+          quiet_hours_start: quietEnabled ? quietStart : null,
+          quiet_hours_end: quietEnabled ? quietEnd : null,
+        });
+        if (!result.success) throw new Error();
         setPushEnabled(true);
-        setDevicesCount((prev) => Math.max(1, prev + 1));
+        setRegistered(true);
+        const current = await getNotificationPreferencesAction();
+        setDevicesCount(current.devices);
         setFeedback({ type: "success", text: t("pushEnabled") });
       } else {
         setFeedback({ type: "error", text: t("pushDenied") });
       }
+    } catch {
+      setFeedback({ type: "error", text: common("error") });
     } finally {
       setBusy(false);
     }
@@ -80,37 +140,49 @@ export function NotificationPreferencesPanel({
   const handleDisablePush = async () => {
     setBusy(true);
     try {
-      await disablePush();
-      setDevicesCount(0);
-      setPushEnabled(false);
+      if (!(await disablePush())) throw new Error();
+      setRegistered(false);
+      const current = await getNotificationPreferencesAction();
+      setDevicesCount(current.devices);
       setFeedback({ type: "success", text: t("pushDisabled") });
+    } catch {
+      setFeedback({ type: "error", text: common("error") });
     } finally {
       setBusy(false);
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsPending(true);
     setFeedback(null);
-    startTransition(async () => {
+    try {
       const settingsResult = await saveNotifySettingsAction({
         push_enabled: pushEnabled,
         quiet_hours_start: quietEnabled ? quietStart : null,
         quiet_hours_end: quietEnabled ? quietEnd : null,
       });
-      const prefsResult = await saveNotificationPreferencesAction({ email, push });
+      const prefsResult = await saveNotificationPreferencesAction({
+        email,
+        push,
+      });
       if (settingsResult.success && prefsResult.success) {
         setFeedback({ type: "success", text: t("saved") });
       } else {
         setFeedback({
           type: "error",
-          text: settingsResult.message ?? prefsResult.message ?? common("error"),
+          text:
+            settingsResult.message ?? prefsResult.message ?? common("error"),
         });
       }
-    });
+    } catch {
+      setFeedback({ type: "error", text: common("error") });
+    } finally {
+      setIsPending(false);
+    }
   };
 
-  const supportsPush = permission !== "unsupported";
-  const pushActive = pushEnabled && permission === "granted";
+  const supportsPush = !availability && permission !== "unsupported";
+  const pushActive = pushEnabled && registered && permission === "granted";
 
   return (
     <div className="space-y-6">
@@ -127,6 +199,33 @@ export function NotificationPreferencesPanel({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {availability && (
+            <p
+              role="status"
+              className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-text-secondary"
+            >
+              {availability === "install"
+                ? en
+                  ? "On iPhone/iPad, add this site to your Home Screen, open it from its icon, then enable notifications. Requires iOS/iPadOS 16.4 or later."
+                  : "No iPhone/iPad, adicione este site à Tela de Início, abra pelo ícone e ative as notificações. Requer iOS/iPadOS 16.4 ou posterior."
+                : availability === "insecure"
+                  ? en
+                    ? "Open the site over HTTPS to enable mobile notifications."
+                    : "Abra o site por HTTPS para ativar as notificações no celular."
+                  : availability === "unconfigured"
+                    ? en
+                      ? "Push notifications need to be configured on the server."
+                      : "O envio push precisa ser configurado no servidor."
+                    : t("pushUnsupported")}
+            </p>
+          )}
+          {permission === "denied" && (
+            <p role="status" className="text-sm text-text-secondary">
+              {en
+                ? "Notifications are blocked. Allow them in your browser or device settings, then reopen this page."
+                : "As notificações estão bloqueadas. Libere nas configurações do navegador ou dispositivo e reabra esta página."}
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/60 bg-surface-secondary/30 p-4">
             <div className="space-y-1">
               <p className="text-sm font-medium text-text">
@@ -140,22 +239,51 @@ export function NotificationPreferencesPanel({
             </div>
             <div className="flex items-center gap-2">
               {!supportsPush ? (
-                <span className="text-xs text-text-secondary">{t("pushUnsupported")}</span>
+                <span className="text-xs text-text-secondary">
+                  {t("pushUnsupported")}
+                </span>
               ) : permission === "granted" ? (
-                pushEnabled ? (
-                  <Button variant="secondary" size="sm" onClick={handleDisablePush} disabled={busy}>
-                    {busy ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Bell size={16} className="mr-2" />}
+                pushActive ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleDisablePush}
+                    disabled={busy || isPending}
+                  >
+                    {busy ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Bell size={16} className="mr-2" />
+                    )}
                     {t("disablePush")}
                   </Button>
                 ) : (
-                  <Button variant="primary" size="sm" onClick={handleEnablePush} disabled={busy}>
-                    {busy ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Bell size={16} className="mr-2" />}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleEnablePush}
+                    disabled={busy || isPending}
+                  >
+                    {busy ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Bell size={16} className="mr-2" />
+                    )}
                     {t("enablePush")}
                   </Button>
                 )
               ) : (
-                <Button variant="primary" size="sm" onClick={handleEnablePush} disabled={busy}>
-                  {busy ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Bell size={16} className="mr-2" />}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleEnablePush}
+                  disabled={busy || isPending}
+                >
+                  {busy ? (
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                  ) : (
+                    <Bell size={16} className="mr-2" />
+                  )}
                   {t("enablePush")}
                 </Button>
               )}
@@ -166,8 +294,12 @@ export function NotificationPreferencesPanel({
             <div className="flex items-start gap-3">
               <Moon size={18} className="mt-0.5 shrink-0 text-text-secondary" />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-text">{t("quietHoursTitle")}</p>
-                <p className="text-xs text-text-secondary">{t("quietHoursDesc")}</p>
+                <p className="text-sm font-medium text-text">
+                  {t("quietHoursTitle")}
+                </p>
+                <p className="text-xs text-text-secondary">
+                  {t("quietHoursDesc")}
+                </p>
               </div>
             </div>
             <Switch
@@ -180,7 +312,9 @@ export function NotificationPreferencesPanel({
           {quietEnabled && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("quietStart")}</label>
+                <label className="text-sm font-medium text-text">
+                  {t("quietStart")}
+                </label>
                 <Input
                   type="time"
                   value={quietStart}
@@ -188,7 +322,9 @@ export function NotificationPreferencesPanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("quietEnd")}</label>
+                <label className="text-sm font-medium text-text">
+                  {t("quietEnd")}
+                </label>
                 <Input
                   type="time"
                   value={quietEnd}
@@ -224,7 +360,9 @@ export function NotificationPreferencesPanel({
                 key={type}
                 className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-2 py-3"
               >
-                <span className={cn("text-sm text-text")}>{t(`types.${type}`)}</span>
+                <span className={cn("text-sm text-text")}>
+                  {t(`types.${type}`)}
+                </span>
                 <div className="flex w-14 justify-center">
                   <Switch
                     checked={push[type] ?? true}
@@ -250,7 +388,11 @@ export function NotificationPreferencesPanel({
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="primary" onClick={handleSave} disabled={isPending}>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={busy || isPending}
+        >
           {isPending ? (
             <Loader2 size={16} className="mr-2 animate-spin" />
           ) : (
@@ -262,10 +404,14 @@ export function NotificationPreferencesPanel({
           <span
             className={cn(
               "inline-flex items-center gap-2 text-sm",
-              feedback.type === "success" ? "text-primary" : "text-text"
+              feedback.type === "success" ? "text-primary" : "text-text",
             )}
           >
-            {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {feedback.type === "success" ? (
+              <CheckCircle2 size={16} />
+            ) : (
+              <AlertCircle size={16} />
+            )}
             {feedback.text}
           </span>
         )}

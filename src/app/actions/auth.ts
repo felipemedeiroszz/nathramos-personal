@@ -11,7 +11,8 @@ import { defaultLocale } from "@/i18n/config";
 import { isSignupOpen } from "@/services/PlatformSettingsService";
 import type { UserRole } from "@/types";
 
-function detectLocale(): string {
+function detectLocale(preferred?: FormDataEntryValue | null): string {
+  if (preferred === "pt-BR" || preferred === "en-US") return preferred;
   const headersList = headers();
   const acceptLanguage = headersList.get("accept-language") ?? "";
   if (acceptLanguage.toLowerCase().startsWith("en")) return "en-US";
@@ -21,7 +22,10 @@ function detectLocale(): string {
 export async function loginAction(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
 
-  const parsed = loginSchema.safeParse(raw);
+  const parsed = loginSchema.safeParse({
+    ...raw,
+    remember: raw.remember === "true" || raw.remember === "on",
+  });
   if (!parsed.success) {
     return {
       success: false as const,
@@ -39,7 +43,7 @@ export async function loginAction(formData: FormData) {
     password,
   });
 
-  const locale = detectLocale();
+  const locale = detectLocale(formData.get("locale"));
 
   if (error) {
     const isInvalidCredentials = /invalid login credentials/i.test(

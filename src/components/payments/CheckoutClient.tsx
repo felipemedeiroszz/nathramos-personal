@@ -5,16 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import {
-  ArrowLeft,
-  CreditCard,
-  Loader2,
-  QrCode,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, QrCode } from "lucide-react";
 import { CardCheckoutForm, type CardFormLabels } from "./CardCheckoutForm";
 import { PixCheckoutPanel, type PixLabels } from "./PixCheckoutPanel";
 import { cn } from "@/lib/utils";
+import { CheckoutSummary } from "./CheckoutSummary";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -139,13 +134,28 @@ export function CheckoutClient({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+    <div className="checkout-grid">
       {/* Métodos */}
       <div className="lg:col-span-3 space-y-6">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-surface p-1.5">
+        <div>
+          <p className="checkout-eyebrow">
+            01 / {locale === "en-US" ? "Payment method" : "Forma de pagamento"}
+          </p>
+          <h2 className="mt-3 text-xl font-medium tracking-tight text-zinc-100">
+            {locale === "en-US"
+              ? "How would you like to pay?"
+              : "Como você prefere pagar?"}
+          </h2>
+        </div>
+        <div
+          className="checkout-methods"
+          role="group"
+          aria-label={labels.method}
+        >
           {tabs.map(({ id, label, icon: Icon, enabled }) => (
             <button
               key={id}
+              aria-pressed={tab === id}
               type="button"
               disabled={!enabled}
               onClick={() => setTab(id)}
@@ -164,8 +174,8 @@ export function CheckoutClient({
           ))}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-surface p-5 md:p-7">
-          <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm leading-relaxed">
+        <div className="checkout-payment-panel">
+          <div className="checkout-terms-note">
             <strong>
               {tab === "pix"
                 ? en
@@ -187,13 +197,16 @@ export function CheckoutClient({
           </div>
           {tab === "card" ? (
             intentLoading ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-text-secondary">
+              <div
+                role="status"
+                className="flex flex-col items-center justify-center gap-3 py-16 text-text-secondary"
+              >
                 <Loader2 size={26} className="animate-spin text-primary" />
                 <p className="text-sm">{labels.preparing}</p>
               </div>
             ) : intentError || !clientSecret ? (
               <div className="space-y-4 py-10 text-center">
-                <p className="text-sm text-red-400">
+                <p role="alert" className="text-sm text-red-400">
                   {intentError ?? labels.paymentError}
                 </p>
                 <button
@@ -251,84 +264,16 @@ export function CheckoutClient({
       </div>
 
       {/* Resumo */}
-      <div className="lg:col-span-2">
-        <div className="lg:sticky lg:top-24 space-y-5 rounded-2xl border border-border/60 bg-surface p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
-            {labels.planSummary}
-          </h2>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-secondary">{labels.plan}</span>
-              <span className="text-sm font-semibold text-text">
-                {planName}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-secondary">
-                {labels.billingCycle}
-              </span>
-              <span className="text-sm font-semibold text-text">
-                {cycleLabel}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-secondary">
-                {labels.method}
-              </span>
-              <span className="text-sm font-semibold text-text">
-                {tab === "card" ? labels.creditCard : labels.pix}
-              </span>
-            </div>
-          </div>
-
-          <div className="h-px bg-border/50" />
-
-          <div className="space-y-1">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-text-secondary">
-                {labels.totalDueToday}
-              </span>
-              <span className="text-2xl font-bold text-primary">
-                {tab === "pix" ? priceLabel : totalTodayLabel}
-              </span>
-            </div>
-            {tab === "card" && trialDays > 0 && (
-              <p className="text-xs leading-relaxed text-primary/90">
-                {labels.trialNote.replace("{days}", String(trialDays))}
-              </p>
-            )}
-            <p className="text-xs text-text-secondary/70">
-              {tab === "pix"
-                ? en
-                  ? "Paid once for this access period."
-                  : "Pago uma vez por este período de acesso."
-                : en
-                  ? "Recurring price after any eligible trial."
-                  : "Valor recorrente após eventual teste elegível."}
-            </p>
-            <p className="text-xs text-text-secondary/70">
-              {priceLabel} / {cycleLabel}
-            </p>
-          </div>
-
-          <p className="text-xs leading-relaxed text-text-secondary">
-            {en
-              ? "A pending attempt may prevent choosing another method. Close the unpaid attempt in your billing center before switching. Do not pay twice."
-              : "Uma tentativa pendente pode impedir a escolha de outro meio. Encerre a tentativa não paga na central antes de trocar. Não pague duas vezes."}
-          </p>
-          <Link
-            href={`/${locale}/assinatura`}
-            className="text-sm text-primary underline"
-          >
-            {en ? "Review pending attempts" : "Consultar tentativas pendentes"}
-          </Link>
-          <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-xs text-text-secondary">
-            <ShieldCheck size={15} className="shrink-0 text-primary" />
-            <span>{labels.secureNote}</span>
-          </div>
-        </div>
-      </div>
+      <CheckoutSummary
+        locale={locale}
+        planName={planName}
+        priceLabel={priceLabel}
+        totalTodayLabel={totalTodayLabel}
+        cycleLabel={cycleLabel}
+        trialDays={trialDays}
+        method={tab}
+        labels={labels}
+      />
     </div>
   );
 }

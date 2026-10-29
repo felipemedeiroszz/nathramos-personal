@@ -40,7 +40,17 @@ admin-diagnostics.test.mjs verifica classificação de falhas, isolamento do end
 `node tests/preview-student-system.mjs` renderiza as telas e estados de acesso com fixtures locais em 1440 e 390 px. Verifica alimentação, hidratação, peso/sono, séries, falhas de gravação, menu mobile e renovação com acesso bloqueado, além de cenários em inglês. Ações, fetch e Realtime são substituídos: o teste não altera serviços remotos. Os previews ficam em `artifacts/student-design-system/`. Requer Playwright com Chrome; configure `PLAYWRIGHT_MODULE` se necessário.
 
 
+## Notificações push
+
+`push-notifications.test.mjs` cobre exibição pelo Service Worker, cliques, cache privado, inscrições concorrentes, desativação persistida e requisitos móveis. `node tests/preview-push-worker.mjs` verifica o Service Worker real em um navegador isolado no localhost, sem enviar push para pessoas. Consulte `NOTIFICACOES-PUSH.md` para o diagnóstico e a homologação em Android/iPhone.
+
 ## Site público
+
+`node tests/preview-checkout-design.mjs` verifica o checkout de demonstração em português/inglês e desktop/celular, o resumo por meio de pagamento e o total integral no PIX. As APIs de pagamento são bloqueadas pelo teste; nenhuma cobrança é criada. Screenshots em `artifacts/public-site/`.
+
+`node tests/preview-auth-regressions.mjs` testa preservação de `next=checkout` e fragmento ao trocar idioma, Escape no seletor e falha de rede simulada no login. A requisição de autenticação é interceptada, sem atingir o servidor. `auth-login.test.mjs` cobre a normalização de checkbox no FormData e o idioma do redirecionamento com serviços substituídos.
+
+`node tests/preview-auth-ui.mjs` confere login e as três etapas de cadastro em português/inglês, desktop/celular. Verifica validação, preservação dos campos, consentimentos desmarcados, alternância da senha e Escape no modal. Não envia login nem cria contas. Requer o localhost ativo e Playwright com Chrome (`PLAYWRIGHT_MODULE`).
 
 `node tests/preview-public-motion.mjs` verifica o indicador de leitura, entradas por rolagem, retorno ao topo e foco do teclado em desktop e celular. Também testa movimento reduzido e leitura sem JavaScript. Usa o mesmo `PUBLIC_BASE_URL` e `PLAYWRIGHT_MODULE` do preview abaixo.
 

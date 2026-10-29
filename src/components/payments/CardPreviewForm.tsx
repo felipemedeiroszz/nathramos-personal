@@ -17,7 +17,8 @@ function detectBrand(digits: string): CardBrand {
   if (/^5[1-5]/.test(digits)) return "mastercard";
   if (/^6011/.test(digits)) return "discover";
   if (/^(606282|3841)/.test(digits)) return "hipercard";
-  if (/^(4011|4312|4389|5041|5066|5090|6277|6362|6363|650)/.test(digits)) return "elo";
+  if (/^(4011|4312|4389|5041|5066|5090|6277|6362|6363|650)/.test(digits))
+    return "elo";
   return null;
 }
 
@@ -63,7 +64,7 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
       "rounded-xl border bg-background/60 px-4 py-3 transition-all duration-300",
       focusedField === field
         ? "border-primary/60 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]"
-        : "border-border/60 hover:border-primary/30"
+        : "border-border/60 hover:border-primary/30",
     );
 
   const inputClass = (field: CardField) =>
@@ -71,7 +72,7 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
       "w-full rounded-xl border bg-background/60 px-4 py-3 text-base text-text outline-none transition-all duration-300 placeholder:text-text-secondary/50",
       focusedField === field
         ? "border-primary/60 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]"
-        : "border-border/60 hover:border-primary/30"
+        : "border-border/60 hover:border-primary/30",
     );
 
   return (
@@ -92,7 +93,10 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-secondary" htmlFor="previewHolder">
+          <label
+            className="text-sm font-medium text-text-secondary"
+            htmlFor="previewHolder"
+          >
             {labels.holder}
           </label>
           <input
@@ -109,7 +113,10 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-secondary" htmlFor="previewNumber">
+          <label
+            className="text-sm font-medium text-text-secondary"
+            htmlFor="previewNumber"
+          >
             {labels.number}
           </label>
           <div className={fieldWrapper("number")}>
@@ -130,7 +137,10 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-secondary" htmlFor="previewExpiry">
+            <label
+              className="text-sm font-medium text-text-secondary"
+              htmlFor="previewExpiry"
+            >
               {labels.expiry}
             </label>
             <div className={fieldWrapper("expiry")}>
@@ -139,7 +149,9 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
                 type="text"
                 inputMode="numeric"
                 value={expiry}
-                onChange={(e) => setExpiry(formatExpiry(e.target.value.replace(/\D/g, "")))}
+                onChange={(e) =>
+                  setExpiry(formatExpiry(e.target.value.replace(/\D/g, "")))
+                }
                 onFocus={() => setFocusedField("expiry")}
                 onBlur={() => setFocusedField(null)}
                 placeholder="MM/YY"
@@ -149,7 +161,10 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-secondary" htmlFor="previewCvv">
+            <label
+              className="text-sm font-medium text-text-secondary"
+              htmlFor="previewCvv"
+            >
               {labels.cvv}
             </label>
             <div className={fieldWrapper("cvv")}>
@@ -158,10 +173,12 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
                 type="text"
                 inputMode="numeric"
                 value={cvv}
-                onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                onChange={(e) =>
+                  setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
                 onFocus={() => setFocusedField("cvv")}
                 onBlur={() => setFocusedField(null)}
-                placeholder="\u2022\u2022\u2022"
+                placeholder="•••"
                 autoComplete="off"
                 className="w-full bg-transparent font-mono text-base text-text outline-none placeholder:text-text-secondary/50"
               />
@@ -171,7 +188,10 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
       </div>
 
       {showNotice && (
-        <div className="flex items-start gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-xs text-primary" role="status">
+        <div
+          className="flex items-start gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-xs text-primary"
+          role="status"
+        >
           <Info size={15} className="mt-0.5 shrink-0" />
           <span>{notice}</span>
         </div>
@@ -179,6 +199,7 @@ export function CardPreviewForm({ labels, notice }: CardPreviewFormProps) {
 
       <button
         type="button"
+        data-checkout-submit
         onClick={() => setShowNotice(true)}
         className="group relative inline-flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-[0_0_35px_hsl(var(--primary)/0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_0_55px_hsl(var(--primary)/0.5)]"
       >
