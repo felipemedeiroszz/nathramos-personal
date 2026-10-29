@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { StudentHeader } from "@/components/shared/StudentHeader";
 import { PushNotificationManager } from "@/components/shared/PushNotificationManager";
 import { ShieldAlert, LogOut, Wrench } from "lucide-react";
 
@@ -43,9 +42,14 @@ export function StudentLayoutClient({
   const localeTag = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const isAccount = pathname === `/${locale}/account`;
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [periodExpired, setPeriodExpired] = useState(false);
+  const isAccount =
+    pathname === `/${locale}/account` ||
+    pathname === `/${locale}/assinatura` ||
+    pathname.startsWith(`/${locale}/assinatura/`);
+  const [periodExpired, setPeriodExpired] = useState(() => {
+    const expires = Date.parse(accessExpiresAt || "");
+    return Number.isFinite(expires) && expires <= Date.now();
+  });
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const check = () => {
@@ -53,7 +57,8 @@ export function StudentLayoutClient({
       const expires = Date.parse(accessExpiresAt || "");
       const remaining = expires - Date.now();
       setPeriodExpired(Number.isFinite(expires) && remaining <= 0);
-      if (remaining > 0) timer = setTimeout(check, Math.min(remaining, 2147483647));
+      if (remaining > 0)
+        timer = setTimeout(check, Math.min(remaining, 2147483647));
     };
     check();
     window.addEventListener("focus", check);
@@ -76,13 +81,17 @@ export function StudentLayoutClient({
         : null;
 
     return (
-      <div className="min-h-dvh flex items-center justify-center p-6 bg-background">
+      <div className="student-shell min-h-dvh flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-8 shadow-lg text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 text-primary flex items-center justify-center">
             <Wrench size={28} />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-2">{t("maintenanceTitle")}</h1>
-          <p className="text-text-secondary mb-4">{t("maintenanceDescription")}</p>
+          <h1 className="text-2xl font-bold text-text mb-2">
+            {t("maintenanceTitle")}
+          </h1>
+          <p className="text-text-secondary mb-4">
+            {t("maintenanceDescription")}
+          </p>
           {untilLabel && (
             <p className="text-sm font-medium text-primary mb-6">
               {t("maintenanceUntil", { date: untilLabel })}
@@ -102,12 +111,14 @@ export function StudentLayoutClient({
 
   if ((!subscriptionAllowed || periodExpired) && !isAccount) {
     return (
-      <div className="min-h-dvh flex items-center justify-center p-6 bg-background">
+      <div className="student-shell min-h-dvh flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-8 shadow-lg text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full border border-border bg-surface-secondary flex items-center justify-center text-primary">
             <ShieldAlert size={28} />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-2">{t("blockedTitle")}</h1>
+          <h1 className="text-2xl font-bold text-text mb-2">
+            {t("blockedTitle")}
+          </h1>
           <p className="text-text-secondary mb-6">{t("blockedDescription")}</p>
           <button
             onClick={() => router.push(`/${locale}/assinatura`)}
@@ -115,6 +126,12 @@ export function StudentLayoutClient({
           >
             {t("blockedCta")}
           </button>
+          <Link
+            href={`/${locale}/account`}
+            className="mt-4 flex min-h-11 items-center justify-center rounded-xl border border-border text-sm text-text-secondary transition hover:text-primary"
+          >
+            {locale === "en-US" ? "View my account" : "Consultar minha conta"}
+          </Link>
           <button
             onClick={onLogout}
             className="mt-4 w-full h-11 rounded-xl border border-border text-text-secondary hover:text-text hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
@@ -128,25 +145,30 @@ export function StudentLayoutClient({
   }
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="student-shell min-h-dvh bg-background text-text">
+      <a
+        href="#student-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-primary focus:p-3 focus:text-primary-foreground"
+      >
+        {locale === "en-US" ? "Skip to content" : "Ir para o conteúdo"}
+      </a>
       <PushNotificationManager />
-      <div className="flex">
+      <div className="flex items-start">
         <Sidebar locale={locale} />
-        <main className="flex-1 min-w-0">
-          <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:justify-end md:px-6">
-            <Link href={`/${locale}/dashboard`} className="relative h-9 w-24 md:hidden" aria-label="Nath Ramos">
-              <Image src="/logo.png" alt="Nath Ramos" fill className="object-contain object-left" priority />
-            </Link>
-            <NotificationBell
-              locale={locale}
-              namespace="studentNotifications"
-              viewAllHref={`/${locale}/notificacoes`}
-            />
-          </div>
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6 md:py-10 pb-28 md:pb-10">
+        <div className="min-w-0 flex-1">
+          <StudentHeader
+            locale={locale}
+            firstName={firstName}
+            photoUrl={photoUrl}
+          />
+          <main
+            id="student-main"
+            tabIndex={-1}
+            className="student-content mx-auto w-full max-w-[1440px] px-4 py-6 pb-28 outline-none sm:px-6 md:py-8 md:pb-10 lg:px-8"
+          >
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
       <MobileBottomNav locale={locale} />
     </div>

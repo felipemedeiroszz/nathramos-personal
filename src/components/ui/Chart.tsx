@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { HTMLAttributes } from "react";
+import { HTMLAttributes, useId } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -22,6 +22,7 @@ import {
 
 export interface ChartProps extends HTMLAttributes<HTMLDivElement> {
   data: any[];
+  appearance?: "default" | "admin" | "student";
   type?: "line" | "area" | "bar" | "pie";
   xKey?: string;
   yKey?: string;
@@ -29,10 +30,15 @@ export interface ChartProps extends HTMLAttributes<HTMLDivElement> {
   series?: { key: string; label: string; color: string }[];
 }
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--surface-secondary))", "hsl(var(--border))"];
+const COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--surface-secondary))",
+  "hsl(var(--border))",
+];
 
 export function Chart({
   data,
+  appearance = "default",
   type = "line",
   xKey = "name",
   yKey = "value",
@@ -41,14 +47,52 @@ export function Chart({
   className,
   ...props
 }: ChartProps) {
+  const admin = appearance !== "default";
+  const gradientId = useId();
+  const palette = admin
+    ? [
+        "#facc15",
+        "#60a5fa",
+        "#34d399",
+        "#a78bfa",
+        "#fb923c",
+        "#f87171",
+        "#64748b",
+      ]
+    : COLORS;
   const renderChart = () => {
     switch (type) {
       case "area":
         return (
           <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey={xKey} stroke="hsl(var(--text-secondary))" />
-            <YAxis stroke="hsl(var(--text-secondary))" />
+            {admin && (
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.01} />
+                </linearGradient>
+              </defs>
+            )}
+            <CartesianGrid
+              vertical={!admin}
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+            />
+            <XAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              minTickGap={24}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              dataKey={xKey}
+              stroke="hsl(var(--text-secondary))"
+            />
+            <YAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              width={admin ? 48 : 60}
+              stroke="hsl(var(--text-secondary))"
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--surface))",
@@ -61,8 +105,9 @@ export function Chart({
               type="monotone"
               dataKey={yKey}
               stroke={color}
-              fill={color}
-              fillOpacity={0.3}
+              fill={admin ? `url(#${gradientId})` : color}
+              strokeWidth={admin ? 2.5 : 1}
+              fillOpacity={admin ? 1 : 0.3}
             />
           </AreaChart>
         );
@@ -70,9 +115,26 @@ export function Chart({
       case "bar":
         return (
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey={xKey} stroke="hsl(var(--text-secondary))" />
-            <YAxis stroke="hsl(var(--text-secondary))" />
+            <CartesianGrid
+              vertical={!admin}
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+            />
+            <XAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              minTickGap={24}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              dataKey={xKey}
+              stroke="hsl(var(--text-secondary))"
+            />
+            <YAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              width={admin ? 48 : 60}
+              stroke="hsl(var(--text-secondary))"
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--surface))",
@@ -81,7 +143,25 @@ export function Chart({
               }}
               itemStyle={{ color: "hsl(var(--text))" }}
             />
-            {series?.length ? <><Legend />{series.map(item => <Bar key={item.key} dataKey={item.key} name={item.label} fill={item.color} radius={[4,4,0,0]} />)}</> : <Bar dataKey={yKey} fill={color} radius={[4,4,0,0]} />}
+            {series?.length ? (
+              <>
+                <Legend
+                  iconType={admin ? "circle" : undefined}
+                  iconSize={admin ? 7 : 14}
+                />
+                {series.map((item) => (
+                  <Bar
+                    key={item.key}
+                    dataKey={item.key}
+                    name={item.label}
+                    fill={item.color}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
+              </>
+            ) : (
+              <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
+            )}
           </BarChart>
         );
 
@@ -95,10 +175,16 @@ export function Chart({
               cx="50%"
               cy="50%"
               outerRadius={80}
-              label
+              innerRadius={admin ? 58 : 0}
+              paddingAngle={admin ? 3 : 0}
+              stroke={admin ? "none" : undefined}
+              label={!admin}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={palette[index % palette.length]}
+                />
               ))}
             </Pie>
             <Tooltip
@@ -109,16 +195,36 @@ export function Chart({
               }}
               itemStyle={{ color: "hsl(var(--text))" }}
             />
-            <Legend />
+            <Legend
+              iconType={admin ? "circle" : undefined}
+              iconSize={admin ? 7 : 14}
+            />
           </PieChart>
         );
 
       default:
         return (
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey={xKey} stroke="hsl(var(--text-secondary))" />
-            <YAxis stroke="hsl(var(--text-secondary))" />
+            <CartesianGrid
+              vertical={!admin}
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+            />
+            <XAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              minTickGap={24}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              dataKey={xKey}
+              stroke="hsl(var(--text-secondary))"
+            />
+            <YAxis
+              axisLine={!admin}
+              tickLine={!admin}
+              tick={{ fontSize: admin ? 10 : 12 }}
+              width={admin ? 48 : 60}
+              stroke="hsl(var(--text-secondary))"
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--surface))",

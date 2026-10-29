@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { Bell } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
 import { requireStudentPage } from "@/lib/auth/platform";
 import { NotificationService } from "@/services/NotificationService";
 import { NotificationsCenterClient } from "@/components/shared/NotificationsCenterClient";
@@ -28,9 +28,18 @@ export default async function StudentNotificationsPage({
 
   return (
     <div className="space-y-6 w-full">
-      <PageHeader title={t("title")} description={t("subtitle")} icon={<Bell size={22} />} />
+      <PageHeader
+        locale={locale}
+        title={t("title")}
+        description={t("subtitle")}
+        icon={<Bell size={22} />}
+      />
 
-      <NotificationsCenterClient locale={locale} userId={userId} initialItems={items} />
+      <NotificationsCenterClient
+        locale={locale}
+        userId={userId}
+        initialItems={items}
+      />
     </div>
   );
 }

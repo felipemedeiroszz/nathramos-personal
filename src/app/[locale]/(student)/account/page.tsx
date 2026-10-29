@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { setRequestLocale, getTranslations, unstable_setRequestLocale } from "next-intl/server";
+import {
+  setRequestLocale,
+  getTranslations,
+  unstable_setRequestLocale,
+} from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { createClientSSR } from "@/lib/supabase/server";
@@ -32,7 +36,7 @@ export default async function AccountPage({
   const { data: profileData } = await supabase
     .from("profiles")
     .select<string, any>(
-      "id, first_name, last_name, phone, birth_date, gender, height_cm, weight_kg, country, language, avatar_url"
+      "id, first_name, last_name, phone, birth_date, gender, height_cm, weight_kg, country, language, avatar_url",
     )
     .eq("id", userId)
     .limit(1)
@@ -44,8 +48,8 @@ export default async function AccountPage({
   const sub = await SubscriptionService.getActive(userId);
   const planName = sub?.plan
     ? locale === "pt-BR"
-      ? (sub.plan as any).name_pt ?? (sub.plan as any).name_en
-      : (sub.plan as any).name_en ?? (sub.plan as any).name_pt
+      ? ((sub.plan as any).name_pt ?? (sub.plan as any).name_en)
+      : ((sub.plan as any).name_en ?? (sub.plan as any).name_pt)
     : null;
 
   const subAny = sub as any;
@@ -67,11 +71,13 @@ export default async function AccountPage({
         canceled_at: subAny.canceled_at ?? null,
         last_paid_at: subAny.last_paid_at ?? null,
         last_failed_at: subAny.last_failed_at ?? null,
-        billing_cycle_days: plan?.billing_cycle_days ?? subAny.billing_cycle_days ?? null,
+        billing_cycle_days:
+          plan?.billing_cycle_days ?? subAny.billing_cycle_days ?? null,
         amount_cents: plan?.price_cents ?? subAny.unit_amount_cents ?? null,
         currency: subAny.currency ?? plan?.currency ?? null,
         provider: subAny.provider ?? null,
-        payment_method: subAny.payment_method_pref ?? latestCard?.method ?? null,
+        payment_method:
+          subAny.payment_method_pref ?? latestCard?.method ?? null,
         card_last4: latestCard?.card_last4 ?? null,
         card_brand: latestCard?.card_brand ?? null,
         grace_days: plan?.grace_days ?? null,

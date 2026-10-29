@@ -12,8 +12,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/Dialog";
+import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/Dialog";
 import { PixDisplay } from "@/components/shared/PixDisplay";
 import {
   Book,
@@ -64,9 +69,12 @@ export function EbookLibraryClient({
 
   const paidSet = useMemo(() => new Set(paidIds), [paidIds]);
 
-  const titleOf = (e: EbookRow) => (locale === "en-US" ? e.title_en : e.title_pt);
-  const summaryOf = (e: EbookRow) => (locale === "en-US" ? e.summary_en : e.summary_pt) ?? "";
-  const categoriesOf = (e: EbookRow) => (locale === "en-US" ? e.categories_en : e.categories_pt) ?? [];
+  const titleOf = (e: EbookRow) =>
+    locale === "en-US" ? e.title_en : e.title_pt;
+  const summaryOf = (e: EbookRow) =>
+    (locale === "en-US" ? e.summary_en : e.summary_pt) ?? "";
+  const categoriesOf = (e: EbookRow) =>
+    (locale === "en-US" ? e.categories_en : e.categories_pt) ?? [];
   const isOwned = (e: EbookRow) => e.is_free || paidSet.has(e.id);
 
   const formatPrice = (e: EbookRow) => {
@@ -92,7 +100,8 @@ export function EbookLibraryClient({
         titleOf(e).toLowerCase().includes(term) ||
         summaryOf(e).toLowerCase().includes(term) ||
         (e.author ?? "").toLowerCase().includes(term);
-      const matchesCategory = !activeCategory || categoriesOf(e).includes(activeCategory);
+      const matchesCategory =
+        !activeCategory || categoriesOf(e).includes(activeCategory);
       return matchesSearch && matchesCategory;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,14 +136,23 @@ export function EbookLibraryClient({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.url) {
-        throw new Error(data?.error ?? L("Não foi possível iniciar o pagamento.", "Could not start the payment."));
+        throw new Error(
+          data?.error ??
+            L(
+              "Não foi possível iniciar o pagamento.",
+              "Could not start the payment.",
+            ),
+        );
       }
       window.location.href = data.url as string;
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : L("Não foi possível iniciar o pagamento.", "Could not start the payment.")
+          : L(
+              "Não foi possível iniciar o pagamento.",
+              "Could not start the payment.",
+            ),
       );
       setLoading(null);
     }
@@ -152,12 +170,17 @@ export function EbookLibraryClient({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data) {
-        throw new Error(data?.error ?? L("Não foi possível gerar o PIX.", "Could not generate the PIX."));
+        throw new Error(
+          data?.error ??
+            L("Não foi possível gerar o PIX.", "Could not generate the PIX."),
+        );
       }
       setPixData(data as PixData);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : L("Não foi possível gerar o PIX.", "Could not generate the PIX.")
+        err instanceof Error
+          ? err.message
+          : L("Não foi possível gerar o PIX.", "Could not generate the PIX."),
       );
     } finally {
       setLoading(null);
@@ -176,7 +199,9 @@ export function EbookLibraryClient({
       );
     }
     return (
-      <div className={cn("h-full w-full flex items-center justify-center", accent)}>
+      <div
+        className={cn("h-full w-full flex items-center justify-center", accent)}
+      >
         <BookOpen size={44} className="text-primary" />
       </div>
     );
@@ -185,10 +210,11 @@ export function EbookLibraryClient({
   return (
     <div className="space-y-6 w-full">
       <PageHeader
+        locale={locale}
         title={L("Biblioteca Digital", "Digital Library")}
         description={L(
           "Materiais exclusivos para alunos Nath Ramos",
-          "Exclusive materials for Nath Ramos students"
+          "Exclusive materials for Nath Ramos students",
         )}
         icon={<BookOpen size={22} />}
       />
@@ -203,7 +229,7 @@ export function EbookLibraryClient({
             <p className="text-text-secondary">
               {L(
                 "O acesso é liberado automaticamente assim que o pagamento é processado.",
-                "Access is released automatically as soon as the payment is processed."
+                "Access is released automatically as soon as the payment is processed.",
               )}
             </p>
           </div>
@@ -214,12 +240,18 @@ export function EbookLibraryClient({
         <CardHeader>
           <CardTitle>{L("Filtrar materiais", "Filter materials")}</CardTitle>
           <CardDescription>
-            {L("Encontre o conteúdo ideal para o seu momento", "Find the ideal content for your moment")}
+            {L(
+              "Encontre o conteúdo ideal para o seu momento",
+              "Find the ideal content for your moment",
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary"
+              size={18}
+            />
             <Input
               className="pl-10"
               placeholder={L("Buscar material...", "Search material...")}
@@ -229,12 +261,19 @@ export function EbookLibraryClient({
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setActiveCategory(null)}>
-              <Badge variant={activeCategory === null ? "default" : "outline"} className="cursor-pointer">
+              <Badge
+                variant={activeCategory === null ? "default" : "outline"}
+                className="cursor-pointer"
+              >
                 {L("Todos", "All")}
               </Badge>
             </button>
             {allCategories.map((cat) => (
-              <button key={cat} type="button" onClick={() => setActiveCategory(cat)}>
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+              >
                 <Badge
                   variant={activeCategory === cat ? "default" : "outline"}
                   className="cursor-pointer"
@@ -253,7 +292,10 @@ export function EbookLibraryClient({
             <div>
               <CardTitle>{L("Minha biblioteca", "My library")}</CardTitle>
               <CardDescription>
-                {L("Materiais liberados para você", "Materials unlocked for you")}
+                {L(
+                  "Materiais liberados para você",
+                  "Materials unlocked for you",
+                )}
               </CardDescription>
             </div>
             <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -265,10 +307,13 @@ export function EbookLibraryClient({
           {ownedList.length === 0 ? (
             <EmptyState
               icon={<Book size={26} className="text-text-secondary" />}
-              title={L("Nenhum material liberado ainda", "No materials unlocked yet")}
+              title={L(
+                "Nenhum material liberado ainda",
+                "No materials unlocked yet",
+              )}
               description={L(
                 "Adquira um e-book abaixo ou aguarde novos conteúdos exclusivos.",
-                "Purchase an e-book below or wait for new exclusive content."
+                "Purchase an e-book below or wait for new exclusive content.",
               )}
             />
           ) : (
@@ -294,11 +339,17 @@ export function EbookLibraryClient({
                   <div className="p-4 space-y-3 flex flex-col flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {categoriesOf(ebook).slice(0, 1).map((c) => (
-                          <Badge key={c} variant="outline" className="text-[11px]">
-                            {c}
-                          </Badge>
-                        ))}
+                        {categoriesOf(ebook)
+                          .slice(0, 1)
+                          .map((c) => (
+                            <Badge
+                              key={c}
+                              variant="outline"
+                              className="text-[11px]"
+                            >
+                              {c}
+                            </Badge>
+                          ))}
                         {!!ebook.pages_count && (
                           <span className="text-xs text-text-secondary">
                             {ebook.pages_count} {L("pgs", "pgs")}
@@ -309,7 +360,9 @@ export function EbookLibraryClient({
                         {titleOf(ebook)}
                       </h3>
                       {!!summaryOf(ebook) && (
-                        <p className="text-xs text-text-secondary line-clamp-2">{summaryOf(ebook)}</p>
+                        <p className="text-xs text-text-secondary line-clamp-2">
+                          {summaryOf(ebook)}
+                        </p>
                       )}
                     </div>
                     <div className="mt-auto pt-1">
@@ -320,13 +373,22 @@ export function EbookLibraryClient({
                           variant="primary"
                           className="w-full gap-1.5 text-xs h-9"
                         >
-                          <a href={ebook.external_url} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={ebook.external_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <ExternalLink size={14} />
                             {L("Acessar e-book", "Access e-book")}
                           </a>
                         </Button>
                       ) : (
-                        <Button size="sm" variant="secondary" className="w-full gap-1.5 text-xs h-9" disabled>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="w-full gap-1.5 text-xs h-9"
+                          disabled
+                        >
                           <Lock size={14} />
                           {L("Link indisponível", "Link unavailable")}
                         </Button>
@@ -346,7 +408,10 @@ export function EbookLibraryClient({
             <div>
               <CardTitle>{L("Todos os materiais", "All materials")}</CardTitle>
               <CardDescription>
-                {L("Explore toda a biblioteca de ebooks", "Explore the whole e-book library")}
+                {L(
+                  "Explore toda a biblioteca de ebooks",
+                  "Explore the whole e-book library",
+                )}
               </CardDescription>
             </div>
             <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -361,7 +426,7 @@ export function EbookLibraryClient({
               title={L("Nenhum material encontrado", "No materials found")}
               description={L(
                 "Ajuste a busca ou selecione outra categoria.",
-                "Adjust your search or select another category."
+                "Adjust your search or select another category.",
               )}
             />
           ) : (
@@ -384,11 +449,17 @@ export function EbookLibraryClient({
                   <div className="p-4 space-y-3 flex flex-col flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {categoriesOf(ebook).slice(0, 1).map((c) => (
-                          <Badge key={c} variant="outline" className="text-[11px]">
-                            {c}
-                          </Badge>
-                        ))}
+                        {categoriesOf(ebook)
+                          .slice(0, 1)
+                          .map((c) => (
+                            <Badge
+                              key={c}
+                              variant="outline"
+                              className="text-[11px]"
+                            >
+                              {c}
+                            </Badge>
+                          ))}
                         {!!ebook.pages_count && (
                           <span className="text-xs text-text-secondary">
                             {ebook.pages_count} {L("pgs", "pgs")}
@@ -399,11 +470,15 @@ export function EbookLibraryClient({
                         {titleOf(ebook)}
                       </h3>
                       {!!summaryOf(ebook) && (
-                        <p className="text-xs text-text-secondary line-clamp-2">{summaryOf(ebook)}</p>
+                        <p className="text-xs text-text-secondary line-clamp-2">
+                          {summaryOf(ebook)}
+                        </p>
                       )}
                     </div>
                     <div className="mt-auto pt-1 space-y-2">
-                      <p className="text-sm font-bold text-text">{formatPrice(ebook)}</p>
+                      <p className="text-sm font-bold text-text">
+                        {formatPrice(ebook)}
+                      </p>
                       <Button
                         size="sm"
                         variant="primary"
@@ -430,14 +505,18 @@ export function EbookLibraryClient({
               <DialogDescription>
                 {L(
                   "Escolha a forma de pagamento para desbloquear este e-book.",
-                  "Choose a payment method to unlock this e-book."
+                  "Choose a payment method to unlock this e-book.",
                 )}
               </DialogDescription>
             </DialogHeader>
 
             <div className="rounded-xl border border-border bg-surface-secondary p-4 flex items-center justify-between">
-              <span className="text-sm text-text-secondary">{L("Valor", "Amount")}</span>
-              <span className="text-lg font-bold text-text">{formatPrice(selected)}</span>
+              <span className="text-sm text-text-secondary">
+                {L("Valor", "Amount")}
+              </span>
+              <span className="text-lg font-bold text-text">
+                {formatPrice(selected)}
+              </span>
             </div>
 
             {error && (

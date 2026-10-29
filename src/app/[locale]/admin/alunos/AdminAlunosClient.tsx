@@ -1,24 +1,25 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/Card";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/Table";
-import { Badge } from "@/components/ui/Badge";
+  ArrowDownUp,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  LayoutGrid,
+  List,
+  Search,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
-import { Search, Plus, Eye, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { StudentWithSubscription } from "@/services/StudentService";
 
 interface AdminAlunosClientProps {
@@ -31,61 +32,9 @@ interface AdminAlunosClientProps {
   status: string;
   limit: number;
 }
-
-function getStatusBadge(
-  status: string,
-  locale: string,
-): {
-  label: string;
-  variant: "success" | "warning" | "error" | "default" | "outline";
-} {
-  const label = (pt: string, en: string) => (locale === "en-US" ? en : pt);
-  switch (status) {
-    case "trialing":
-      return { label: label("Teste", "Trial"), variant: "default" as const };
-    case "active":
-      return { label: label("Ativa", "Active"), variant: "success" as const };
-    case "past_due":
-      return {
-        label: label("Atrasada", "Past due"),
-        variant: "warning" as const,
-      };
-    case "canceled":
-      return {
-        label: label("Cancelada", "Canceled"),
-        variant: "error" as const,
-      };
-    case "blocked":
-      return {
-        label: label("Bloqueada", "Blocked"),
-        variant: "error" as const,
-      };
-    case "inactive":
-      return {
-        label: label("Inativa", "Inactive"),
-        variant: "outline" as const,
-      };
-    case "expired":
-      return {
-        label: label("Expirada", "Expired"),
-        variant: "outline" as const,
-      };
-    default:
-      return { label: status, variant: "outline" as const };
-  }
-}
-
-function getProviderLabel(provider: string | null): string {
-  if (!provider) return "-";
-  switch (provider) {
-    case "stripe":
-      return "Stripe";
-    case "asaas":
-      return "ASAAS";
-    default:
-      return provider;
-  }
-}
+const surface = "rounded-2xl border border-white/[0.08] bg-[#101113]";
+const button =
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-yellow-400 disabled:cursor-not-allowed disabled:opacity-30";
 
 export function AdminAlunosClient({
   locale,
@@ -97,292 +46,526 @@ export function AdminAlunosClient({
   status,
   limit,
 }: AdminAlunosClientProps) {
-  const label = (pt: string, en: string) => (locale === "en-US" ? en : pt);
+  const t = (pt: string, en: string) => (locale === "en-US" ? en : pt);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [searchInput, setSearchInput] = useState(search);
-  const [statusFilter, setStatusFilter] = useState(status);
-
+  const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState(search);
+  const [view, setView] = useState("list");
+  const [sort, setSort] = useState("default");
   useEffect(() => {
-    setSearchInput(search);
-    setStatusFilter(status);
-  }, [search, status]);
-
-  const updateURL = (
-    newSearch: string,
-    newStatus: string,
-    newPage: number = 1,
-  ) => {
+    setQuery(search);
+  }, [search]);
+  const labels: Record<string, string> = {
+    active: t("Ativos", "Active"),
+    trialing: t("Em teste", "Trialing"),
+    past_due: t("Atrasados", "Past due"),
+    blocked: t("Bloqueados", "Blocked"),
+    canceled: t("Cancelados", "Canceled"),
+    inactive: t("Inativos", "Inactive"),
+    expired: t("Expirados", "Expired"),
+    no_subscription: t("Sem assinatura", "No subscription"),
+  };
+  function navigate(nextSearch: string, nextStatus: string, nextPage = 1) {
     const params = new URLSearchParams();
-    if (newSearch) params.set("search", newSearch);
-    if (newStatus) params.set("status", newStatus);
-    if (newPage > 1) params.set("page", newPage.toString());
-    router.push(`/${locale}/admin/alunos?${params.toString()}`);
+    if (nextSearch.trim()) params.set("search", nextSearch.trim());
+    if (nextStatus) params.set("status", nextStatus);
+    if (nextPage > 1) params.set("page", String(nextPage));
+    startTransition(() => router.push(`/${locale}/admin/alunos?${params}`));
+  }
+  const date = (value?: string | null) =>
+    value && !Number.isNaN(Date.parse(value))
+      ? new Date(value).toLocaleDateString(locale, {
+          timeZone: "America/Sao_Paulo",
+        })
+      : "—";
+  const ordered = [...students].sort((a, b) =>
+    sort === "name"
+      ? a.full_name.localeCompare(b.full_name, locale)
+      : sort === "recent"
+        ? Date.parse(b.created_at) - Date.parse(a.created_at)
+        : 0,
+  );
+  const active = students.filter((s) =>
+    ["active", "trialing"].includes(s.subscription?.status || ""),
+  ).length;
+  const attention = students.filter((s) =>
+    ["past_due", "blocked", "expired"].includes(s.subscription?.status || ""),
+  ).length;
+  const noPlan = students.filter((s) => !s.subscription).length;
+  const badge = (student: StudentWithSubscription) => {
+    const value = student.subscription?.status || "no_subscription";
+    const singular: Record<string, string> = {
+      active: t("Ativo", "Active"),
+      trialing: t("Em teste", "Trialing"),
+      past_due: t("Atrasado", "Past due"),
+      blocked: t("Bloqueado", "Blocked"),
+      canceled: t("Cancelado", "Canceled"),
+      inactive: t("Inativo", "Inactive"),
+      expired: t("Expirado", "Expired"),
+      no_subscription: t("Sem assinatura", "No subscription"),
+    };
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-medium",
+          ["active", "trialing"].includes(value)
+            ? "bg-emerald-400/10 text-emerald-400"
+            : value === "past_due"
+              ? "bg-amber-400/10 text-amber-300"
+              : ["blocked", "expired", "canceled"].includes(value)
+                ? "bg-rose-400/10 text-rose-400"
+                : "bg-white/5 text-zinc-500",
+        )}
+      >
+        <span className="h-1 w-1 rounded-full bg-current" />
+        {singular[value] || value}
+      </span>
+    );
   };
-
-  const handleSearch = () => {
-    updateURL(searchInput, statusFilter, 1);
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    setStatusFilter(newStatus);
-    updateURL(searchInput, newStatus, 1);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    updateURL(searchInput, statusFilter, newPage);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
+  const identity = (student: StudentWithSubscription) => (
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar
+        src={student.avatar_url || undefined}
+        alt={student.full_name}
+        size="sm"
+        fallback={
+          student.full_name
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((n) => n[0])
+            .join("") || "?"
+        }
+      />
+      <div className="min-w-0">
+        <Link
+          href={`/${locale}/admin/alunos/${student.id}`}
+          className="block truncate text-sm font-medium text-zinc-100 transition hover:text-yellow-400"
+        >
+          {student.full_name}
+        </Link>
+        <p className="mt-1 truncate text-[11px] text-zinc-500">
+          {student.email || t("E-mail não informado", "Email not provided")}
+        </p>
+      </div>
+    </div>
+  );
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
-              />
-              <Input
-                placeholder={label(
-                  "Buscar por nome ou e-mail...",
-                  "Search by name or email…",
-                )}
-                className="pl-10"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+    <div className="space-y-6 text-zinc-100">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+            {t("Gestão de alunos", "Student management")}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {t("Alunos", "Students")}
+            <span className="text-yellow-400">.</span>
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400">
+            {t(
+              "Pessoas no centro. Acompanhamento em cada etapa.",
+              "People at the center. Support at every stage.",
+            )}
+          </p>
+        </div>
+        <Link href={`/${locale}/admin/dashboard`} className={button}>
+          <ArrowUpRight size={14} />
+          {t("Visão geral", "Overview")}
+        </Link>
+      </header>
+      <section
+        className="grid grid-cols-2 gap-3 xl:grid-cols-4"
+        aria-label={t("Resumo dos resultados", "Results summary")}
+      >
+        {[
+          {
+            label: t("Resultados encontrados", "Matching students"),
+            value: total,
+            note: t(
+              "Total com os filtros atuais",
+              "Total matching current filters",
+            ),
+            icon: Users,
+            accent: true,
+          },
+          {
+            label: t("Ativos nesta página", "Active on this page"),
+            value: active,
+            note: t(
+              "Assinaturas ativas e em teste",
+              "Active and trialing subscriptions",
+            ),
+            icon: Check,
+          },
+          {
+            label: t("Atenção nesta página", "Attention on this page"),
+            value: attention,
+            note: t(
+              "Atrasados, bloqueados ou expirados",
+              "Past due, blocked or expired",
+            ),
+            icon: ShieldCheck,
+          },
+          {
+            label: t(
+              "Sem assinatura nesta página",
+              "No subscription on this page",
+            ),
+            value: noPlan,
+            note: t(
+              "Alunos sem assinatura vinculada",
+              "Students without a subscription",
+            ),
+            icon: CreditCard,
+          },
+        ].map(({ label, value, note, icon: Icon, accent }) => (
+          <div
+            key={label}
+            className={cn(
+              surface,
+              "p-4 sm:p-5",
+              accent &&
+                "border-yellow-400/20 bg-gradient-to-br from-yellow-400/[0.07] to-[#101113]",
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[11px] text-zinc-400">{label}</span>
+              <Icon
+                size={15}
+                className={
+                  accent ? "shrink-0 text-yellow-400" : "shrink-0 text-zinc-600"
+                }
               />
             </div>
+            <p className="my-3 text-3xl font-semibold tracking-tight">
+              {value.toLocaleString(locale)}
+            </p>
+            <p className="text-[10px] leading-relaxed text-zinc-500">{note}</p>
           </div>
-          <Select
-            className="w-full sm:w-[200px]"
-            aria-label={label(
+        ))}
+      </section>
+      <section className={cn(surface, "overflow-hidden")} aria-busy={pending}>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-5 pt-2">
+          <nav
+            className="flex max-w-full gap-5 overflow-x-auto"
+            aria-label={t(
+              "Filtrar alunos por situação",
+              "Filter students by state",
+            )}
+          >
+            {[
+              { key: "", label: t("Todos os alunos", "All students") },
+              { key: "active", label: labels.active },
+              { key: "past_due", label: labels.past_due },
+              { key: "no_subscription", label: labels.no_subscription },
+            ].map((item) => (
+              <button
+                key={item.key}
+                onClick={() => navigate(query, item.key)}
+                className={cn(
+                  "whitespace-nowrap border-b-2 py-4 text-xs transition",
+                  status === item.key
+                    ? "border-yellow-400 font-medium text-yellow-400"
+                    : "border-transparent text-zinc-500 hover:text-white",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="mb-2 flex rounded-lg border border-white/10 p-0.5">
+            {[
+              {
+                key: "list",
+                icon: List,
+                label: t("Visualização em lista", "List view"),
+              },
+              {
+                key: "grid",
+                icon: LayoutGrid,
+                label: t("Visualização em cards", "Card view"),
+              },
+            ].map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                aria-label={label}
+                aria-pressed={view === key}
+                onClick={() => setView(key)}
+                className={cn(
+                  "rounded-md p-1.5",
+                  view === key
+                    ? "bg-white/10 text-zinc-100"
+                    : "text-zinc-600 hover:text-white",
+                )}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate(query, status);
+          }}
+          className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] p-4 sm:px-5"
+        >
+          <label className="flex min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/10 px-3 py-2.5 focus-within:border-yellow-400/50">
+            <Search size={15} className="shrink-0 text-zinc-500" />
+            <input
+              aria-label={t(
+                "Buscar por nome ou e-mail",
+                "Search by name or email",
+              )}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t(
+                "Buscar por nome ou e-mail…",
+                "Search by name or email…",
+              )}
+              className="w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-zinc-600"
+            />
+          </label>
+          <select
+            aria-label={t(
               "Filtrar alunos por status",
               "Filter students by status",
             )}
-            value={statusFilter}
-            onChange={(e) => handleStatusChange(e.target.value)}
+            value={status}
+            onChange={(e) => navigate(query, e.target.value)}
+            className={cn(button, "max-w-full bg-[#101113]")}
           >
-            <option value="">{label("Todos os status", "All statuses")}</option>
-            <option value="active">{label("Ativos", "Active")}</option>
-            <option value="past_due">{label("Atrasados", "Past due")}</option>
-            <option value="no_subscription">
-              {label("Sem assinatura", "No subscription")}
-            </option>
-            <option value="expired">{label("Expirados", "Expired")}</option>
-            <option value="inactive">{label("Inativos", "Inactive")}</option>
-            <option value="blocked">{label("Bloqueados", "Blocked")}</option>
-            <option value="canceled">{label("Cancelados", "Canceled")}</option>
-          </Select>
-          <Button variant="primary" onClick={handleSearch}>
-            <Search size={18} className="mr-2" />
-            {label("Buscar", "Search")}
-          </Button>
-        </div>
-
-        {/* Table */}
-        {students.length === 0 ? (
-          <div className="text-center py-12">
-            <User size={48} className="mx-auto text-text-secondary mb-4" />
-            <p className="text-text-secondary">
-              {label("Nenhum aluno encontrado", "No students found")}
+            <option value="">{t("Todos os status", "All statuses")}</option>
+            {Object.entries(labels)
+              .filter(([key]) => key !== "trialing")
+              .map(([key, label]) => (
+                <option value={key} key={key}>
+                  {label}
+                </option>
+              ))}
+          </select>
+          <button
+            disabled={pending}
+            className="rounded-lg bg-yellow-400 px-4 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-yellow-300 disabled:opacity-50"
+          >
+            {pending ? t("Buscando…", "Searching…") : t("Buscar", "Search")}
+          </button>
+          <label className="ml-auto flex items-center gap-2 text-zinc-500">
+            <ArrowDownUp size={13} />
+            <select
+              aria-label={t(
+                "Ordenar alunos da página",
+                "Sort students on this page",
+              )}
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="max-w-40 bg-[#101113] py-2 text-[11px] outline-none"
+            >
+              <option value="default">
+                {t("Ordem original", "Default order")}
+              </option>
+              <option value="name">
+                {t("Nome A–Z (página)", "Name A–Z (page)")}
+              </option>
+              <option value="recent">
+                {t("Mais recentes (página)", "Newest (page)")}
+              </option>
+            </select>
+          </label>
+        </form>
+        {(search || status) && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-5 py-3 text-[10px] text-zinc-500">
+            <span>{t("Filtros aplicados", "Applied filters")}</span>
+            {search && (
+              <span className="rounded-md bg-white/5 px-2 py-1 text-zinc-300">
+                {search}
+              </span>
+            )}
+            {status && (
+              <span className="rounded-md bg-yellow-400/10 px-2 py-1 text-yellow-400">
+                {labels[status]}
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setQuery("");
+                navigate("", "");
+              }}
+              className="ml-auto flex items-center gap-1 hover:text-white"
+            >
+              <X size={12} />
+              {t("Limpar filtros", "Clear filters")}
+            </button>
+          </div>
+        )}
+        {!students.length ? (
+          <div className="flex flex-col items-center gap-3 px-5 py-16 text-center">
+            <Users size={30} className="text-zinc-600" />
+            <h2 className="text-sm font-medium">
+              {t("Nenhum aluno encontrado", "No students found")}
+            </h2>
+            <p className="max-w-xs text-xs leading-relaxed text-zinc-500">
+              {t(
+                "Tente outro nome ou e-mail, ou remova os filtros para ampliar a busca.",
+                "Try another name or email, or clear filters to broaden your search.",
+              )}
             </p>
+            {(search || status) && (
+              <button
+                className={button}
+                onClick={() => {
+                  setQuery("");
+                  navigate("", "");
+                }}
+              >
+                {t("Limpar filtros", "Clear filters")}
+              </button>
+            )}
           </div>
         ) : (
           <>
-            <div className="md:hidden space-y-3">
-              {students.map((student) => {
-                const badge = student.subscription
-                  ? getStatusBadge(student.subscription.status, locale)
-                  : {
-                      label: label("Sem assinatura", "No subscription"),
-                      variant: "outline" as const,
-                    };
-                return (
-                  <article
-                    key={student.id}
-                    className="rounded-xl border border-border p-4 space-y-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar
-                        src={student.avatar_url || undefined}
-                        fallback={student.full_name[0] || "?"}
-                        alt={student.full_name}
-                        size="sm"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">
-                          {student.full_name}
-                        </p>
-                        <p className="text-xs text-text-secondary truncate">
-                          {student.email ||
-                            label("E-mail não informado", "Email not provided")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm text-text-secondary">
-                        {student.subscription?.plan_name ||
-                          label("Sem plano", "No plan")}
-                      </span>
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="secondary"
-                      className="w-full"
+            <div
+              className={cn(
+                "hidden overflow-x-auto",
+                view === "list" && "lg:block",
+              )}
+            >
+              <table className="w-full min-w-[860px] text-left text-xs">
+                <thead className="bg-white/[0.015] text-[10px] uppercase tracking-wider text-zinc-500">
+                  <tr>
+                    {[
+                      t("Aluno", "Student"),
+                      t("Plano e assinatura", "Plan and subscription"),
+                      "Status",
+                      t("Vencimento", "Due date"),
+                      t("Cadastro", "Registered"),
+                      "",
+                    ].map((label, i) => (
+                      <th key={i} className="px-5 py-3 font-medium">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {ordered.map((student) => (
+                    <tr
+                      key={student.id}
+                      className="transition hover:bg-white/[0.025]"
                     >
-                      <Link href={`/${locale}/admin/alunos/${student.id}`}>
-                        <Eye size={16} className="mr-2" />
-                        Ver aluno
-                      </Link>
-                    </Button>
-                  </article>
-                );
-              })}
+                      <td className="max-w-[280px] px-5 py-4">
+                        {identity(student)}
+                      </td>
+                      <td className="max-w-52 px-5 py-4">
+                        <p className="truncate text-zinc-300">
+                          {student.subscription?.plan_name ||
+                            t("Sem plano", "No plan")}
+                        </p>
+                        <p className="mt-1 text-[10px] text-zinc-600">
+                          {student.subscription?.provider || "—"} ·{" "}
+                          {student.country ||
+                            t("País não informado", "Country not provided")}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">{badge(student)}</td>
+                      <td className="whitespace-nowrap px-5 py-4 text-zinc-400">
+                        {date(student.subscription?.current_period_end)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-zinc-500">
+                        {date(student.created_at)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/${locale}/admin/alunos/${student.id}`}
+                          aria-label={`${t("Ver perfil de", "View profile of")} ${student.full_name}`}
+                          className="inline-flex rounded-lg border border-white/10 p-2 text-zinc-500 transition hover:border-yellow-400/30 hover:text-yellow-400"
+                        >
+                          <ArrowUpRight size={15} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{label("Aluno", "Student")}</TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      {label("País", "Country")}
-                    </TableHead>
-                    <TableHead>{label("Plano", "Plan")}</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Gateway
-                    </TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Vencimento
-                    </TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Cadastro
-                    </TableHead>
-                    <TableHead className="text-right">
-                      {label("Ações", "Actions")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map((student) => {
-                    const statusBadge = student.subscription
-                      ? getStatusBadge(student.subscription.status, locale)
-                      : {
-                          label: label("Sem assinatura", "No subscription"),
-                          variant: "outline",
-                        };
-
-                    return (
-                      <TableRow key={student.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar
-                              src={student.avatar_url || undefined}
-                              alt={student.full_name}
-                              size="sm"
-                              fallback={student.full_name[0] || "?"}
-                            />
-                            <div className="min-w-0">
-                              <p className="font-medium text-text truncate">
-                                {student.full_name}
-                              </p>
-                              {student.email && (
-                                <p className="text-xs text-text-secondary truncate">
-                                  {student.email}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-text">
-                          {student.country || "-"}
-                        </TableCell>
-                        <TableCell className="text-text">
-                          {student.subscription?.plan_name || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={statusBadge.variant as any}>
-                            {statusBadge.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-text">
-                          {getProviderLabel(
-                            student.subscription?.provider || null,
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-text">
-                          {student.subscription?.current_period_end
-                            ? formatDate(
-                                student.subscription.current_period_end,
-                              )
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-text">
-                          {formatDate(student.created_at)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link
-                              href={`/${locale}/admin/alunos/${student.id}`}
-                              aria-label={`Ver perfil de ${student.full_name}`}
-                            >
-                              <Eye size={16} />
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div
+              className={cn(
+                "grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3",
+                view === "list" && "lg:hidden",
+              )}
+            >
+              {ordered.map((student) => (
+                <article
+                  key={student.id}
+                  className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4"
+                >
+                  {identity(student)}
+                  <div className="my-4 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-zinc-400">
+                      {student.subscription?.plan_name ||
+                        t("Sem plano", "No plan")}
+                    </span>
+                    {badge(student)}
+                  </div>
+                  <div className="flex justify-between border-t border-white/[0.06] pt-3 text-[10px] text-zinc-500">
+                    <span>{t("Vencimento", "Due date")}</span>
+                    <span>
+                      {date(student.subscription?.current_period_end)}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/${locale}/admin/alunos/${student.id}`}
+                    className={cn(button, "mt-4 w-full")}
+                  >
+                    {t("Ver aluno", "View student")}
+                    <ArrowRight size={13} />
+                  </Link>
+                </article>
+              ))}
             </div>
           </>
         )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-            <p className="text-sm text-text-secondary">
-              {label("Mostrando", "Showing")} {(page - 1) * limit + 1}–
-              {Math.min(page * limit, total)} / {total}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
-              >
-                {label("Anterior", "Previous")}
-              </Button>
-              <span className="text-sm text-text">
-                {label("Página", "Page")} {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages}
-              >
-                {label("Próxima", "Next")}
-              </Button>
-            </div>
-          </div>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-5 py-4">
+          <p role="status" className="text-[11px] text-zinc-500">
+            {pending
+              ? t("Atualizando resultados…", "Updating results…")
+              : `${total ? (page - 1) * limit + 1 : 0}–${Math.min(page * limit, total)} ${t("de", "of")} ${total} ${t("alunos", "students")}`}
+          </p>
+          <nav
+            className="flex items-center gap-3"
+            aria-label={t("Paginação de alunos", "Student pagination")}
+          >
+            <button
+              className={button}
+              aria-label={t("Página anterior", "Previous page")}
+              disabled={page <= 1 || pending}
+              onClick={() => navigate(search, status, page - 1)}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-[11px] text-zinc-400">
+              {page} / {totalPages}
+            </span>
+            <button
+              className={button}
+              aria-label={t("Próxima página", "Next page")}
+              disabled={page >= totalPages || pending}
+              onClick={() => navigate(search, status, page + 1)}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </nav>
+        </footer>
+      </section>
+      <p className="flex items-center gap-2 text-[10px] text-zinc-500">
+        <ShieldCheck size={12} />
+        {t(
+          "Indicadores de status e ordenação consideram os alunos da página atual. Busca e filtros consultam toda a base autorizada.",
+          "Status metrics and sorting apply to the current page. Search and filters query all authorized students.",
         )}
-      </CardContent>
-    </Card>
+      </p>
+    </div>
   );
 }

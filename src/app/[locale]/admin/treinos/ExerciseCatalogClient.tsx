@@ -356,7 +356,7 @@ function ExerciseCard({ exercise, onOpenDetails }: ExerciseCardProps) {
   const displayName = exercise.name || t("unnamedExercise");
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.15)]">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface transition-colors duration-150 hover:border-primary/30">
       <div className="relative flex h-44 w-full items-center justify-center overflow-hidden bg-surface-secondary">
         {exercise.gifUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

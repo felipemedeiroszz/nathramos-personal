@@ -1,0 +1,399 @@
+/* Admin design system. All rules are scoped so student and public pages retain their themes. */
+.admin-shell {
+  --background: 210 10% 4%;
+  --surface: 220 9% 7%;
+  --surface-secondary: 220 8% 10%;
+  --primary: 48 96% 53%;
+  --primary-foreground: 220 10% 6%;
+  --text: 240 5% 96%;
+  --text-secondary: 240 5% 65%;
+  --border: 220 7% 16%;
+  --muted: 220 7% 13%;
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+}
+.admin-shell :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.7);
+  outline-offset: 3px;
+}
+.admin-shell ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.admin-shell ::-webkit-scrollbar-thumb {
+  background: #303137;
+}
+.admin-content > div > .space-y-6,
+.admin-content > div > .space-y-5 {
+  row-gap: 1.5rem;
+}
+.admin-content :where(.grid) > * {
+  min-width: 0;
+}
+.admin-shell [data-ui="card"] {
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 16px;
+  background-color: hsl(var(--surface));
+  box-shadow: none;
+}
+.admin-shell [data-ui="card"] h3 {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.admin-shell [data-ui="card"] > :first-child p.text-sm {
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+.admin-shell [data-ui="button"] {
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 0.4rem;
+  box-shadow: none;
+  transform: none;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.admin-shell [data-ui="button"][data-size="md"] {
+  height: 40px;
+}
+.admin-shell [data-ui="button"][data-size="lg"] {
+  height: 44px;
+  font-size: 0.8125rem;
+}
+.admin-shell [data-ui="button"][data-variant="primary"] {
+  background: hsl(var(--primary));
+  color: #111214;
+}
+.admin-shell [data-ui="button"][data-variant="primary"]:hover {
+  background: #fde047;
+}
+.admin-shell [data-ui="button"][data-variant="secondary"],
+.admin-shell [data-ui="button"][data-variant="outline"] {
+  border-color: rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.025);
+  color: #d4d4d8;
+}
+.admin-shell [data-ui="button"][data-variant="secondary"]:hover,
+.admin-shell [data-ui="button"][data-variant="outline"]:hover {
+  border-color: rgb(255 255 255 / 0.25);
+  background: rgb(255 255 255 / 0.055);
+  color: #fafafa;
+}
+.admin-shell [data-ui="button"][data-variant="destructive"] {
+  border-color: rgb(251 113 133 / 0.2);
+  background: rgb(251 113 133 / 0.07);
+  color: #fda4af;
+}
+.admin-shell [data-ui="button"][data-variant="destructive"]:hover {
+  background: rgb(251 113 133 / 0.14);
+}
+.admin-shell [data-ui="button"] svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.admin-shell :is([data-ui="input"], [data-ui="select"], [data-ui="textarea"]) {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 8px;
+  background-color: rgb(0 0 0 / 0.12);
+  font-size: 0.8125rem;
+  color: #e4e4e7;
+  box-shadow: none;
+}
+.admin-shell :is([data-ui="input"], [data-ui="select"]) {
+  height: 40px;
+}
+.admin-shell [data-ui="select"] {
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%2371717a' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+.admin-shell select option {
+  background: #16171a;
+  color: #e4e4e7;
+}
+.admin-shell :is([data-ui="input"], [data-ui="textarea"])::placeholder {
+  color: #71717a;
+}
+.admin-shell
+  :is(
+    [data-ui="input"],
+    [data-ui="select"],
+    [data-ui="textarea"]
+  ):focus-visible {
+  border-color: hsl(var(--primary) / 0.5);
+  outline-width: 1px;
+  outline-offset: 1px;
+}
+.admin-shell input[type="checkbox"],
+.admin-shell input[type="radio"] {
+  accent-color: hsl(var(--primary));
+}
+.admin-shell [data-ui="table-scroll"] {
+  max-width: 100%;
+  border-radius: 10px;
+  overscroll-behavior-x: contain;
+}
+.admin-shell [data-ui="table"] {
+  min-width: 620px;
+  font-size: 0.75rem;
+}
+.admin-shell [data-ui="table"] th {
+  height: 42px;
+  background: rgb(255 255 255 / 0.015);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b8b96;
+}
+.admin-shell [data-ui="table"] td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.admin-shell [data-ui="table"] tr {
+  border-color: rgb(255 255 255 / 0.06);
+}
+.admin-shell [data-ui="table"] tbody tr:hover {
+  background: rgb(255 255 255 / 0.025);
+}
+.admin-shell [data-ui="badge"] {
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+.admin-shell [data-ui="badge"][data-variant="default"],
+.admin-shell [data-ui="badge"][data-variant="soft"] {
+  background: rgb(250 204 21 / 0.08);
+  border-color: rgb(250 204 21 / 0.18);
+  color: #facc15;
+}
+.admin-shell [data-ui="badge"][data-variant="success"] {
+  background: rgb(52 211 153 / 0.08);
+  border-color: rgb(52 211 153 / 0.16);
+  color: #6ee7b7;
+}
+.admin-shell [data-ui="badge"][data-variant="warning"] {
+  background: rgb(251 191 36 / 0.08);
+  border-color: rgb(251 191 36 / 0.16);
+  color: #fcd34d;
+}
+.admin-shell [data-ui="badge"][data-variant="error"] {
+  background: rgb(251 113 133 / 0.08);
+  border-color: rgb(251 113 133 / 0.16);
+  color: #fda4af;
+}
+.admin-shell [data-ui="empty-state"],
+.admin-shell [data-ui="error-state"] {
+  min-height: 240px;
+  padding: 2rem 1rem;
+}
+.admin-shell [data-ui="empty-state"] > div:first-child {
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.025);
+}
+.admin-shell [data-ui="empty-state"] h3,
+.admin-shell [data-ui="error-state"] h3 {
+  font-size: 0.875rem;
+}
+.admin-shell [data-ui="empty-state"] p,
+.admin-shell [data-ui="error-state"] p {
+  max-width: 360px;
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+.admin-shell :is([data-ui="modal"], [data-ui="dialog"]) {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border-radius: 16px;
+  border-color: rgb(255 255 255 / 0.12);
+  background: #121316;
+  padding: 24px;
+  box-shadow: 0 32px 100px rgb(0 0 0 / 0.5);
+}
+.admin-shell [data-ui="drawer"] {
+  max-width: 100vw;
+  overflow-y: auto;
+  background: #121316;
+}
+.admin-shell [role="tablist"] {
+  max-width: 100%;
+  overflow-x: auto;
+  justify-content: flex-start;
+}
+.admin-shell [role="tab"] {
+  border-radius: 7px;
+  font-size: 0.75rem;
+}
+.admin-shell [role="tab"][aria-selected="true"] {
+  background: rgb(250 204 21 / 0.09);
+  color: #facc15;
+  box-shadow: none;
+}
+.admin-shell .admin-page-header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.07);
+}
+.admin-shell .admin-page-header h1 {
+  font-size: clamp(1.625rem, 2.3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+}
+.admin-shell .admin-page-header h1::after {
+  content: ".";
+  color: #facc15;
+}
+.admin-shell .admin-page-header p {
+  margin-top: 0.5rem;
+  max-width: 58rem;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: #a1a1aa;
+}
+.admin-shell .admin-module-context {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #71717a;
+}
+.admin-shell .admin-module-context::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: #facc15;
+  border-radius: 50%;
+}
+.admin-shell .admin-data-controls {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 14px;
+  background: #101113;
+  padding: 1rem;
+}
+.admin-shell .admin-data-controls label {
+  font-size: 0.6875rem;
+  color: #a1a1aa;
+}
+.admin-shell .admin-data-controls :is(input, select) {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.4rem;
+  height: 38px;
+  font-size: 0.75rem;
+  background: #0d0e10;
+  border-color: rgb(255 255 255 / 0.1);
+  padding-inline: 0.75rem;
+}
+.admin-shell .admin-data-controls form > label:first-child {
+  flex: 1 1 180px;
+}
+.admin-shell .admin-data-controls nav {
+  align-items: center;
+  border-top: 1px solid rgb(255 255 255 / 0.06);
+  padding-top: 0.8rem;
+  font-size: 0.6875rem;
+}
+.admin-shell .admin-data-controls nav a {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  text-decoration: none;
+  color: #d4d4d8;
+}
+.admin-shell .admin-data-controls nav a:hover {
+  border-color: rgb(250 204 21 / 0.3);
+  color: #facc15;
+}
+@media (max-width: 639px) {
+  .admin-shell [data-ui="card"] {
+    padding: 16px;
+  }
+  .admin-shell :is([data-ui="modal"], [data-ui="dialog"]) {
+    padding: 20px 16px;
+  }
+  .admin-shell
+    :is([data-ui="input"], [data-ui="select"], [data-ui="textarea"]) {
+    font-size: 16px;
+  }
+  .admin-shell .admin-data-controls form > label {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior: auto;
+    animation: none;
+    transition: none;
+  }
+}
+.admin-shell [data-ui="card"].p-0 {
+  padding: 0;
+}
+.admin-shell [data-ui="dropdown"] {
+  border-radius: 12px;
+  border-color: rgb(255 255 255 / 0.12);
+  background: #141518;
+  padding: 4px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
+}
+.admin-shell [data-ui="dropdown"] button {
+  border-radius: 7px;
+  font-size: 0.75rem;
+}
+.admin-shell .recharts-cartesian-grid-vertical line {
+  stroke-opacity: 0;
+}
+.admin-shell .recharts-cartesian-axis-tick text {
+  font-size: 10px;
+  fill: #8b8b96;
+}
+.admin-shell .recharts-cartesian-axis-line,
+.admin-shell .recharts-cartesian-axis-tick-line {
+  stroke-opacity: 0;
+}
+.admin-shell .recharts-legend-item-text {
+  font-size: 11px;
+}
+.admin-shell .recharts-default-tooltip {
+  font-size: 12px;
+}
+@media (max-width: 639px) {
+  .admin-shell [data-ui="notification-panel"] {
+    position: fixed;
+    top: 72px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+}

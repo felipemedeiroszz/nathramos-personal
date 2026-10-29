@@ -1,184 +1,104 @@
 "use client";
-
-import { cn } from "@/lib/utils";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
-import {
-  LayoutDashboard,
-  Dumbbell,
-  UtensilsCrossed,
-  TrendingUp,
-  MoreHorizontal,
-  User,
-  CreditCard,
-  LogOut,
-  Loader2,
-} from "lucide-react";
-import { MaisDrawer } from "./MaisDrawer";
+import { usePathname } from "next/navigation";
+import { useTransition } from "react";
+import { ArrowUpRight, Loader2, LogOut } from "lucide-react";
+import { studentNavigation } from "@/components/student/navigation";
 import { logoutAction } from "@/app/actions/account";
-
-interface SidebarProps {
-  locale: string;
-}
-
-export function Sidebar({ locale }: SidebarProps) {
-  const t = useTranslations("navigation");
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  const onAccountPage = pathname === `/${locale}/account` || pathname === `/${locale}/account/`;
-  const isMembershipTab = searchParams.get("tab") === "subscription";
-
-  const handleLogout = () => {
-    startTransition(async () => {
-      await logoutAction();
-    });
-  };
-
-  type NavItemKey = "dashboard" | "diet" | "training" | "performance" | "more";
-
-  const navItems: {
-    key: NavItemKey;
-    href: string;
-    icon: React.ReactNode;
-    isDrawer?: boolean;
-  }[] = [
-    { key: "dashboard", href: `/${locale}/dashboard`, icon: <LayoutDashboard size={20} /> },
-    { key: "diet", href: `/${locale}/dieta`, icon: <UtensilsCrossed size={20} /> },
-    { key: "training", href: `/${locale}/treino`, icon: <Dumbbell size={20} /> },
-    { key: "performance", href: `/${locale}/progresso`, icon: <TrendingUp size={20} /> },
-    { key: "more", href: `/${locale}/mais`, icon: <MoreHorizontal size={20} />, isDrawer: true },
-  ];
-
-  const labelForKey = (key: NavItemKey) => {
-    switch (key) {
-      case "dashboard": return t("dashboard");
-      case "diet": return t("diet");
-      case "training": return t("training");
-      case "performance": return t("performance");
-      case "more": return t("more");
-    }
-  };
-
-  const isItemActive = (href: string) => {
-    const rest = href.slice(`/${locale}`.length);
-    if (rest === "/dashboard") return pathname === href || pathname === `${href}/`;
-    return pathname === href || pathname.startsWith(`${href}/`);
-  };
-
+import { cn } from "@/lib/utils";
+export function Sidebar({ locale }: { locale: string }) {
+  const pathname = usePathname(),
+    en = locale === "en-US";
+  const [pending, startTransition] = useTransition();
   return (
-    <>
-      <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-border bg-surface md:flex">
-        <div className="p-6">
-          <Link href={`/${locale}/dashboard`} className="flex items-center gap-3">
-            <div className="relative h-20 w-20 shrink-0 drop-shadow-[0_0_12px_hsl(var(--primary)/0.3)]">
-              <Image
-                src="/logo.png"
-                alt="Nath Ramos"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
-          </Link>
+    <aside
+      className="student-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-white/[0.06] bg-[#0e1012] md:flex"
+      aria-label={en ? "Student navigation" : "Navegação do aluno"}
+    >
+      <Link
+        href={`/${locale}/dashboard`}
+        className="flex h-24 shrink-0 items-center gap-3 px-6"
+      >
+        <div className="relative h-11 w-11">
+          <Image
+            src="/logo.png"
+            alt="Nath Ramos"
+            fill
+            className="object-contain"
+            priority
+          />
         </div>
-
-        <nav className="flex-1 px-3" aria-label={t("moreOptions")}>
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = isItemActive(item.href) || (item.isDrawer && isDrawerOpen);
-              const classes = cn(
-                "relative flex w-full items-center gap-3 rounded-xl px-4 py-3 transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-text-secondary hover:bg-surface-secondary hover:text-text"
-              );
-              const content = (
-                <>
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 -translate-y-1/2 rounded-r-full bg-primary w-1" />
-                  )}
-                  <span className={cn(isActive ? "text-primary" : "text-text-secondary")}>
-                    {item.icon}
-                  </span>
-                  <span className="font-medium">{labelForKey(item.key)}</span>
-                </>
-              );
-
-              return (
-                <li key={item.href}>
-                  {item.isDrawer ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsDrawerOpen(true)}
-                      className={classes}
+        <div>
+          <p className="text-xs font-semibold tracking-[0.08em] text-zinc-100">
+            NATH RAMOS
+          </p>
+          <p className="mt-1 text-[9px] tracking-[0.18em] text-zinc-500">
+            {en ? "YOUR PERSONAL JOURNEY" : "SUA JORNADA, SEU RITMO"}
+          </p>
+        </div>
+      </Link>
+      <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 pb-6">
+        {studentNavigation.map((group) => (
+          <section key={group.en}>
+            <h2 className="mb-2 px-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {en ? group.en : group.pt}
+            </h2>
+            <ul className="space-y-1">
+              {group.items.map((item) => {
+                const active =
+                  pathname === `/${locale}/${item.path}` ||
+                  pathname.startsWith(`/${locale}/${item.path}/`);
+                return (
+                  <li key={item.path}>
+                    <Link
+                      href={`/${locale}/${item.path}`}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-medium transition-colors",
+                        active
+                          ? "bg-yellow-400/10 text-yellow-300"
+                          : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100",
+                      )}
                     >
-                      {content}
-                    </button>
-                  ) : (
-                    <Link href={item.href} aria-current={isActive ? "page" : undefined} className={classes}>
-                      {content}
+                      <item.icon size={17} strokeWidth={1.7} />
+                      {en ? item.en : item.pt}
+                      {active && (
+                        <span className="ml-auto h-1 w-1 rounded-full bg-yellow-400" />
+                      )}
                     </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="space-y-1 border-t border-border p-3">
-          <Link
-            href={`/${locale}/account`}
-            aria-current={onAccountPage && !isMembershipTab ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
-              onAccountPage && !isMembershipTab
-                ? "bg-primary/10 text-primary"
-                : "text-text-secondary hover:bg-surface-secondary hover:text-text"
-            )}
-          >
-            <User size={20} />
-            <span className="font-medium">{t("account")}</span>
-          </Link>
-          <Link
-            href={`/${locale}/assinatura`}
-            aria-current={onAccountPage && isMembershipTab ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
-              onAccountPage && isMembershipTab
-                ? "bg-primary/10 text-primary"
-                : "text-text-secondary hover:bg-surface-secondary hover:text-text"
-            )}
-          >
-            <CreditCard size={20} />
-            <span className="font-medium">{t("membership")}</span>
-          </Link>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={isPending}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text disabled:opacity-50"
-          >
-            {isPending ? (
-              <Loader2 size={20} className="animate-spin" />
-            ) : (
-              <LogOut size={20} />
-            )}
-            <span className="font-medium">{t("logout")}</span>
-          </button>
-        </div>
-      </aside>
-      <MaisDrawer
-        locale={locale}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onLogout={handleLogout}
-      />
-    </>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </nav>
+      <div className="shrink-0 border-t border-white/[0.06] p-3">
+        <Link
+          href={`/${locale}/conversas`}
+          className="mb-2 flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-xs text-zinc-400"
+        >
+          {en ? "Need some guidance?" : "Precisa de orientação?"}
+          <ArrowUpRight size={13} />
+        </Link>
+        <button
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await logoutAction();
+            })
+          }
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-xs text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200 disabled:opacity-50"
+        >
+          {pending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <LogOut size={16} />
+          )}{" "}
+          {en ? "Sign out" : "Sair da conta"}
+        </button>
+      </div>
+    </aside>
   );
 }

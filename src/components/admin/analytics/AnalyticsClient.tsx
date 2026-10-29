@@ -160,14 +160,14 @@ export function AnalyticsClient({
   ];
   return (
     <div id="analytics-report" className="space-y-6 text-text">
-      <header className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-surface to-surface p-5 sm:p-7 space-y-5 report-panel">
+      <header className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-primary/[0.06] via-surface to-surface p-5 sm:p-7 space-y-5 report-panel">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-primary text-sm font-semibold">
+            <div className="flex items-center gap-2 text-zinc-500 text-[10px] uppercase tracking-[0.16em] font-medium">
               <BarChart3 size={18} />
               {t.recorded}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
               {t.title}
             </h1>
             <p className="text-sm text-text-secondary max-w-2xl">
@@ -573,12 +573,20 @@ export function AnalyticsClient({
               icon={<Wallet size={18} />}
             />
             <Metric
-              title={locale === "pt-BR" ? "Estornos confirmados" : "Confirmed refunds"}
+              title={
+                locale === "pt-BR"
+                  ? "Estornos confirmados"
+                  : "Confirmed refunds"
+              }
               value={money(f.refunded_cents || 0)}
               note={t.refunds}
             />
             <Metric
-              title={locale === "pt-BR" ? "Após estornos, antes de taxas" : "After refunds, before fees"}
+              title={
+                locale === "pt-BR"
+                  ? "Após estornos, antes de taxas"
+                  : "After refunds, before fees"
+              }
               value={money(f.paid_cents - (f.refunded_cents || 0))}
               note={t.revenue}
             />
@@ -993,7 +1001,7 @@ function Metric({
         <p>{title}</p>
         <span className="text-primary">{icon}</span>
       </div>
-      <strong className="block text-2xl sm:text-3xl font-bold tracking-tight mt-3 break-words tabular-nums">
+      <strong className="block text-2xl sm:text-3xl font-semibold tracking-tight mt-3 break-words tabular-nums">
         {value}
       </strong>
       <p className="text-xs text-text-secondary mt-2 leading-relaxed">{note}</p>

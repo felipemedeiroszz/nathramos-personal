@@ -1,19 +1,19 @@
 "use client";
-
-import { Fragment, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/DropdownMenu";
-import { ChevronDown, LogOut, Menu, Globe } from "lucide-react";
+  ChevronDown,
+  ChevronRight,
+  Globe2,
+  LogOut,
+  Menu,
+  Search,
+  UserRound,
+} from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { adminNavigation } from "@/components/admin/navigation";
 
 interface AdminHeaderProps {
   locale: string;
@@ -22,10 +22,11 @@ interface AdminHeaderProps {
   photoUrl?: string | null;
   role: string;
   onLogout: () => Promise<void> | void;
-  onLanguageChange?: (newLocale: string) => void;
+  onLanguageChange?: (locale: string) => void;
   onMenuToggle?: () => void;
+  onSearch?: () => void;
+  sidebarOpen?: boolean;
 }
-
 export function AdminHeader({
   locale,
   firstName,
@@ -35,212 +36,212 @@ export function AdminHeader({
   onLogout,
   onLanguageChange,
   onMenuToggle,
+  onSearch,
+  sidebarOpen,
 }: AdminHeaderProps) {
   const pathname = usePathname();
-  const tCommon = useTranslations("common");
-  const tNav = useTranslations("adminNav");
-  const [languageOpen, setLanguageOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  const locales = [
-    { code: "pt-BR", label: "Português" },
-    { code: "en-US", label: "English" },
-  ];
-
-  const currentLocale = locales.find((l) => l.code === locale) || locales[0];
-
-  // Mapeia cada segmento de rota para a chave correspondente em `adminNav`.
-  const ROUTE_NAV_KEYS: Record<string, { key: string; fallback: string }> = {
-    dashboard: { key: "dashboard", fallback: "Painel" },
-    alunos: { key: "students", fallback: "Alunos" },
-    treinos: { key: "workouts", fallback: "Treinos" },
-    alimentos: { key: "foods", fallback: "Alimentos" },
-    suplementos: { key: "supplements", fallback: "Suplementos" },
-    exames: { key: "exams", fallback: "Exames" },
-    ebooks: { key: "ebooks", fallback: "E-books" },
-    mentoria: { key: "mentoria", fallback: "Mentoria" },
-    reunioes: { key: "meetings", fallback: "Reuniões" },
-    notificacoes: { key: "notifications", fallback: "Notificações" },
-    "redes-sociais": { key: "social", fallback: "Redes Sociais" },
-    planos: { key: "plans", fallback: "Planos" },
-    assinaturas: { key: "subscriptions", fallback: "Assinaturas" },
-    pagamentos: { key: "payments", fallback: "Pagamentos" },
-    financeiro: { key: "financeiro", fallback: "Financeiro" },
-    configuracoes: { key: "settings", fallback: "Configurações" },
-    auditoria: { key: "audit", fallback: "Auditoria" },
-    conta: { key: "account", fallback: "Minha Conta" },
-  };
-
-  const KIT_NAV_KEYS: Record<string, { key: string; fallback: string }> = {
-    treinos: { key: "workoutKits", fallback: "Kits de Treino" },
-    dietas: { key: "dietKits", fallback: "Kits de Dieta" },
-    suplementos: { key: "supplementKits", fallback: "Kits de Suplementos" },
-  };
-
-  const UUID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-  // Resolve o rótulo traduzido com fallback seguro (evita exibir a chave crua).
-  const resolveNavLabel = (key: string, fallback: string): string => {
-    try {
-      const has = (tNav as any).has;
-      if (typeof has === "function") {
-        return has.call(tNav, key) ? tNav(key) : fallback;
+  const [userOpen, setUserOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null),
+    triggerRef = useRef<HTMLButtonElement>(null);
+  const en = locale === "en-US";
+  const current = adminNavigation
+    .flatMap((group) => group.items)
+    .sort((a, b) => b.path.length - a.path.length)
+    .find(
+      (item) =>
+        pathname === `/${locale}/admin/${item.path}` ||
+        pathname.startsWith(`/${locale}/admin/${item.path}/`),
+    );
+  const title = current
+    ? en
+      ? current.en
+      : current.pt
+    : en
+      ? "Administration"
+      : "Administração";
+  const detail = current && pathname !== `/${locale}/admin/${current.path}`;
+  useEffect(() => {
+    setUserOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!userOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setUserOpen(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setUserOpen(false);
+        triggerRef.current?.focus();
       }
-      const value = tNav(key);
-      if (value && value !== key && value !== `adminNav.${key}`) return value;
-    } catch {}
-    return fallback;
-  };
-
-  const prettifySegment = (segment: string) =>
-    segment
-      .split("-")
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-
-  // Gera o caminho (breadcrumb) a partir da URL: Painel / Alimentos / ...
-  const generateBreadcrumbs = () => {
-    const segments = pathname.split("/").filter(Boolean);
-    const adminIndex = segments.indexOf("admin");
-    if (adminIndex === -1) return [];
-
-    const breadcrumbs = [
-      {
-        label: resolveNavLabel("dashboard", "Painel"),
-        href: `/${locale}/admin/dashboard`,
-      },
-    ];
-
-    const rest = segments
-      .slice(adminIndex + 1)
-      .filter((segment) => segment !== "new");
-    const pathParts: string[] = [];
-
-    for (let i = 0; i < rest.length; i++) {
-      const segment = rest[i];
-
-      // Agrupa subrotas de kits: /admin/kits/treinos -> "Kits de Treino".
-      if (segment === "kits" && rest[i + 1]) {
-        const kitNav = KIT_NAV_KEYS[rest[i + 1]];
-        if (kitNav) {
-          pathParts.push(segment, rest[i + 1]);
-          breadcrumbs.push({
-            label: resolveNavLabel(kitNav.key, kitNav.fallback),
-            href: `/${locale}/admin/${pathParts.join("/")}`,
-          });
-          i++;
-          continue;
-        }
-      }
-
-      pathParts.push(segment);
-      const nav = ROUTE_NAV_KEYS[segment];
-      const label = nav
-        ? resolveNavLabel(nav.key, nav.fallback)
-        : UUID_PATTERN.test(segment)
-          ? "Detalhes"
-          : prettifySegment(segment);
-
-      breadcrumbs.push({
-        label,
-        href: `/${locale}/admin/${pathParts.join("/")}`,
-      });
-    }
-
-    return breadcrumbs;
-  };
-
-  const breadcrumbs = generateBreadcrumbs();
-  const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.label || "Dashboard";
-
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [userOpen]);
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-      <div className="flex h-16 items-center px-4 md:px-6 gap-4">
-        {/* Mobile menu button */}
+    <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#0c0d0f]/95 backdrop-blur-xl">
+      <div className="flex h-[72px] items-center gap-3 px-4 lg:px-8">
         <button
+          aria-label={en ? "Open navigation" : "Abrir navegação"}
+          aria-expanded={sidebarOpen}
+          aria-controls="admin-mobile-navigation"
           onClick={onMenuToggle}
-          className="md:hidden p-2 rounded-lg hover:bg-surface-secondary text-text-secondary shrink-0"
+          className="shrink-0 rounded-lg p-2 text-zinc-400 hover:bg-white/5 md:hidden"
         >
-          <Menu size={20} />
+          <Menu size={19} />
         </button>
-
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-sm overflow-hidden min-w-0">
-          {breadcrumbs.length > 1 && (
+        <nav
+          aria-label={en ? "Breadcrumb" : "Caminho da página"}
+          className="flex min-w-0 items-center gap-2 text-xs"
+        >
+          <Link
+            href={`/${locale}/admin/dashboard`}
+            className="hidden text-zinc-500 hover:text-zinc-300 sm:block"
+          >
+            {en ? "Workspace" : "Painel"}
+          </Link>
+          <ChevronRight
+            size={12}
+            className="hidden shrink-0 text-zinc-700 sm:block"
+          />
+          {detail ? (
             <>
-              {breadcrumbs.slice(0, -1).map((crumb) => (
-                <Fragment key={crumb.href}>
-                  <Link
-                    href={crumb.href}
-                    className="text-text-secondary hover:text-text transition-colors truncate"
-                  >
-                    {crumb.label}
-                  </Link>
-                  <span className="text-text-secondary/50 shrink-0">/</span>
-                </Fragment>
-              ))}
+              <Link
+                href={`/${locale}/admin/${current.path}`}
+                className="truncate text-zinc-400 hover:text-yellow-400"
+              >
+                {title}
+              </Link>
+              <ChevronRight size={12} className="shrink-0 text-zinc-700" />
+              <span aria-current="page" className="truncate text-zinc-200">
+                {en ? "Details" : "Detalhes"}
+              </span>
             </>
+          ) : (
+            <span
+              aria-current="page"
+              className="truncate font-medium text-zinc-200"
+            >
+              {title}
+            </span>
           )}
-          <h1 className="font-semibold text-text truncate">{pageTitle}</h1>
-        </div>
-
-        {/* Right side actions */}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Language selector */}
-          <DropdownMenu
-            trigger={
-              <Button variant="ghost" size="sm" className="gap-2">
-                <Globe size={18} aria-hidden="true" />
-                <span className="hidden md:inline">{currentLocale.label}</span>
-                <ChevronDown size={14} />
-              </Button>
+        </nav>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <button
+            onClick={onSearch}
+            aria-label={
+              en ? "Search pages (Ctrl+K)" : "Buscar páginas (Ctrl+K)"
             }
+            className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-2.5 py-2 text-xs text-zinc-500 transition hover:border-white/20 hover:text-white"
           >
-            <DropdownMenuContent>
-              {locales.map((loc) => (
-                <DropdownMenuItem
-                  key={loc.code}
-                  onClick={() => {
-                    if (onLanguageChange && loc.code !== locale) {
-                      onLanguageChange(loc.code);
-                    }
-                    setLanguageOpen(false);
-                  }}
-                  className={cn(loc.code === locale && "bg-surface-secondary")}
-                >
-                  <Globe size={18} className="mr-2" aria-hidden="true" />
-                  {loc.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Notifications */}
+            <Search size={15} />
+            <span className="hidden lg:inline">
+              {en ? "Search pages" : "Buscar páginas"}
+            </span>
+            <kbd className="hidden rounded border border-white/10 px-1 text-[9px] lg:block">
+              Ctrl K
+            </kbd>
+          </button>
+          <label className="hidden items-center gap-1 text-zinc-500 sm:flex">
+            <Globe2 size={14} />
+            <select
+              aria-label={en ? "Language" : "Idioma"}
+              value={locale}
+              onChange={(e) => onLanguageChange?.(e.target.value)}
+              className="max-w-16 bg-transparent text-[10px] outline-none"
+            >
+              <option className="bg-zinc-900" value="pt-BR">
+                PT-BR
+              </option>
+              <option className="bg-zinc-900" value="en-US">
+                EN-US
+              </option>
+            </select>
+          </label>
           <NotificationBell locale={locale} />
-
-          {/* User menu - simplified for now */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLogout}
-            className="gap-2"
+          <div
+            ref={menuRef}
+            className="relative border-l border-white/10 pl-2 sm:pl-3"
           >
-            <Avatar
-              src={photoUrl || undefined}
-              alt={firstName || "User"}
-              size="sm"
-              fallback={firstName?.[0] || "A"}
-            />
-            <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-text">
-                {firstName || "Admin"}
-              </p>
-              <p className="text-xs text-text-secondary capitalize">{role}</p>
-            </div>
-            <LogOut size={14} className="hidden md:block ml-2" />
-          </Button>
+            <button
+              ref={triggerRef}
+              aria-label={en ? "Account options" : "Opções da conta"}
+              aria-expanded={userOpen}
+              aria-controls="admin-account-menu"
+              onClick={() => setUserOpen(!userOpen)}
+              className="flex items-center gap-2 rounded-lg p-1 hover:bg-white/5"
+            >
+              <Avatar
+                src={photoUrl || undefined}
+                alt={firstName || "Admin"}
+                fallback={firstName?.[0] || "A"}
+                size="sm"
+              />
+              <span className="hidden text-left xl:block">
+                <span className="block text-xs font-medium text-zinc-200">
+                  {[firstName, lastName].filter(Boolean).join(" ") || "Admin"}
+                </span>
+                <span className="mt-0.5 block text-[9px] text-zinc-500">
+                  {role === "admin"
+                    ? en
+                      ? "Administrator"
+                      : "Administrador"
+                    : "Coach"}
+                </span>
+              </span>
+              <ChevronDown
+                size={12}
+                className="hidden text-zinc-500 sm:block"
+              />
+            </button>
+            {userOpen && (
+              <div
+                id="admin-account-menu"
+                className="absolute right-0 top-full mt-3 w-60 rounded-xl border border-white/10 bg-[#141518] p-1.5 shadow-2xl"
+              >
+                <p className="px-3 py-2 text-[10px] text-zinc-500">
+                  {en ? "Your account" : "Sua conta"}
+                </p>
+                <Link
+                  href={`/${locale}/account`}
+                  onClick={() => setUserOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-zinc-300 hover:bg-white/5"
+                >
+                  <UserRound size={14} />
+                  {en ? "Manage account" : "Gerenciar conta"}
+                </Link>
+                <label className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-zinc-400">
+                  <Globe2 size={14} />
+                  <select
+                    aria-label={en ? "Account language" : "Idioma da conta"}
+                    value={locale}
+                    onChange={(e) => {
+                      onLanguageChange?.(e.target.value);
+                      setUserOpen(false);
+                    }}
+                    className="min-w-0 flex-1 bg-[#141518] text-xs"
+                  >
+                    <option value="pt-BR">Português</option>
+                    <option value="en-US">English</option>
+                  </select>
+                </label>
+                <div className="my-1 border-t border-white/5" />
+                <button
+                  onClick={() => {
+                    setUserOpen(false);
+                    onLogout();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-400/5"
+                >
+                  <LogOut size={14} />
+                  {en ? "Sign out" : "Sair da plataforma"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

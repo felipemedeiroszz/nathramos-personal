@@ -46,12 +46,12 @@ export async function FinanceChecks({
           "Cobranças pagas ligadas a assinaturas inativas",
       };
   return (
-    <section className="rounded-xl border border-border p-4 space-y-4">
-      <h2 className="text-xl font-semibold">
+    <section className="admin-data-controls rounded-2xl border border-border p-5 space-y-4">
+      <h2 className="text-sm font-semibold">
         {en ? "Financial reconciliation" : "Conferência financeira"}
       </h2>
       <form className="flex flex-wrap gap-3">
-        <label>
+        <label className="text-xs">
           {en ? "From" : "De"}
           <input
             type="date"
@@ -61,7 +61,7 @@ export async function FinanceChecks({
             className="block p-2 bg-surface border border-border rounded-lg"
           />
         </label>
-        <label>
+        <label className="text-xs">
           {en ? "Through" : "Até"}
           <input
             type="date"
@@ -80,7 +80,10 @@ export async function FinanceChecks({
           <option>BRL</option>
           <option>USD</option>
         </select>
-        <button className="underline" type="submit">
+        <button
+          className="self-end rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+          type="submit"
+        >
           {en ? "Apply" : "Aplicar"}
         </button>
       </form>

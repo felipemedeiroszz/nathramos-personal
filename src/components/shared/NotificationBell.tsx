@@ -32,6 +32,7 @@ export function NotificationBell({
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,23 +49,38 @@ export function NotificationBell({
   }, [load]);
 
   useEffect(() => {
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+      return;
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "notification:received") load();
     };
     navigator.serviceWorker.addEventListener("message", handleMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
   }, [load]);
 
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [open]);
 
   const handleOpenItem = async (item: NotificationRow) => {
@@ -72,7 +88,9 @@ export function NotificationBell({
     if (!item.read_at) {
       const readAt = new Date().toISOString();
       setItems((prev) =>
-        prev.map((row) => (row.id === item.id ? { ...row, read_at: readAt } : row))
+        prev.map((row) =>
+          row.id === item.id ? { ...row, read_at: readAt } : row,
+        ),
       );
       setUnread((prev) => Math.max(0, prev - 1));
       await markNotificationReadAction(item.id);
@@ -82,7 +100,9 @@ export function NotificationBell({
 
   const handleMarkAll = async () => {
     const readAt = new Date().toISOString();
-    setItems((prev) => prev.map((row) => ({ ...row, read_at: row.read_at ?? readAt })));
+    setItems((prev) =>
+      prev.map((row) => ({ ...row, read_at: row.read_at ?? readAt })),
+    );
     setUnread(0);
     await markAllNotificationsReadAction();
   };
@@ -101,8 +121,10 @@ export function NotificationBell({
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={t("bell.title")}
+        aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
         className="relative inline-flex h-9 items-center justify-center rounded-xl px-3 text-text transition-colors hover:bg-surface-secondary/50"
       >
@@ -115,9 +137,14 @@ export function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+        <div
+          data-ui="notification-panel"
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+        >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-semibold text-text">{t("bell.title")}</span>
+            <span className="text-sm font-semibold text-text">
+              {t("bell.title")}
+            </span>
             {unread > 0 && (
               <button
                 type="button"
@@ -156,7 +183,9 @@ export function NotificationBell({
                       {item.title}
                     </span>
                   </div>
-                  <span className="line-clamp-2 text-xs text-text-secondary">{item.body}</span>
+                  <span className="line-clamp-2 text-xs text-text-secondary">
+                    {item.body}
+                  </span>
                   <span className="text-[11px] text-text-secondary/70">
                     {formatDate(item.created_at)}
                   </span>

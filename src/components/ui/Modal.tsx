@@ -31,6 +31,7 @@ export function Modal({
       />
       <div
         ref={modalRef}
+        data-ui="modal"
         role="dialog"
         aria-modal="true"
         aria-label={props["aria-label"] || "Dialog"}

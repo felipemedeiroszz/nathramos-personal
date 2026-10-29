@@ -1,3 +1,4 @@
+import "./admin.css";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -36,9 +37,15 @@ export default async function AdminLayout({
     const supabase = await createClientSSR();
     const { data } = await supabase
       .from("profiles")
-      .select<string, { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null }>(
-        "first_name, last_name, avatar_url, role"
-      )
+      .select<
+        string,
+        {
+          first_name: string | null;
+          last_name: string | null;
+          avatar_url: string | null;
+          role: string | null;
+        }
+      >("first_name, last_name, avatar_url, role")
       .eq("id", userId)
       .limit(1)
       .maybeSingle();

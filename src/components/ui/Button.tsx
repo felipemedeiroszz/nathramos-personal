@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import { ButtonHTMLAttributes, forwardRef, Children, isValidElement, cloneElement } from "react";
+import {
+  ButtonHTMLAttributes,
+  forwardRef,
+  Children,
+  isValidElement,
+  cloneElement,
+} from "react";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "destructive" | "ghost" | "outline";
@@ -18,7 +24,8 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   destructive:
     "border border-text/25 bg-text/[0.08] text-text hover:bg-text/[0.14] hover:-translate-y-0.5 active:translate-y-0",
   ghost: "bg-transparent text-text hover:bg-surface-secondary/50",
-  outline: "bg-transparent border border-border/60 text-text hover:border-primary/60 hover:text-primary",
+  outline:
+    "bg-transparent border border-border/60 text-text hover:border-primary/60 hover:text-primary",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
@@ -28,28 +35,49 @@ const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", asChild, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant = "primary",
+      size = "md",
+      asChild,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     const classes = cn(
       buttonBaseClasses,
       variantClasses[variant],
       sizeClasses[size],
-      className
+      className,
     );
 
     if (asChild) {
       const child = Children.only(children);
       if (!isValidElement(child)) return null;
       return cloneElement(child as React.ReactElement<any>, {
+        ...props,
         className: cn((child as any).props.className, classes),
+        "data-ui": "button",
+        "data-variant": variant,
+        "data-size": size,
       });
     }
 
     return (
-      <button ref={ref} className={classes} {...props}>
+      <button
+        ref={ref}
+        data-ui="button"
+        data-variant={variant}
+        data-size={size}
+        className={classes}
+        {...props}
+      >
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

@@ -30,6 +30,7 @@ export function Dialog({
       />
       <div
         ref={dialogRef}
+        data-ui="dialog"
         role="dialog"
         aria-modal="true"
         aria-label={props["aria-label"] || "Dialog"}

@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 const require=createRequire(import.meta.url)
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright')
-const components=loadTs('src/components/student/RoutineClients.tsx',{'next/navigation':{useRouter:()=>({refresh(){}})},'@/app/actions/routine':{}})
+const components=loadTs('src/components/student/RoutineClients.tsx',{'next-intl':{useLocale:()=> 'pt-BR'},'next/navigation':{useRouter:()=>({refresh(){}})},'@/app/actions/routine':{}})
 const nutrition={calories_kcal:300,protein_g:15,carbs_g:30,fats_g:7.5}
 const item={key:'fixture-item',kind:'diet',assignmentId:'fixture-assignment',itemId:'fixture-item',kit:'Acompanhamento alimentar',name:'Arroz integral',quantity:150,unit:'g',slot:'12:00',mealType:'lunch',notes:'Orientação da treinadora',done:false,foodId:'fixture-food',nutrition}
 const data={date:'2026-10-28',weekStart:'2026-10-26',timezone:'America/Sao_Paulo',firstName:'Aluno de teste',locale:'pt-BR',diet:[item],supplements:[],plannedNutrition:nutrition,consumedNutrition:{calories_kcal:0,protein_g:0,carbs_g:0,fats_g:0},water:[{id:1,amount_ml:175,logged_date:'2026-10-28',logged_time:'09:30'}],waterTotal:175,waterGoal:2000,hydrationReminders:true,hydrationSilent:true,hydrationFrequency:60,quietStart:'22:00',quietEnd:'07:00',shopping:[{foodId:'fixture-food',name:'Arroz integral',quantities:[{quantity:150,unit:'g'}],bought:false}],sleep:[],weight:[],logs:[]}

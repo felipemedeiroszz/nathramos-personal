@@ -1,35 +1,11 @@
 "use client";
-
-import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
-import {
-  BarChart3,
-  LayoutDashboard,
-  Users,
-  Dumbbell,
-  UtensilsCrossed,
-  Pill,
-  FileText,
-  BookOpen,
-  FolderKanban,
-  Package,
-  Banknote,
-  MessageSquare,
-  Share2,
-  Settings,
-  User,
-  LogOut,
-  Bell,
-  Calendar,
-  CreditCard,
-  DollarSign,
-  Shield,
-  Menu,
-  Apple,
-} from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ChevronDown, LogOut, Search, UserRound, X } from "lucide-react";
+import { navigationForRole } from "@/components/admin/navigation";
+import { cn } from "@/lib/utils";
 
 interface AdminSidebarProps {
   locale: string;
@@ -37,441 +13,162 @@ interface AdminSidebarProps {
   onLogout?: () => Promise<void> | void;
   isMobile?: boolean;
   onClose?: () => void;
+  onSearch?: () => void;
 }
-
-type NavSection = {
-  titleKey?: string;
-  titleFallback: string;
-  items: {
-    key: string;
-    hrefSuffix: string;
-    fallback: string;
-    icon: React.ReactNode;
-  }[];
-};
-
-const accountAndLogout = {
-  account: {
-    hrefSuffix: "/account",
-    fallback: "Conta",
-    icon: <User size={20} />,
-  },
-};
-
 export function AdminSidebar({
-  role = "admin",
   locale,
+  role = "admin",
   onLogout,
   isMobile,
   onClose,
+  onSearch,
 }: AdminSidebarProps) {
-  const tNav = useTranslations("adminNav");
-  const tCommon = useTranslations("common");
   const pathname = usePathname();
-
-  const sections: NavSection[] = [
-    {
-      titleKey: "sectionOverview",
-      titleFallback: "Visão Geral",
-      items: [
-        {
-          key: "dashboard",
-          hrefSuffix: "/admin/dashboard",
-          fallback: "Dashboard",
-          icon: <LayoutDashboard size={20} />,
-        },
-        {
-          key: "analytics",
-          hrefSuffix: "/admin/relatorios",
-          fallback:
-            locale === "en-US"
-              ? "Analytics & reports"
-              : "Análises e relatórios",
-          icon: <BarChart3 size={20} />,
-        },
-      ],
-    },
-    {
-      titleKey: "sectionStudentsContent",
-      titleFallback: "Alunos & Conteúdo",
-      items: [
-        {
-          key: "students",
-          hrefSuffix: "/admin/alunos",
-          fallback: "Alunos",
-          icon: <Users size={20} />,
-        },
-        {
-          key: "workouts",
-          hrefSuffix: "/admin/treinos",
-          fallback: "Treinos",
-          icon: <Dumbbell size={20} />,
-        },
-        {
-          key: "foods",
-          hrefSuffix: "/admin/alimentos",
-          fallback: "Alimentos",
-          icon: <Apple size={20} />,
-        },
-        {
-          key: "supplements",
-          hrefSuffix: "/admin/suplementos",
-          fallback: "Suplementos",
-          icon: <Pill size={20} />,
-        },
-        {
-          key: "exams",
-          hrefSuffix: "/admin/exames",
-          fallback: "Exames",
-          icon: <FileText size={20} />,
-        },
-        {
-          key: "ebooks",
-          hrefSuffix: "/admin/ebooks",
-          fallback: "Ebooks",
-          icon: <BookOpen size={20} />,
-        },
-      ],
-    },
-    {
-      titleKey: "sectionKitsAssignments",
-      titleFallback: "Kits & Atribuições",
-      items: [
-        {
-          key: "workoutKits",
-          hrefSuffix: "/admin/kits/treinos",
-          fallback: "Kits de Treino",
-          icon: <FolderKanban size={20} />,
-        },
-        {
-          key: "dietKits",
-          hrefSuffix: "/admin/kits/dietas",
-          fallback: "Kits de Dieta",
-          icon: <UtensilsCrossed size={20} />,
-        },
-        {
-          key: "supplementKits",
-          hrefSuffix: "/admin/kits/suplementos",
-          fallback: "Kits de Suplemento",
-          icon: <Package size={20} />,
-        },
-      ],
-    },
-    {
-      titleKey: "sectionRelationship",
-      titleFallback: "Relacionamento",
-      items: [
-        {
-          key: "mentoria",
-          hrefSuffix: "/admin/mentoria",
-          fallback: "Mentoria",
-          icon: <MessageSquare size={20} />,
-        },
-        {
-          key: "meetings",
-          hrefSuffix: "/admin/reunioes",
-          fallback: "Reuniões",
-          icon: <Calendar size={20} />,
-        },
-        {
-          key: "notifications",
-          hrefSuffix: "/admin/notificacoes",
-          fallback: "Notificações",
-          icon: <Bell size={20} />,
-        },
-        {
-          key: "social",
-          hrefSuffix: "/admin/redes-sociais",
-          fallback: "Redes Sociais",
-          icon: <Share2 size={20} />,
-        },
-      ],
-    },
-    {
-      titleKey: "sectionFinance",
-      titleFallback: "Financeiro",
-      items: [
-        {
-          key: "plans",
-          hrefSuffix: "/admin/planos",
-          fallback: "Planos",
-          icon: <CreditCard size={20} />,
-        },
-        {
-          key: "subscriptions",
-          hrefSuffix: "/admin/assinaturas",
-          fallback: "Assinaturas",
-          icon: <CreditCard size={20} />,
-        },
-        {
-          key: "payments",
-          hrefSuffix: "/admin/pagamentos",
-          fallback: "Pagamentos",
-          icon: <DollarSign size={20} />,
-        },
-        {
-          key: "financeiro",
-          hrefSuffix: "/admin/financeiro",
-          fallback: "Financeiro",
-          icon: <Banknote size={20} />,
-        },
-      ],
-    },
-    {
-      titleKey: "sectionSystem",
-      titleFallback: "Sistema",
-      items: [
-        {
-          key: "settings",
-          hrefSuffix: "/admin/configuracoes",
-          fallback: "Configurações",
-          icon: <Settings size={20} />,
-        },
-        {
-          key: "pages",
-          hrefSuffix: "/admin/paginas",
-          fallback: "Páginas",
-          icon: <FileText size={20} />,
-        },
-        {
-          key: "history",
-          hrefSuffix: "/admin/historico",
-          fallback:
-            locale === "en-US"
-              ? "Prescription history"
-              : "Histórico de prescrições",
-          icon: <FileText size={20} />,
-        },
-        {
-          key: "audit",
-          hrefSuffix: "/admin/auditoria",
-          fallback: "Auditoria",
-          icon: <Shield size={20} />,
-        },
-      ],
-    },
-  ];
-
-  const labelFor = (key: string, fallback: string) => {
-    try {
-      if (tNav.has(key)) return tNav(key);
-    } catch {}
-    return fallback;
-  };
-
-  const sectionTitleFor = (titleKey: string | undefined, fallback: string) => {
-    if (!titleKey) return fallback;
-    try {
-      if (tNav.has(titleKey)) return tNav(titleKey);
-    } catch {}
-    return fallback;
-  };
-
-  const isActive = (hrefSuffix: string) => {
-    const fullHref = `/${locale}${hrefSuffix}`;
-    return pathname === fullHref || pathname.startsWith(`${fullHref}/`);
-  };
-
-  const logoutLabel = (() => {
-    try {
-      if (tCommon.has("logout")) return tCommon("logout");
-    } catch {}
-    try {
-      if (tNav.has("logout")) return tNav("logout");
-    } catch {}
-    return "Sair";
-  })();
-
-  const accountLabel = labelFor("account", accountAndLogout.account.fallback);
-
-  let itemCounter = 0;
-  const nextDelay = (offset = 0) => {
-    const delay = 60 * itemCounter + offset;
-    itemCounter += 1;
-    return `${delay}ms`;
-  };
-
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const en = locale === "en-US";
+  const active = (path: string) =>
+    pathname === `/${locale}/admin/${path}` ||
+    pathname.startsWith(`/${locale}/admin/${path}/`);
   return (
     <aside
       className={cn(
-        "flex flex-col w-64 h-screen bg-surface border-r border-border overflow-y-auto overflow-x-hidden",
-        "relative",
-        isMobile ? "fixed" : "hidden md:flex sticky top-0",
+        "flex h-dvh w-64 shrink-0 flex-col border-r border-white/[0.07] bg-[#0c0d0f]",
+        isMobile ? "relative" : "sticky top-0",
       )}
+      aria-label={en ? "Admin navigation" : "Navegação administrativa"}
     >
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent animate-accent-slide" />
-
-      <div className="p-6 flex items-center justify-between shrink-0 relative">
+      <div className="flex h-20 shrink-0 items-center justify-between px-5">
         <Link
           href={`/${locale}/admin/dashboard`}
-          className="flex items-center gap-3 min-w-0 group"
-          onClick={() => isMobile && onClose?.()}
+          onClick={onClose}
+          className="flex items-center gap-3"
         >
-          <div className="relative w-20 h-20 shrink-0 animate-logo-float drop-shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
-            <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-glow" />
+          <div className="relative h-10 w-10">
             <Image
               src="/logo.png"
-              alt="Nath Ramos Admin"
+              alt="Nath Ramos"
               fill
-              className="object-contain relative z-10"
+              className="object-contain"
               priority
             />
+          </div>
+          <div>
+            <p className="text-xs font-semibold tracking-[0.08em] text-zinc-100">
+              NATH RAMOS
+            </p>
+            <p className="mt-1 text-[9px] uppercase tracking-[0.17em] text-zinc-500">
+              Management studio
+            </p>
           </div>
         </Link>
         {isMobile && (
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-surface-secondary text-text-secondary shrink-0 transition-transform hover:scale-110 active:scale-95"
+            aria-label={en ? "Close navigation" : "Fechar navegação"}
+            className="rounded-lg p-2 text-zinc-400 hover:bg-white/5"
           >
-            <LogOut size={20} />
+            <X size={17} />
           </button>
         )}
       </div>
-
-      <div className="h-px mx-6 bg-gradient-to-r from-transparent via-border to-transparent relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/60 to-transparent bg-[length:200%_100%] animate-shimmer" />
-      </div>
-
-      <nav className="flex-1 px-4 pb-4 pt-2">
-        {sections
-          .map((section) => ({
-            ...section,
-            items: section.items.filter(
-              (item) =>
-                role === "admin" ||
-                [
-                  "dashboard",
-                  "analytics",
-                  "students",
-                  "workouts",
-                  "exams",
-                  "workoutKits",
-                  "dietKits",
-                  "supplementKits",
-                  "mentoria",
-                  "meetings",
-                ].includes(item.key),
-            ),
-          }))
-          .filter((section) => section.items.length > 0)
-          .map((section, sIdx) => (
-            <div
-              key={sIdx}
-              className="animate-slide-in-left"
-              style={{ animationDelay: `${sIdx * 80}ms` }}
-            >
-              {section.titleKey || sIdx > 0 ? (
-                <div className="relative mb-2 mt-4 px-3">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-1 rounded-full bg-primary/70 shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
-                    <span className="text-xs uppercase text-text-secondary font-semibold tracking-wider">
-                      {sectionTitleFor(section.titleKey, section.titleFallback)}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-              <ul className="space-y-1">
-                {section.items.map((item) => {
-                  const active = isActive(item.hrefSuffix);
-                  const delay = nextDelay();
-                  return (
-                    <li
-                      key={item.hrefSuffix}
-                      className="animate-slide-in-left"
-                      style={{ animationDelay: delay }}
-                    >
-                      <Link
-                        href={`/${locale}${item.hrefSuffix}`}
-                        onClick={() => isMobile && onClose?.()}
-                        className={cn(
-                          "group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out",
-                          active
-                            ? "bg-primary text-primary-foreground animate-active-glow"
-                            : "text-text-secondary hover:text-text hover:bg-surface-secondary hover:translate-x-1",
-                        )}
-                      >
-                        {active && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
-                        )}
-                        <span
-                          className={cn(
-                            "transition-transform duration-300",
-                            active ? "scale-110" : "group-hover:scale-110",
-                          )}
-                        >
-                          {item.icon}
-                        </span>
-                        <span className="font-medium text-sm tracking-wide">
-                          {labelFor(item.key, item.fallback)}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-
-        <div
-          className="relative mb-2 mt-6 px-3 animate-slide-in-left"
-          style={{ animationDelay: `${sections.length * 80}ms` }}
+      <div className="px-4 pb-4">
+        <button
+          onClick={onSearch}
+          className="flex w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2.5 text-xs text-zinc-500 transition hover:border-white/20 hover:text-zinc-200"
         >
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-1 rounded-full bg-primary/70 shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
-            <span className="text-xs uppercase text-text-secondary font-semibold tracking-wider">
-              {sectionTitleFor("sectionAccount", "Conta")}
-            </span>
-          </div>
-        </div>
-        <ul className="space-y-1">
-          <li
-            className="animate-slide-in-left"
-            style={{ animationDelay: nextDelay() }}
-          >
-            <Link
-              href={`/${locale}/account`}
-              onClick={() => isMobile && onClose?.()}
-              className={cn(
-                "group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out",
-                isActive(accountAndLogout.account.hrefSuffix)
-                  ? "bg-primary text-primary-foreground animate-active-glow"
-                  : "text-text-secondary hover:text-text hover:bg-surface-secondary hover:translate-x-1",
-              )}
-            >
-              {isActive(accountAndLogout.account.hrefSuffix) && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
-              )}
-              <span className="transition-transform duration-300 group-hover:scale-110">
-                {accountAndLogout.account.icon}
-              </span>
-              <span className="font-medium text-sm tracking-wide">
-                {accountLabel}
-              </span>
-            </Link>
-          </li>
-          <li
-            className="animate-slide-in-left"
-            style={{ animationDelay: nextDelay() }}
-          >
-            <button
-              onClick={() => {
-                onLogout?.();
-                onClose?.();
-              }}
-              className={cn(
-                "group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ease-out text-red-500 hover:bg-red-500/10 hover:translate-x-1",
-              )}
-            >
-              <span className="transition-transform duration-300 group-hover:scale-110">
-                <LogOut size={20} />
-              </span>
-              <span className="font-medium text-sm tracking-wide">
-                {logoutLabel}
-              </span>
-            </button>
-          </li>
-        </ul>
+          <Search size={14} />
+          {en ? "Find a page…" : "Buscar página…"}
+          <kbd className="ml-auto rounded border border-white/10 px-1 py-0.5 text-[9px]">
+            Ctrl K
+          </kbd>
+        </button>
+      </div>
+      <nav
+        className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 pb-5"
+        aria-label={en ? "Modules" : "Módulos"}
+      >
+        {navigationForRole(role).map((group) => {
+          const closed = collapsed.includes(group.key);
+          return (
+            <section key={group.key}>
+              <button
+                onClick={() =>
+                  setCollapsed((prev) =>
+                    closed
+                      ? prev.filter((key) => key !== group.key)
+                      : [...prev, group.key],
+                  )
+                }
+                aria-expanded={!closed}
+                aria-controls={`${isMobile ? "mobile" : "desktop"}-admin-nav-${group.key}`}
+                className="mb-2 flex w-full items-center justify-between px-3 text-[9px] font-semibold uppercase tracking-[0.15em] text-zinc-500 hover:text-zinc-300"
+              >
+                {en ? group.en : group.pt}
+                <ChevronDown
+                  size={11}
+                  className={cn("transition-transform", closed && "-rotate-90")}
+                />
+              </button>
+              <ul
+                id={`${isMobile ? "mobile" : "desktop"}-admin-nav-${group.key}`}
+                hidden={closed}
+                className="space-y-0.5"
+              >
+                {group.items.map((item) => (
+                  <li key={item.key}>
+                    <Link
+                      href={`/${locale}/admin/${item.path}`}
+                      onClick={onClose}
+                      aria-current={active(item.path) ? "page" : undefined}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-colors",
+                        active(item.path)
+                          ? "bg-yellow-400/[0.09] text-yellow-400"
+                          : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100",
+                      )}
+                    >
+                      <item.icon
+                        size={16}
+                        strokeWidth={1.7}
+                        className={
+                          active(item.path)
+                            ? "text-yellow-400"
+                            : "text-zinc-500 group-hover:text-zinc-300"
+                        }
+                      />
+                      <span>{en ? item.en : item.pt}</span>
+                      {active(item.path) && (
+                        <span className="ml-auto h-1 w-1 rounded-full bg-yellow-400" />
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </nav>
+      <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-3">
+        <Link
+          href={`/${locale}/account`}
+          onClick={onClose}
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs text-zinc-400 hover:bg-white/5 hover:text-white"
+        >
+          <UserRound size={16} />
+          {en ? "My account" : "Minha conta"}
+        </Link>
+        <button
+          onClick={() => {
+            onLogout?.();
+            onClose?.();
+          }}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs text-zinc-500 transition hover:bg-rose-400/5 hover:text-rose-400"
+        >
+          <LogOut size={16} />
+          {en ? "Sign out" : "Sair da plataforma"}
+        </button>
+      </div>
     </aside>
   );
 }

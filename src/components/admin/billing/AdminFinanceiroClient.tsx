@@ -57,31 +57,97 @@ export function AdminFinanceiroClient({
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     try {
-      return new Date(value).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
+      return new Date(value).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+        {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        },
+      );
     } catch {
       return "—";
     }
   };
 
   const kpis = [
-    { label: locale === "pt-BR" ? "Estornos confirmados no mês" : "Confirmed monthly refunds", value: formatMoney(overview.month_refunded_cents), icon: <RotateCcw size={18} /> },
-    { label: locale === "pt-BR" ? "Após estornos, antes de taxas" : "After refunds, before fees", value: formatMoney(overview.month_after_refunds_cents), icon: <Banknote size={18} /> },
-    { label: t("mrr"), value: formatMoney(overview.mrr_cents), icon: <TrendingUp size={18} />, accent: true },
-    { label: t("monthRevenue"), value: formatMoney(overview.month_revenue_cents), icon: <Banknote size={18} /> },
-    { label: t("yearRevenue"), value: formatMoney(overview.year_revenue_cents), icon: <Banknote size={18} /> },
-    { label: t("last12Revenue"), value: formatMoney(overview.last12_revenue_cents), icon: <TrendingUp size={18} /> },
-    { label: t("avgTicket"), value: formatMoney(overview.avg_ticket_cents), icon: <Receipt size={18} /> },
-    { label: t("activeSubs"), value: String(overview.active_subscriptions), icon: <Users size={18} /> },
-    { label: t("trialingSubs"), value: String(overview.trialing_subscriptions), icon: <Users size={18} /> },
-    { label: t("pastDueSubs"), value: String(overview.past_due_subscriptions), icon: <AlertTriangle size={18} /> },
-    { label: t("blockedSubs"), value: String(overview.blocked_subscriptions), icon: <Ban size={18} /> },
-    { label: t("paymentsThisMonth"), value: String(overview.payments_this_month), icon: <Receipt size={18} /> },
-    { label: t("failedThisMonth"), value: String(overview.failed_this_month), icon: <XCircle size={18} /> },
-    { label: t("refundedThisMonth"), value: String(overview.refunded_this_month), icon: <RotateCcw size={18} /> },
+    {
+      label:
+        locale === "pt-BR"
+          ? "Estornos confirmados no mês"
+          : "Confirmed monthly refunds",
+      value: formatMoney(overview.month_refunded_cents),
+      icon: <RotateCcw size={18} />,
+    },
+    {
+      label:
+        locale === "pt-BR"
+          ? "Após estornos, antes de taxas"
+          : "After refunds, before fees",
+      value: formatMoney(overview.month_after_refunds_cents),
+      icon: <Banknote size={18} />,
+    },
+    {
+      label: t("mrr"),
+      value: formatMoney(overview.mrr_cents),
+      icon: <TrendingUp size={18} />,
+      accent: true,
+    },
+    {
+      label: t("monthRevenue"),
+      value: formatMoney(overview.month_revenue_cents),
+      icon: <Banknote size={18} />,
+    },
+    {
+      label: t("yearRevenue"),
+      value: formatMoney(overview.year_revenue_cents),
+      icon: <Banknote size={18} />,
+    },
+    {
+      label: t("last12Revenue"),
+      value: formatMoney(overview.last12_revenue_cents),
+      icon: <TrendingUp size={18} />,
+    },
+    {
+      label: t("avgTicket"),
+      value: formatMoney(overview.avg_ticket_cents),
+      icon: <Receipt size={18} />,
+    },
+    {
+      label: t("activeSubs"),
+      value: String(overview.active_subscriptions),
+      icon: <Users size={18} />,
+    },
+    {
+      label: t("trialingSubs"),
+      value: String(overview.trialing_subscriptions),
+      icon: <Users size={18} />,
+    },
+    {
+      label: t("pastDueSubs"),
+      value: String(overview.past_due_subscriptions),
+      icon: <AlertTriangle size={18} />,
+    },
+    {
+      label: t("blockedSubs"),
+      value: String(overview.blocked_subscriptions),
+      icon: <Ban size={18} />,
+    },
+    {
+      label: t("paymentsThisMonth"),
+      value: String(overview.payments_this_month),
+      icon: <Receipt size={18} />,
+    },
+    {
+      label: t("failedThisMonth"),
+      value: String(overview.failed_this_month),
+      icon: <XCircle size={18} />,
+    },
+    {
+      label: t("refundedThisMonth"),
+      value: String(overview.refunded_this_month),
+      icon: <RotateCcw size={18} />,
+    },
   ];
 
   const statusData = statusCounts.map((s) => ({
@@ -90,7 +156,12 @@ export function AdminFinanceiroClient({
   }));
 
   const providerData = providerRevenue.map((p) => ({
-    name: p.provider === "stripe" ? "Stripe" : p.provider === "asaas" ? "Asaas" : p.provider,
+    name:
+      p.provider === "stripe"
+        ? "Stripe"
+        : p.provider === "asaas"
+          ? "Asaas"
+          : p.provider,
     value: Number((p.revenue_cents / 100).toFixed(2)),
   }));
 
@@ -116,7 +187,9 @@ export function AdminFinanceiroClient({
                 <p className="text-xs uppercase tracking-wide text-text-secondary truncate">
                   {kpi.label}
                 </p>
-                <p className="text-lg font-bold text-text truncate">{kpi.value}</p>
+                <p className="text-lg font-bold text-text truncate">
+                  {kpi.value}
+                </p>
               </div>
             </div>
           </Card>
@@ -131,9 +204,11 @@ export function AdminFinanceiroClient({
           </CardHeader>
           <CardContent>
             {revenueSeries.length > 0 ? (
-              <Chart data={revenueSeries} type="area" />
+              <Chart appearance="admin" data={revenueSeries} type="area" />
             ) : (
-              <p className="py-16 text-center text-sm text-text-secondary">{t("noData")}</p>
+              <p className="py-16 text-center text-sm text-text-secondary">
+                {t("noData")}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -144,9 +219,11 @@ export function AdminFinanceiroClient({
           </CardHeader>
           <CardContent>
             {statusData.length > 0 ? (
-              <Chart data={statusData} type="pie" />
+              <Chart appearance="admin" data={statusData} type="pie" />
             ) : (
-              <p className="py-16 text-center text-sm text-text-secondary">{t("noData")}</p>
+              <p className="py-16 text-center text-sm text-text-secondary">
+                {t("noData")}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -157,9 +234,11 @@ export function AdminFinanceiroClient({
           </CardHeader>
           <CardContent>
             {planData.length > 0 ? (
-              <Chart data={planData} type="bar" />
+              <Chart appearance="admin" data={planData} type="bar" />
             ) : (
-              <p className="py-16 text-center text-sm text-text-secondary">{t("noData")}</p>
+              <p className="py-16 text-center text-sm text-text-secondary">
+                {t("noData")}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -170,9 +249,11 @@ export function AdminFinanceiroClient({
           </CardHeader>
           <CardContent>
             {providerData.length > 0 ? (
-              <Chart data={providerData} type="bar" />
+              <Chart appearance="admin" data={providerData} type="bar" />
             ) : (
-              <p className="py-16 text-center text-sm text-text-secondary">{t("noData")}</p>
+              <p className="py-16 text-center text-sm text-text-secondary">
+                {t("noData")}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -194,8 +275,12 @@ export function AdminFinanceiroClient({
                   </p>
                 </div>
               </div>
-              <Badge variant={integration.stripe.configured ? "success" : "error"}>
-                {integration.stripe.configured ? t("configured") : t("notConfigured")}
+              <Badge
+                variant={integration.stripe.configured ? "success" : "error"}
+              >
+                {integration.stripe.configured
+                  ? t("configured")
+                  : t("notConfigured")}
               </Badge>
             </div>
 
@@ -211,14 +296,21 @@ export function AdminFinanceiroClient({
                   </p>
                 </div>
               </div>
-              <Badge variant={integration.asaas.configured ? "success" : "error"}>
-                {integration.asaas.configured ? t("configured") : t("notConfigured")}
+              <Badge
+                variant={integration.asaas.configured ? "success" : "error"}
+              >
+                {integration.asaas.configured
+                  ? t("configured")
+                  : t("notConfigured")}
               </Badge>
             </div>
 
             <p className="text-xs text-text-secondary flex items-start gap-2">
               {integration.stripe.configured && integration.asaas.configured ? (
-                <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
+                <CheckCircle2
+                  size={14}
+                  className="text-green-500 mt-0.5 shrink-0"
+                />
               ) : (
                 <XOctagon size={14} className="text-red-400 mt-0.5 shrink-0" />
               )}
@@ -232,14 +324,21 @@ export function AdminFinanceiroClient({
       <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b border-border flex items-center gap-2">
           <Receipt size={18} className="text-primary" />
-          <p className="text-sm font-semibold text-text">{t("recentPayments")}</p>
+          <p className="text-sm font-semibold text-text">
+            {t("recentPayments")}
+          </p>
         </div>
         {recentPayments.length === 0 ? (
-          <p className="py-10 text-center text-sm text-text-secondary">{t("noData")}</p>
+          <p className="py-10 text-center text-sm text-text-secondary">
+            {t("noData")}
+          </p>
         ) : (
           <ul className="divide-y divide-border">
             {recentPayments.map((p) => (
-              <li key={p.id} className="px-4 py-3 flex items-center justify-between gap-4">
+              <li
+                key={p.id}
+                className="px-4 py-3 flex items-center justify-between gap-4"
+              >
                 <div className="min-w-0">
                   <p className="text-sm text-text truncate">
                     {p.student_name ?? tPay("unknownStudent")}

@@ -53,10 +53,12 @@ export default function AdminError({
   return (
     <section
       role="alert"
-      className="rounded-xl border border-border p-6 space-y-4"
+      className="mx-auto max-w-3xl rounded-2xl border border-rose-400/15 bg-surface p-6 space-y-4 sm:p-8"
     >
-      <h2 className="text-xl font-bold">Não foi possível carregar o painel</h2>
-      <p>
+      <h2 className="text-xl font-semibold tracking-tight">
+        Não foi possível carregar o painel
+      </h2>
+      <p className="text-sm leading-relaxed text-text-secondary">
         Os dados estão indisponíveis. Tente novamente antes de tomar decisões ou
         repetir uma alteração.
       </p>

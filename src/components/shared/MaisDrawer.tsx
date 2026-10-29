@@ -1,170 +1,92 @@
 "use client";
-
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/Drawer";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight } from "lucide-react";
 import {
-  Pill,
-  Droplets,
-  FileText,
-  BookOpen,
-  ShoppingCart,
-  MessageSquare,
-  Calendar,
-  Bell,
-  User,
-  CreditCard,
-  LogOut,
-} from "lucide-react";
-
-interface MaisDrawerProps {
+  Drawer,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+  DrawerContent,
+} from "@/components/ui/Drawer";
+import { studentNavigation } from "@/components/student/navigation";
+import { cn } from "@/lib/utils";
+export function MaisDrawer({
+  locale,
+  isOpen,
+  onClose,
+  onLogout,
+}: {
   locale: string;
   isOpen: boolean;
   onClose: () => void;
   onLogout?: () => Promise<void> | void;
-}
-
-type MenuItemKey =
-  | "supplements"
-  | "hydration"
-  | "exams"
-  | "ebooks"
-  | "shoppingList"
-  | "mentoring"
-  | "meetings"
-  | "notifications"
-  | "account"
-  | "membership";
-
-const labelKey: Record<MenuItemKey, string> = {
-  account: "account",
-  membership: "membership",
-  supplements: "supplements",
-  hydration: "hydration",
-  exams: "exams",
-  ebooks: "ebooks",
-  shoppingList: "shoppingList",
-  mentoring: "mentoring",
-  meetings: "meetings",
-  notifications: "notifications",
-};
-
-const routeForKey: Record<MenuItemKey, string> = {
-  account: "/account",
-  membership: "/assinatura",
-  supplements: "/suplementos",
-  hydration: "/hidratacao",
-  exams: "/exames",
-  ebooks: "/ebooks",
-  shoppingList: "/lista-compras",
-  mentoring: "/conversas",
-  meetings: "/reunioes",
-  notifications: "/notificacoes",
-};
-
-export function MaisDrawer({ locale, isOpen, onClose, onLogout }: MaisDrawerProps) {
-  const t = useTranslations("navigation");
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab");
-
-  const sections: {
-    titleKey: string;
-    items: { key: MenuItemKey; icon: React.ReactNode }[];
-  }[] = [
-    {
-      titleKey: "sectionAccount",
-      items: [
-        { key: "account", icon: <User size={20} /> },
-        { key: "membership", icon: <CreditCard size={20} /> },
-      ],
-    },
-    {
-      titleKey: "sectionHealth",
-      items: [
-        { key: "supplements", icon: <Pill size={20} /> },
-        { key: "hydration", icon: <Droplets size={20} /> },
-        { key: "exams", icon: <FileText size={20} /> },
-      ],
-    },
-    {
-      titleKey: "sectionContent",
-      items: [
-        { key: "ebooks", icon: <BookOpen size={20} /> },
-        { key: "shoppingList", icon: <ShoppingCart size={20} /> },
-      ],
-    },
-    {
-      titleKey: "sectionCommunication",
-      items: [
-        { key: "mentoring", icon: <MessageSquare size={20} /> },
-        { key: "meetings", icon: <Calendar size={20} /> },
-        { key: "notifications", icon: <Bell size={20} /> },
-      ],
-    },
-  ];
-
+}) {
+  const pathname = usePathname(),
+    en = locale === "en-US";
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} position="right">
-      <DrawerHeader>
-        <DrawerTitle>{t("moreOptions")}</DrawerTitle>
-        <DrawerClose onClick={onClose} />
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      aria-label={en ? "More options" : "Mais opções"}
+      className="w-[min(380px,100vw)] overflow-y-auto"
+      position="right"
+    >
+      <DrawerHeader className="sticky top-0 z-10 bg-surface">
+        <div>
+          <p className="mb-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">
+            {en ? "YOUR SPACE" : "SEU ESPAÇO"}
+          </p>
+          <DrawerTitle>{en ? "Your journey" : "Sua jornada"}</DrawerTitle>
+        </div>
+        <DrawerClose
+          onClick={onClose}
+          aria-label={en ? "Close options" : "Fechar opções"}
+        />
       </DrawerHeader>
-      <DrawerContent>
-        <nav className="space-y-6">
-          {sections.map((section) => (
-            <div key={section.titleKey} className="space-y-1">
-              <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                {t(section.titleKey)}
-              </p>
-              {section.items.map((item) => {
-                const href = `/${locale}${routeForKey[item.key]}`;
-                const basePath = `/${locale}${routeForKey[item.key].split("?")[0]}`;
-                const isAccountArea = basePath.endsWith("/account");
-                const isActive = isAccountArea
-                  ? pathname === basePath &&
-                    (item.key === "membership"
-                      ? activeTab === "subscription"
-                      : activeTab !== "subscription")
-                  : pathname === basePath || pathname === basePath + "/";
-                return (
-                  <Link
-                    key={item.key}
-                    href={href}
-                    onClick={onClose}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-text-secondary hover:bg-surface-secondary hover:text-text"
-                    )}
-                  >
-                    <span className={cn(isActive ? "text-primary" : "text-text-secondary")}>
-                      {item.icon}
-                    </span>
-                    <span className="font-medium">{t(labelKey[item.key])}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-
-          {onLogout && (
-            <div className="border-t border-border pt-4">
-              <button
-                type="button"
-                onClick={onLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-text-secondary transition-colors hover:bg-surface-secondary hover:text-text"
-              >
-                <LogOut size={20} />
-                <span className="font-medium">{t("logout")}</span>
-              </button>
-            </div>
-          )}
-        </nav>
+      <DrawerContent className="space-y-6 p-4">
+        {studentNavigation.map((group) => (
+          <section key={group.en}>
+            <h2 className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {en ? group.en : group.pt}
+            </h2>
+            {group.items.map((item) => {
+              const active = pathname === `/${locale}/${item.path}`;
+              return (
+                <Link
+                  key={item.path}
+                  href={`/${locale}/${item.path}`}
+                  onClick={onClose}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-zinc-300 hover:bg-white/5",
+                  )}
+                >
+                  <item.icon
+                    size={17}
+                    className={active ? "text-primary" : "text-zinc-500"}
+                  />
+                  {en ? item.en : item.pt}
+                  <ArrowUpRight size={12} className="ml-auto text-zinc-600" />
+                </Link>
+              );
+            })}
+          </section>
+        ))}
+        {onLogout && (
+          <button
+            onClick={() => {
+              onLogout();
+              onClose();
+            }}
+            className="min-h-11 w-full rounded-xl border border-white/10 text-sm text-zinc-400"
+          >
+            {en ? "Sign out" : "Sair da conta"}
+          </button>
+        )}
       </DrawerContent>
     </Drawer>
   );

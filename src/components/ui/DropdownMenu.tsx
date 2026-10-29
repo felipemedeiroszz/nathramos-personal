@@ -9,7 +9,12 @@ export interface DropdownMenuProps extends HTMLAttributes<HTMLDivElement> {
 
 export interface DropdownMenuItemProps extends HTMLAttributes<HTMLButtonElement> {}
 
-export function DropdownMenu({ trigger, children, className, ...props }: DropdownMenuProps) {
+export function DropdownMenu({
+  trigger,
+  children,
+  className,
+  ...props
+}: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -23,9 +28,10 @@ export function DropdownMenu({ trigger, children, className, ...props }: Dropdow
             onClick={() => setIsOpen(false)}
           />
           <div
+            data-ui="dropdown"
             className={cn(
               "absolute right-0 top-full mt-2 w-56 rounded-lg border border-border bg-surface shadow-lg z-20 overflow-hidden",
-              className
+              className,
             )}
             {...props}
           >
@@ -37,7 +43,11 @@ export function DropdownMenu({ trigger, children, className, ...props }: Dropdow
   );
 }
 
-export function DropdownMenuContent({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function DropdownMenuContent({
+  className,
+  children,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn("py-1", className)} {...props}>
       {children}
@@ -45,7 +55,12 @@ export function DropdownMenuContent({ className, children, ...props }: HTMLAttri
   );
 }
 
-export function DropdownMenuItem({ className, children, onClick, ...props }: DropdownMenuItemProps) {
+export function DropdownMenuItem({
+  className,
+  children,
+  onClick,
+  ...props
+}: DropdownMenuItemProps) {
   return (
     <button
       onClick={(e) => {
@@ -53,7 +68,7 @@ export function DropdownMenuItem({ className, children, onClick, ...props }: Dro
       }}
       className={cn(
         "w-full flex items-center px-4 py-2 text-sm text-text hover:bg-surface-secondary transition-colors focus-visible:outline-none focus-visible:bg-surface-secondary",
-        className
+        className,
       )}
       {...props}
     >
@@ -62,8 +77,9 @@ export function DropdownMenuItem({ className, children, onClick, ...props }: Dro
   );
 }
 
-export function DropdownMenuSeparator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("h-px bg-border my-1", className)} {...props} />
-  );
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("h-px bg-border my-1", className)} {...props} />;
 }

@@ -17,9 +17,10 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div
+      data-ui="error-state"
       className={cn(
         "flex flex-col items-center justify-center p-8 text-center",
-        className
+        className,
       )}
       {...props}
     >

@@ -2,7 +2,13 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,7 +28,11 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
-import { deleteMyExamAction, getExamFileUrlAction, uploadExamAction } from "@/app/actions/exams";
+import {
+  deleteMyExamAction,
+  getExamFileUrlAction,
+  uploadExamAction,
+} from "@/app/actions/exams";
 import type { ExamCategoryRow, ExamRow } from "@/types";
 
 interface StudentExamsClientProps {
@@ -31,12 +41,19 @@ interface StudentExamsClientProps {
   categories: ExamCategoryRow[];
 }
 
-export function StudentExamsClient({ locale, exams, categories }: StudentExamsClientProps) {
+export function StudentExamsClient({
+  locale,
+  exams,
+  categories,
+}: StudentExamsClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [status, setStatus] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [status, setStatus] = useState<{
+    type: "ok" | "err";
+    msg: string;
+  } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -44,7 +61,9 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
   const formatDate = (value?: string | null) => {
     if (!value) return "-";
     try {
-      return new Date(value).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US");
+      return new Date(value).toLocaleDateString(
+        locale === "pt-BR" ? "pt-BR" : "en-US",
+      );
     } catch {
       return value;
     }
@@ -61,7 +80,11 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
 
   function pickFile(selected: File | null) {
     if (!selected) return;
-    if (selected.type && !selected.type.startsWith("application/pdf") && !selected.type.startsWith("image/")) {
+    if (
+      selected.type &&
+      !selected.type.startsWith("application/pdf") &&
+      !selected.type.startsWith("image/")
+    ) {
       setStatus({ type: "err", msg: "Envie um arquivo PDF ou imagem." });
       return;
     }
@@ -93,7 +116,10 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
       } else {
         setStatus({
           type: "err",
-          msg: res.message === "validation" ? "Preencha título e data do exame." : res.message,
+          msg:
+            res.message === "validation"
+              ? "Preencha título e data do exame."
+              : res.message,
         });
       }
     });
@@ -146,33 +172,51 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-text-secondary">
                   <FileText size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">Total</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    Total
+                  </span>
                 </div>
-                <div className="text-2xl font-bold text-text">{exams.length}</div>
-                <div className="text-xs text-text-secondary">exames enviados</div>
+                <div className="text-2xl font-bold text-text">
+                  {exams.length}
+                </div>
+                <div className="text-xs text-text-secondary">
+                  exames enviados
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-text-secondary">
                   <Clock size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">Último</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    Último
+                  </span>
                 </div>
                 <div className="text-xl font-bold text-text">
                   {lastExam ? formatDate(lastExam.exam_date) : "-"}
                 </div>
-                <div className="text-xs text-text-secondary">{lastExam?.title ?? "Nenhum exame"}</div>
+                <div className="text-xs text-text-secondary">
+                  {lastExam?.title ?? "Nenhum exame"}
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-text-secondary">
                   <MessageSquare size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">Revisados</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    Revisados
+                  </span>
                 </div>
-                <div className="text-xl font-bold text-text">{reviewedCount}</div>
-                <div className="text-xs text-text-secondary">{pendingReview} aguardando parecer</div>
+                <div className="text-xl font-bold text-text">
+                  {reviewedCount}
+                </div>
+                <div className="text-xs text-text-secondary">
+                  {pendingReview} aguardando parecer
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-text-secondary">
                   <CheckCircle size={16} />
-                  <span className="text-xs font-medium uppercase tracking-wide">Status</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    Status
+                  </span>
                 </div>
                 <div className="pt-1">
                   {pendingReview === 0 && exams.length > 0 ? (
@@ -210,11 +254,19 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">Título do exame</label>
-                  <Input name="title" placeholder="Hemograma completo" required />
+                  <label className="text-sm font-medium text-text">
+                    Título do exame
+                  </label>
+                  <Input
+                    name="title"
+                    placeholder="Hemograma completo"
+                    required
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">Data do exame</label>
+                  <label className="text-sm font-medium text-text">
+                    Data do exame
+                  </label>
                   <Input
                     name="exam_date"
                     type="date"
@@ -223,7 +275,9 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">Categoria</label>
+                  <label className="text-sm font-medium text-text">
+                    Categoria
+                  </label>
                   <Select name="category_id" defaultValue="">
                     <option value="">-- Selecione --</option>
                     {categories.map((c) => (
@@ -234,14 +288,22 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">Laboratório</label>
+                  <label className="text-sm font-medium text-text">
+                    Laboratório
+                  </label>
                   <Input name="lab_name" placeholder="Lab Central" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">Observações</label>
-                <Textarea name="description" rows={3} placeholder="Alguma observação sobre o exame..." />
+                <label className="text-sm font-medium text-text">
+                  Observações
+                </label>
+                <Textarea
+                  name="description"
+                  rows={3}
+                  placeholder="Alguma observação sobre o exame..."
+                />
               </div>
 
               <div
@@ -267,10 +329,14 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-base md:text-lg font-semibold text-text">
-                      {file ? file.name : "Arraste o arquivo ou clique para selecionar"}
+                      {file
+                        ? file.name
+                        : "Arraste o arquivo ou clique para selecionar"}
                     </p>
                     <p className="text-sm text-text-secondary">
-                      {file ? formatSize(file.size) : "Aceita PDF ou imagem até 20MB"}
+                      {file
+                        ? formatSize(file.size)
+                        : "Aceita PDF ou imagem até 20MB"}
                     </p>
                   </div>
                   <input
@@ -291,7 +357,11 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                       : "border-text/25 bg-text/[0.08] text-text"
                   }`}
                 >
-                  {status.type === "ok" ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                  {status.type === "ok" ? (
+                    <CheckCircle size={16} />
+                  ) : (
+                    <XCircle size={16} />
+                  )}
                   {status.msg}
                 </div>
               )}
@@ -299,7 +369,8 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
               <div className="flex items-start gap-2 text-xs text-text-secondary">
                 <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
                 <p>
-                  Após o envio, seu treinador poderá visualizar o arquivo e deixar um parecer.
+                  Após o envio, seu treinador poderá visualizar o arquivo e
+                  deixar um parecer.
                 </p>
               </div>
 
@@ -356,7 +427,9 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                         <span className="text-sm font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
                           {formatDate(exam.exam_date)}
                         </span>
-                        <span className="font-semibold text-text">{exam.title}</span>
+                        <span className="font-semibold text-text">
+                          {exam.title}
+                        </span>
                         {exam.coach_feedback ? (
                           <Badge variant="success">
                             <CheckCircle size={12} className="mr-1" />
@@ -373,12 +446,15 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                         {exam.lab_name && <span>{exam.lab_name}</span>}
                         {exam.file_name && (
                           <span>
-                            {exam.file_name} · {formatSize(exam.file_size_bytes)}
+                            {exam.file_name} ·{" "}
+                            {formatSize(exam.file_size_bytes)}
                           </span>
                         )}
                       </div>
                       {exam.description && (
-                        <p className="text-xs text-text-secondary">{exam.description}</p>
+                        <p className="text-xs text-text-secondary">
+                          {exam.description}
+                        </p>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">
@@ -390,7 +466,10 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                           disabled={busyId === exam.id}
                         >
                           {busyId === exam.id ? (
-                            <Loader2 size={16} className="mr-1.5 animate-spin" />
+                            <Loader2
+                              size={16}
+                              className="mr-1.5 animate-spin"
+                            />
                           ) : (
                             <Download size={16} className="mr-1.5" />
                           )}
@@ -421,7 +500,8 @@ export function StudentExamsClient({ locale, exams, categories }: StudentExamsCl
                       <MessageSquare size={12} />
                       Parecer do professor
                     </div>
-                    {exam.coach_feedback || "Ainda não há parecer para este exame."}
+                    {exam.coach_feedback ||
+                      "Ainda não há parecer para este exame."}
                   </div>
                 </div>
               ))

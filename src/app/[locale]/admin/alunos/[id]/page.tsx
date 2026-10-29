@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { StudentProfileHeader } from "@/components/admin/student/StudentProfileHeader";
 import { StudentCoachForm } from "@/components/admin/StudentCoachForm";
 import { requireManagedStudent } from "@/lib/auth/platform";
 import { StudentRoutinePanel } from "@/components/admin/student/StudentRoutinePanel";
@@ -15,9 +15,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import {
   Table,
   TableBody,
@@ -41,7 +39,6 @@ import {
   CreditCard,
   Dumbbell,
   History,
-  Plus,
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
@@ -55,7 +52,6 @@ import { SubscriptionService } from "@/services/SubscriptionService";
 import { SupplementService } from "@/services/SupplementService";
 import { DietService } from "@/services/DietService";
 import type {
-  ProfileRow,
   PlanRow,
   StudentWorkoutKitRow,
   WorkoutKitRow,
@@ -66,7 +62,6 @@ import type {
   SupplementKitRow,
   DietKitRow,
 } from "@/types";
-import { AssignWorkoutKitModal } from "@/components/admin/workout/AssignWorkoutKitModal";
 import { UnassignWorkoutButton } from "@/components/admin/workout/UnassignWorkoutButton";
 import { AssignWorkoutKitModalClient } from "@/components/admin/workout/AssignWorkoutKitModalClient";
 import { StudentPasswordResetForm } from "@/components/admin/StudentPasswordResetForm";
@@ -81,6 +76,7 @@ export const metadata: Metadata = {
 };
 interface ExtendedProfile {
   id: string;
+  full_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   email?: string | null;
@@ -108,22 +104,24 @@ interface SubscriptionWithPlan {
   started_at?: string | null;
 }
 const MAX_ACTIVE_WORKOUTS = 6;
-function formatDateISO(iso?: string | null): string {
+function formatDateISO(iso?: string | null, locale = "pt-BR"): string {
   if (!iso) return "-";
   try {
-    const d = new Date(iso);
+    const d = new Date(
+      /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00Z` : iso,
+    );
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString("pt-BR");
+    return d.toLocaleDateString(locale, { timeZone: "America/Sao_Paulo" });
   } catch {
     return iso;
   }
 }
-function formatDateTime(iso?: string | null): string {
+function formatDateTime(iso?: string | null, locale = "pt-BR"): string {
   if (!iso) return "-";
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleString("pt-BR");
+    return d.toLocaleString(locale, { timeZone: "America/Sao_Paulo" });
   } catch {
     return iso;
   }
@@ -192,19 +190,14 @@ export default async function AdminAlunoDetalhePage({
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const label = (pt: string, en: string) => (locale === "en-US" ? en : pt);
+  const dateLabel = (value?: string | null) => formatDateISO(value, locale);
+  const timeLabel = (value?: string | null) => formatDateTime(value, locale);
   const actor = await requireRole(["admin", "coach"], "/dashboard");
   await requireManagedStudent(id);
-  const tAdmin = await getTranslations("admin");
-  const tAdminNav = await getTranslations("adminNav");
   const tCommon = await getTranslations("common");
   const tAuth = await getTranslations("auth");
   const tPayments = await getTranslations("payments");
-  const tWorkout = await getTranslations("workout");
-  const tKit = await getTranslations("kit");
   const tStudentKits = await getTranslations("studentKits");
-  const tMuscle = await getTranslations("muscleGroups");
-  const tEquip = await getTranslations("equipments");
-  const tDiff = await getTranslations("difficultyLevels");
   const supabase = await createServiceClientSSR();
   const [dietFingerprint, supplementFingerprint] = await Promise.all(
     ["diet", "supplement"].map(async (kind) => {
@@ -268,8 +261,7 @@ export default async function AdminAlunoDetalhePage({
         .eq("id", sub.plan_id)
         .maybeSingle();
       const plan = planData as
-        | (PlanRow & { name_pt: string; name_en: string })
-        | null;
+        (PlanRow & { name_pt: string; name_en: string }) | null;
       subscription = {
         id: sub.id,
         status: sub.status,
@@ -368,38 +360,41 @@ export default async function AdminAlunoDetalhePage({
   }
   const activeCount = assignments.filter((a) => a.status === "active").length;
   const maxReached = activeCount >= MAX_ACTIVE_WORKOUTS;
-  const avatarFallback =
-    (`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "??")
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s: string) => s[0]?.toUpperCase() ?? "")
-      .join("") || "??";
-  const title = (() => {
-    try {
-      if (tAdminNav.has("students")) return tAdminNav("students");
-    } catch {}
-    return "Alunos";
-  })();
   return (
-    <div className="space-y-6 w-full">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-text">
-          {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
-            tAuth("firstName") + " " + tAuth("lastName")}
-        </h1>
-        <p className="text-sm md:text-base text-text-secondary">
-          Perfil detalhado do aluno e gerenciamento de conteudos atribuidos.
-        </p>
-      </header>
-      <StudentRoutinePanel studentId={id} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <Card>
+    <div className="space-y-6 w-full min-w-0 text-zinc-100">
+      <StudentProfileHeader
+        locale={locale}
+        id={id}
+        name={
+          profile.full_name ||
+          `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+          label("Aluno", "Student")
+        }
+        email={email}
+        avatar={profile.avatar_url}
+        country={profile.country}
+        registered={dateLabel(profile.created_at)}
+        activeWorkouts={activeCount}
+        maxWorkouts={MAX_ACTIVE_WORKOUTS}
+        sessions={history.length}
+        diets={dietAssignments.length}
+        supplements={supplementAssignments.length}
+        lastSession={history.length ? dateLabel(history[0].completed_at) : "—"}
+      />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <Card
+          className={
+            actor.role === "admin"
+              ? "xl:col-span-2 min-w-0 rounded-2xl border-white/[0.08] bg-[#101113] p-5"
+              : "xl:col-span-3 min-w-0 rounded-2xl border-white/[0.08] bg-[#101113] p-5"
+          }
+        >
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <User size={18} /> Perfil
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <User size={16} className="text-yellow-400" />{" "}
+                  {label("Dados pessoais", "Personal details")}
                 </CardTitle>
                 <CardDescription>
                   {label("Dados cadastrais", "Profile details")}
@@ -414,37 +409,12 @@ export default async function AdminAlunoDetalhePage({
                       : "default"
                 }
               >
-                {(profile.role ?? "student").toUpperCase()}
+                {label("ALUNO", "STUDENT")}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="flex items-center gap-4">
-              <Avatar
-                size="xl"
-                src={profile.avatar_url ?? undefined}
-                alt={
-                  `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
-                  "Avatar"
-                }
-                fallback={avatarFallback}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-lg font-bold text-text truncate">
-                  {`${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
-                    "-"}
-                </div>
-                {email && (
-                  <div className="text-sm text-text-secondary truncate flex items-center gap-1.5 mt-0.5">
-                    <Mail size={12} /> {email}
-                  </div>
-                )}
-                <div className="text-xs text-text-secondary mt-1">
-                  Criado em: {formatDateTime(profile.created_at)}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3 text-sm">
               <InfoLine
                 icon={<Mail size={14} />}
                 label={tAuth("email")}
@@ -458,7 +428,7 @@ export default async function AdminAlunoDetalhePage({
               <InfoLine
                 icon={<Calendar size={14} />}
                 label={tAuth("birthDate")}
-                value={formatDateISO(profile.birth_date)}
+                value={dateLabel(profile.birth_date)}
               />
               <InfoLine
                 icon={<User size={14} />}
@@ -488,19 +458,20 @@ export default async function AdminAlunoDetalhePage({
               <InfoLine
                 icon={<UserPlus size={14} />}
                 label={label("Cadastrado em", "Registered on")}
-                value={formatDateISO(profile.created_at)}
+                value={dateLabel(profile.created_at)}
                 span={2}
               />
             </div>
           </CardContent>
         </Card>
         {actor.role === "admin" && (
-          <Card>
+          <Card className="min-w-0 rounded-2xl border-white/[0.08] bg-[#101113] p-5 shadow-none">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard size={18} /> Assinatura
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <CreditCard size={16} className="text-yellow-400" />{" "}
+                    {label("Assinatura", "Subscription")}
                   </CardTitle>
                   <CardDescription>
                     {label("Plano e status atual", "Plan and current status")}
@@ -525,12 +496,26 @@ export default async function AdminAlunoDetalhePage({
                     "No active subscription",
                   )}
                   description={label(
-                    "Aluno nao possui plano ativo no momento.",
+                    "Aluno não possui plano ativo no momento.",
                     "The student has no active plan.",
                   )}
                 />
               ) : (
                 <div className="grid grid-cols-1 gap-3 text-sm">
+                  <div className="mb-1 rounded-xl border border-yellow-400/15 bg-yellow-400/[0.04] p-4">
+                    <p className="text-[9px] font-medium uppercase tracking-widest text-yellow-400/70">
+                      {label("Valor do plano", "Plan price")}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight">
+                      {subscription.plan_price_cents != null &&
+                      subscription.currency
+                        ? new Intl.NumberFormat(locale, {
+                            style: "currency",
+                            currency: subscription.currency,
+                          }).format(subscription.plan_price_cents / 100)
+                        : "—"}
+                    </p>
+                  </div>
                   <InfoLine
                     icon={<CreditCard size={14} />}
                     label={label("Plano", "Plan")}
@@ -547,12 +532,12 @@ export default async function AdminAlunoDetalhePage({
                   />
                   <InfoLine
                     icon={<CalendarDays size={14} />}
-                    label={label("Proximo vencimento", "Next due date")}
-                    value={formatDateISO(subscription.current_period_end)}
+                    label={label("Próximo vencimento", "Next due date")}
+                    value={dateLabel(subscription.current_period_end)}
                   />
                   <InfoLine
                     icon={<CreditCard size={14} />}
-                    label={label("Metodo de pagamento", "Payment method")}
+                    label={label("Método de pagamento", "Payment method")}
                     value={methodLabel(
                       subscription.payment_method_pref,
                       subscription.provider,
@@ -561,87 +546,28 @@ export default async function AdminAlunoDetalhePage({
                   <InfoLine
                     icon={<UserPlus size={14} />}
                     label={label("Iniciada em", "Started on")}
-                    value={formatDateISO(subscription.started_at)}
+                    value={dateLabel(subscription.started_at)}
                   />
                 </div>
               )}
             </CardContent>
           </Card>
         )}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <History size={18} /> Resumo
-                </CardTitle>
-                <CardDescription>
-                  {label("Metricas rapidas", "Quick metrics")}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="rounded-xl border border-border bg-surface-secondary/30 p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-text-secondary text-sm">
-                <Dumbbell size={14} /> Treinos atribuidos
-              </div>
-              <div className="text-lg font-bold text-text">
-                {assignments.length}
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-surface-secondary/30 p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-text-secondary text-sm">
-                <CheckCircle2 size={14} /> Sessoes concluidas
-              </div>
-              <div className="text-lg font-bold text-text">
-                {history.length}
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-surface-secondary/30 p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-text-secondary text-sm">
-                <Clock size={14} /> Ultima sessao
-              </div>
-              <div className="text-sm font-semibold text-text">
-                {history.length ? formatDateISO(history[0].completed_at) : "-"}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-      <Link
-        className="text-primary underline"
-        href={`/${locale}/admin/historico?student=${id}`}
+      <Tabs
+        defaultValue="workouts"
+        className="min-w-0 rounded-2xl border border-white/[0.08] bg-[#101113] p-3 sm:p-5"
       >
-        {locale === "en-US" ? "Assignment history" : "Histórico de atribuições"}
-      </Link>
-      {actor.role === "admin" && (
-        <StudentCoachForm
-          studentId={id}
-          locale={locale}
-          coaches={(coaches.data || []) as { id: string; full_name: string }[]}
-          current={
-            (responsibility.data as { coach_id: string } | null)?.coach_id || ""
-          }
-        />
-      )}
-      {actor.role === "admin" && (
-        <StudentPasswordResetForm
-          locale={locale}
-          studentId={id}
-          studentName={
-            `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
-            "aluno"
-          }
-        />
-      )}
-      <Tabs defaultValue="workouts">
-        <TabsList>
+        <TabsList className="mb-2 flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-white/10 bg-transparent p-0 pb-3">
+          <TabsTrigger value="routine">
+            <CalendarDays size={14} className="mr-1.5" />
+            {label("Rotina e saúde", "Routine and health")}
+          </TabsTrigger>
           <TabsTrigger value="workouts">
-            <Dumbbell size={14} className="mr-1.5" /> Treinos atribuidos
+            <Dumbbell size={14} className="mr-1.5" /> Treinos atribuídos
           </TabsTrigger>
           <TabsTrigger value="history">
-            <History size={14} className="mr-1.5" /> Historico de sessoes
+            <History size={14} className="mr-1.5" /> Histórico de sessões
           </TabsTrigger>
           <TabsTrigger value="supplements">
             <Pill size={14} className="mr-1.5" />{" "}
@@ -651,23 +577,62 @@ export default async function AdminAlunoDetalhePage({
             <Utensils size={14} className="mr-1.5" />{" "}
             {tStudentKits("titleDiet")}
           </TabsTrigger>
+          {actor.role === "admin" && (
+            <TabsTrigger value="management">
+              <User size={14} className="mr-1.5" />
+              {label("Administração", "Administration")}
+            </TabsTrigger>
+          )}
         </TabsList>
+        <TabsContent value="routine">
+          <StudentRoutinePanel studentId={id} />
+        </TabsContent>
+        {actor.role === "admin" && (
+          <TabsContent value="management">
+            <div className="grid items-start gap-5 lg:grid-cols-2">
+              {actor.role === "admin" && (
+                <StudentCoachForm
+                  studentId={id}
+                  locale={locale}
+                  coaches={
+                    (coaches.data || []) as { id: string; full_name: string }[]
+                  }
+                  current={
+                    (responsibility.data as { coach_id: string } | null)
+                      ?.coach_id || ""
+                  }
+                />
+              )}
+              {actor.role === "admin" && (
+                <StudentPasswordResetForm
+                  locale={locale}
+                  studentId={id}
+                  studentName={
+                    `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+                    "aluno"
+                  }
+                />
+              )}
+            </div>
+          </TabsContent>
+        )}
+
         <TabsContent value="workouts" className="mt-4">
-          <Card>
+          <Card className="min-w-0 border-0 bg-transparent p-1 shadow-none sm:p-2">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Dumbbell size={18} /> Treinos atribuidos
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Dumbbell size={18} /> Treinos atribuídos
                   </CardTitle>
                   <CardDescription>
-                    Gerencie os programas e kits atribuidos a este aluno.
+                    Gerencie os programas e kits atribuídos a este aluno.
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={maxReached ? "error" : "warning"}>
                     <AlertTriangle size={12} className="mr-1" />
-                    Ativos: {activeCount} / {MAX_ACTIVE_WORKOUTS} (maximo
+                    Ativos: {activeCount} / {MAX_ACTIVE_WORKOUTS} (máximo
                     permitido)
                   </Badge>
                   <AssignWorkoutKitModalClient
@@ -676,7 +641,7 @@ export default async function AdminAlunoDetalhePage({
                     programs={programs}
                     locale={locale}
                     disabled={maxReached}
-                    disabledReason="Limite maximo de 6 treinos ativos atingido."
+                    disabledReason="Limite máximo de 6 treinos ativos atingido."
                   />
                 </div>
               </div>
@@ -684,7 +649,7 @@ export default async function AdminAlunoDetalhePage({
                 <div className="mt-3 rounded-xl border border-red-600/40 bg-red-600/10 px-4 py-2.5 text-sm text-red-300 flex items-start gap-2">
                   <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                   <span>
-                    Este aluno atingiu o limite maximo de {MAX_ACTIVE_WORKOUTS}{" "}
+                    Este aluno atingiu o limite máximo de {MAX_ACTIVE_WORKOUTS}{" "}
                     treinos ativos. Desatribua um treino existente antes de
                     atribuir um novo.
                   </span>
@@ -697,7 +662,7 @@ export default async function AdminAlunoDetalhePage({
                   className="py-12"
                   icon={<Dumbbell size={36} className="text-text-secondary" />}
                   title={label(
-                    "Nenhum treino atribuido",
+                    "Nenhum treino atribuído",
                     "No assigned workouts",
                   )}
                   description={label(
@@ -706,16 +671,16 @@ export default async function AdminAlunoDetalhePage({
                   )}
                 />
               ) : (
-                <div className="rounded-xl border border-border overflow-hidden">
+                <div className="min-w-0 rounded-xl border border-white/[0.07] overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{label("Nome", "Name")}</TableHead>
-                        <TableHead>{label("Inicio", "Start")}</TableHead>
+                        <TableHead>{label("Início", "Start")}</TableHead>
                         <TableHead>{label("Fim", "End")}</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>
-                          {label("Atribuido em", "Assigned on")}
+                          {label("Atribuído em", "Assigned on")}
                         </TableHead>
                         <TableHead className="text-right">
                           {tCommon("actions")}
@@ -739,7 +704,7 @@ export default async function AdminAlunoDetalhePage({
                         return (
                           <TableRow key={a.id}>
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 text-sm">
                                 <Dumbbell
                                   size={14}
                                   className="text-text-secondary shrink-0"
@@ -756,16 +721,14 @@ export default async function AdminAlunoDetalhePage({
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>{formatDateISO(a.start_date)}</TableCell>
-                            <TableCell>{formatDateISO(a.end_date)}</TableCell>
+                            <TableCell>{dateLabel(a.start_date)}</TableCell>
+                            <TableCell>{dateLabel(a.end_date)}</TableCell>
                             <TableCell>
                               <Badge variant={statusBadgeVariant(a.status)}>
                                 {statusLabel(a.status, tCommon)}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              {formatDateISO(a.assigned_at)}
-                            </TableCell>
+                            <TableCell>{dateLabel(a.assigned_at)}</TableCell>
                             <TableCell className="text-right">
                               <UnassignWorkoutButton
                                 swkId={a.id}
@@ -783,14 +746,14 @@ export default async function AdminAlunoDetalhePage({
           </Card>
         </TabsContent>
         <TabsContent value="history" className="mt-4">
-          <Card>
+          <Card className="min-w-0 border-0 bg-transparent p-1 shadow-none sm:p-2">
             <CardHeader>
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <History size={18} /> Historico de sessoes
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <History size={18} /> Histórico de sessões
                 </CardTitle>
                 <CardDescription>
-                  Ultimas sessoes de treino concluidas pelo aluno.
+                  Últimas sessões de treino concluídas pelo aluno.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -800,16 +763,16 @@ export default async function AdminAlunoDetalhePage({
                   className="py-12"
                   icon={<History size={36} className="text-text-secondary" />}
                   title={label(
-                    "Sem sessoes concluidas",
+                    "Sem sessões concluídas",
                     "No completed sessions",
                   )}
                   description={label(
-                    "O aluno ainda nao finalizou nenhuma sessao de treino.",
+                    "O aluno ainda não finalizou nenhuma sessão de treino.",
                     "The student has not completed a workout session yet.",
                   )}
                 />
               ) : (
-                <div className="rounded-xl border border-border overflow-hidden">
+                <div className="min-w-0 rounded-xl border border-white/[0.07] overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -818,7 +781,7 @@ export default async function AdminAlunoDetalhePage({
                         <TableHead>
                           {label("Finalizada", "Completed")}
                         </TableHead>
-                        <TableHead>{label("Duracao", "Duration")}</TableHead>
+                        <TableHead>{label("Duração", "Duration")}</TableHead>
                         <TableHead>{label("Sentimento", "Feeling")}</TableHead>
                         <TableHead>RPE</TableHead>
                       </TableRow>
@@ -827,12 +790,10 @@ export default async function AdminAlunoDetalhePage({
                       {history.map((s) => (
                         <TableRow key={s.id}>
                           <TableCell className="font-semibold text-text">
-                            {formatDateISO(s.scheduled_date)}
+                            {dateLabel(s.scheduled_date)}
                           </TableCell>
-                          <TableCell>{formatDateTime(s.started_at)}</TableCell>
-                          <TableCell>
-                            {formatDateTime(s.completed_at)}
-                          </TableCell>
+                          <TableCell>{timeLabel(s.started_at)}</TableCell>
+                          <TableCell>{timeLabel(s.completed_at)}</TableCell>
                           <TableCell>
                             {s.duration_min ? `${s.duration_min} min` : "-"}
                           </TableCell>
@@ -856,7 +817,7 @@ export default async function AdminAlunoDetalhePage({
           </Card>
         </TabsContent>
         <TabsContent value="supplements" className="mt-4">
-          <Card>
+          <Card className="min-w-0 border-0 bg-transparent p-1 shadow-none sm:p-2">
             <CardContent className="pt-5">
               <StudentKitsPanel
                 studentId={id}
@@ -869,7 +830,7 @@ export default async function AdminAlunoDetalhePage({
           </Card>
         </TabsContent>
         <TabsContent value="diets" className="mt-4">
-          <Card>
+          <Card className="min-w-0 border-0 bg-transparent p-1 shadow-none sm:p-2">
             <CardContent className="pt-5">
               <StudentKitsPanel
                 studentId={id}
@@ -899,25 +860,27 @@ function InfoLine({
   return (
     <div
       className={
-        "rounded-xl border border-border bg-surface-secondary/30 px-3 py-2.5 " +
+        "min-w-0 rounded-lg border border-white/[0.05] bg-white/[0.015] px-3 py-3 " +
         (span === 2 ? "sm:col-span-2" : "")
       }
     >
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-0.5">
+      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-medium text-zinc-500 mb-2">
         {icon}
         {label}
       </div>
-      <div className="text-sm font-medium text-text">{value}</div>
+      <div className="break-words text-xs font-medium text-zinc-300">
+        {value}
+      </div>
     </div>
   );
 }
 function methodLabel(method?: string | null, provider?: string | null): string {
   if (!method && !provider) return "-";
   const m: Record<string, string> = {
-    credit_card: "Cartao de credito",
+    credit_card: "Cartão de crédito",
     pix: "PIX",
     boleto: "Boleto",
-    bank_transfer: "Transferencia bancaria",
+    bank_transfer: "Transferência bancária",
     stripe: "Stripe",
     asaas: "Asaas",
   };

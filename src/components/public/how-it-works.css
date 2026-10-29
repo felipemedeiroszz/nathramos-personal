@@ -1,0 +1,136 @@
+.how-page .how-hero {
+  background: radial-gradient(ellipse at 80% 20%, #facc1509, transparent 55%);
+}
+.how-page .how-heading {
+  font-size: clamp(2.8rem, 5.1vw, 4.8rem);
+  line-height: 1.06;
+}
+.how-page .how-roadmap {
+  overflow: hidden;
+  align-self: center;
+  border: 1px solid #ffffff13;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #171b1d, #0d1012 65%);
+  box-shadow: 0 28px 80px #00000026;
+}
+.how-page .how-status {
+  height: 5px;
+  width: 5px;
+  border-radius: 50%;
+  background: #fde047;
+  box-shadow: 0 0 0 4px #facc1510;
+}
+.how-page .how-roadmap-link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 19px 10px;
+  border-radius: 12px;
+  transition: background-color 220ms;
+}
+.how-page .how-roadmap-link:hover {
+  background: #ffffff04;
+}
+.how-page .how-roadmap-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  color: #a1a1aa;
+  background: #ffffff02;
+  transition:
+    color 220ms,
+    border-color 220ms,
+    background-color 220ms;
+}
+.how-page .how-roadmap-link:hover .how-roadmap-icon {
+  border-color: #facc1533;
+  background: #facc1508;
+  color: #fde047;
+}
+.how-page .how-timeline {
+  position: relative;
+  display: grid;
+  gap: 24px;
+}
+.how-page .how-timeline::before {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 24px;
+  bottom: 40px;
+  width: 1px;
+  background: linear-gradient(#facc1544, #ffffff14 75%, transparent);
+}
+.how-page .how-step {
+  position: relative;
+  padding-left: 72px;
+  scroll-margin-top: 110px;
+}
+.how-page .how-step-number {
+  position: absolute;
+  left: 0;
+  top: 30px;
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 1px solid #ffffff1a;
+  border-radius: 50%;
+  background: #111516;
+  color: #a1a1aa;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 240ms,
+    border-color 240ms;
+}
+.how-page .how-step-card {
+  position: relative;
+  padding: 32px;
+  border: 1px solid #ffffff12;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff03, transparent 60%);
+  transition:
+    border-color 240ms,
+    background-color 240ms;
+}
+.how-page .how-step:first-child .how-step-number,
+.how-page .how-step:target .how-step-number {
+  color: #fde047;
+  border-color: #facc1544;
+}
+.how-page .how-step:target .how-step-card {
+  border-color: #facc1555;
+  background-color: #facc1503;
+}
+.how-page .how-final {
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 100% 100%, #ffe67a, transparent 70%), #facc15;
+}
+@media (max-width: 639px) {
+  .how-page .how-step {
+    padding-left: 35px;
+  }
+  .how-page .how-timeline::before {
+    left: 9px;
+  }
+  .how-page .how-step-number {
+    left: -4px;
+    top: 25px;
+    width: 27px;
+    height: 27px;
+    font-size: 9px;
+  }
+  .how-page .how-step-card {
+    padding: 23px 20px;
+    border-radius: 16px;
+  }
+  .how-page .how-roadmap-link {
+    gap: 12px;
+  }
+}

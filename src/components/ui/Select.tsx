@@ -7,9 +7,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, children, ...props }, ref) => {
     return (
       <select
+        data-ui="select"
         className={cn(
           "flex h-11 w-full rounded-lg border border-border/60 bg-surface/50 px-4 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 appearance-none cursor-pointer",
-          className
+          className,
         )}
         ref={ref}
         {...props}
@@ -17,7 +18,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {children}
       </select>
     );
-  }
+  },
 );
 
 Select.displayName = "Select";

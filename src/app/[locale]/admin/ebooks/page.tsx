@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { getAdminDataPage } from "@/lib/admin/data-page";
 import { AdminDataControls } from "@/components/admin/AdminDataControls";
 import type { Metadata } from "next";
@@ -80,10 +81,10 @@ export default async function AdminEbooksPage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
+      <AdminPageHeader locale={locale} section="content">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
-      </header>
+      </AdminPageHeader>
 
       <AdminDataControls
         params={pageParams}

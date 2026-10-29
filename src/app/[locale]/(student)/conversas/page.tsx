@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
 import { Avatar } from "@/components/ui/Avatar";
-import { MentorChat, type ChatMessageItem } from "@/components/mentoring/MentorChat";
+import {
+  MentorChat,
+  type ChatMessageItem,
+} from "@/components/mentoring/MentorChat";
 import { requireStudentPage } from "@/lib/auth/platform";
 import { MentorshipService } from "@/services/MentorshipService";
 
@@ -53,6 +56,7 @@ export default async function ConversationsPage({
   return (
     <div className="space-y-6 w-full">
       <PageHeader
+        locale={locale}
         title={nav("mentoring")}
         description={t("subtitle")}
         icon={<MessageSquare size={22} />}
@@ -61,7 +65,7 @@ export default async function ConversationsPage({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         <Card className="p-0 overflow-hidden">
           {room ? (
-            <div className="flex flex-col h-[560px]">
+            <div className="flex flex-col h-[min(620px,65dvh)] min-h-[360px]">
               <MentorChat
                 className="flex-1 min-h-0"
                 roomId={room.id}
@@ -73,10 +77,12 @@ export default async function ConversationsPage({
               />
             </div>
           ) : (
-            <div className="h-[560px] flex items-center justify-center">
+            <div className="h-[min(620px,65dvh)] min-h-[360px] flex items-center justify-center">
               <EmptyState
                 className="py-12"
-                icon={<MessageSquare size={36} className="text-text-secondary" />}
+                icon={
+                  <MessageSquare size={36} className="text-text-secondary" />
+                }
                 title={t("chatUnavailable")}
                 description={t("chatUnavailableDesc")}
               />
@@ -87,7 +93,9 @@ export default async function ConversationsPage({
         <Card className="p-5 space-y-4 h-fit">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-text">{t("upcomingTitle")}</h2>
+              <h2 className="text-lg font-bold text-text">
+                {t("upcomingTitle")}
+              </h2>
               <p className="text-xs text-text-secondary">{t("upcomingDesc")}</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -96,7 +104,9 @@ export default async function ConversationsPage({
           </div>
 
           {meetings.length === 0 ? (
-            <p className="text-sm text-text-secondary py-6 text-center">{t("noMeetings")}</p>
+            <p className="text-sm text-text-secondary py-6 text-center">
+              {t("noMeetings")}
+            </p>
           ) : (
             <div className="space-y-3">
               {meetings.map((meeting) => (
@@ -108,7 +118,10 @@ export default async function ConversationsPage({
                     <p className="text-sm font-semibold text-text">
                       {locale === "pt-BR" ? meeting.title_pt : meeting.title_en}
                     </p>
-                    <Badge variant="outline" className="text-[10px] h-5 shrink-0">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] h-5 shrink-0"
+                    >
                       {tStatus(meeting.status)}
                     </Badge>
                   </div>
@@ -130,8 +143,17 @@ export default async function ConversationsPage({
                     </span>
                   </div>
                   {meeting.meeting_url && (
-                    <Button variant="secondary" size="sm" className="w-full" asChild>
-                      <Link href={meeting.meeting_url} target="_blank" rel="noreferrer">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      asChild
+                    >
+                      <Link
+                        href={meeting.meeting_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         <Video size={14} className="mr-1.5" />
                         {t("joinMeeting")}
                       </Link>

@@ -14,11 +14,20 @@ import {
   Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { savePlatformSettingsAction } from "@/app/actions/settings";
-import type { MaintenanceUnit, PlatformSettingsForm } from "@/services/PlatformSettingsService";
+import type {
+  MaintenanceUnit,
+  PlatformSettingsForm,
+} from "@/services/PlatformSettingsService";
 
 interface AdminSettingsClientProps {
   settings: PlatformSettingsForm;
@@ -72,7 +81,8 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const setText =
-    (key: keyof PlatformSettingsForm) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    (key: keyof PlatformSettingsForm) =>
+    (event: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
   const setBool = (key: keyof PlatformSettingsForm) => (value: boolean) =>
@@ -103,7 +113,26 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <nav
+        aria-label={
+          locale === "en-US" ? "Settings sections" : "Seções das configurações"
+        }
+        className="flex flex-wrap gap-2"
+      >
+        <a
+          href="#admin-brand-settings"
+          className="rounded-lg border border-border bg-surface px-4 py-2 text-xs text-text-secondary transition hover:border-primary/30 hover:text-primary"
+        >
+          {locale === "en-US" ? "Brand & support" : "Marca e suporte"}
+        </a>
+        <a
+          href="#admin-preferences-settings"
+          className="rounded-lg border border-border bg-surface px-4 py-2 text-xs text-text-secondary transition hover:border-primary/30 hover:text-primary"
+        >
+          {locale === "en-US" ? "Access & maintenance" : "Acesso e manutenção"}
+        </a>
+      </nav>
+      <Card id="admin-brand-settings" className="scroll-mt-24">
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -118,20 +147,56 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("brandNamePt")}</label>
-              <Input value={form.brand_name_pt} onChange={setText("brand_name_pt")} />
+              <label
+                htmlFor="admin-settings-brandNamePt"
+                className="text-xs font-medium text-text-secondary"
+              >
+                {t("brandNamePt")}
+              </label>
+              <Input
+                id="admin-settings-brandNamePt"
+                value={form.brand_name_pt}
+                onChange={setText("brand_name_pt")}
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("brandNameEn")}</label>
-              <Input value={form.brand_name_en} onChange={setText("brand_name_en")} />
+              <label
+                htmlFor="admin-settings-brandNameEn"
+                className="text-xs font-medium text-text-secondary"
+              >
+                {t("brandNameEn")}
+              </label>
+              <Input
+                id="admin-settings-brandNameEn"
+                value={form.brand_name_en}
+                onChange={setText("brand_name_en")}
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("brandTaglinePt")}</label>
-              <Input value={form.brand_tagline_pt} onChange={setText("brand_tagline_pt")} />
+              <label
+                htmlFor="admin-settings-brandTaglinePt"
+                className="text-xs font-medium text-text-secondary"
+              >
+                {t("brandTaglinePt")}
+              </label>
+              <Input
+                id="admin-settings-brandTaglinePt"
+                value={form.brand_tagline_pt}
+                onChange={setText("brand_tagline_pt")}
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("brandTaglineEn")}</label>
-              <Input value={form.brand_tagline_en} onChange={setText("brand_tagline_en")} />
+              <label
+                htmlFor="admin-settings-brandTaglineEn"
+                className="text-xs font-medium text-text-secondary"
+              >
+                {t("brandTaglineEn")}
+              </label>
+              <Input
+                id="admin-settings-brandTaglineEn"
+                value={form.brand_tagline_en}
+                onChange={setText("brand_tagline_en")}
+              />
             </div>
           </div>
 
@@ -144,8 +209,14 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("supportEmail")}</label>
+                <label
+                  htmlFor="admin-settings-supportEmail"
+                  className="text-xs font-medium text-text-secondary"
+                >
+                  {t("supportEmail")}
+                </label>
                 <Input
+                  id="admin-settings-supportEmail"
                   type="email"
                   value={form.support_email}
                   onChange={setText("support_email")}
@@ -153,27 +224,51 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("supportWhatsapp")}</label>
+                <label
+                  htmlFor="admin-settings-supportWhatsapp"
+                  className="text-xs font-medium text-text-secondary"
+                >
+                  {t("supportWhatsapp")}
+                </label>
                 <Input
+                  id="admin-settings-supportWhatsapp"
                   value={form.support_whatsapp}
                   onChange={setText("support_whatsapp")}
                   placeholder="+55 11 99999-0000"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("supportHoursPt")}</label>
-                <Input value={form.support_hours_pt} onChange={setText("support_hours_pt")} />
+                <label
+                  htmlFor="admin-settings-supportHoursPt"
+                  className="text-xs font-medium text-text-secondary"
+                >
+                  {t("supportHoursPt")}
+                </label>
+                <Input
+                  id="admin-settings-supportHoursPt"
+                  value={form.support_hours_pt}
+                  onChange={setText("support_hours_pt")}
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">{t("supportHoursEn")}</label>
-                <Input value={form.support_hours_en} onChange={setText("support_hours_en")} />
+                <label
+                  htmlFor="admin-settings-supportHoursEn"
+                  className="text-xs font-medium text-text-secondary"
+                >
+                  {t("supportHoursEn")}
+                </label>
+                <Input
+                  id="admin-settings-supportHoursEn"
+                  value={form.support_hours_en}
+                  onChange={setText("support_hours_en")}
+                />
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="admin-preferences-settings" className="scroll-mt-24">
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -211,10 +306,14 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
+                  <label
+                    htmlFor="admin-settings-maintenanceDuration"
+                    className="text-xs font-medium text-text-secondary"
+                  >
                     {t("maintenanceDuration")}
                   </label>
                   <Input
+                    id="admin-settings-maintenanceDuration"
                     type="number"
                     min={1}
                     max={8760}
@@ -226,7 +325,9 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                       }))
                     }
                   />
-                  <p className="text-xs text-text-secondary">{t("maintenanceDurationDesc")}</p>
+                  <p className="text-xs text-text-secondary">
+                    {t("maintenanceDurationDesc")}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-text">
@@ -237,7 +338,8 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
-                        maintenance_duration_unit: e.target.value as MaintenanceUnit,
+                        maintenance_duration_unit: e.target
+                          .value as MaintenanceUnit,
                       }))
                     }
                   >
@@ -260,7 +362,9 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                         ? t("maintenanceActiveNow")
                         : t("maintenanceExpired")}
                     </span>{" "}
-                    {t("maintenanceUntil", { date: formatUntil(form.maintenance_until) as string })}
+                    {t("maintenanceUntil", {
+                      date: formatUntil(form.maintenance_until) as string,
+                    })}
                   </>
                 ) : (
                   <span>{t("maintenanceNoDeadline")}</span>
@@ -270,8 +374,14 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
           )}
 
           <div className="max-w-xs space-y-1.5">
-            <label className="text-sm font-medium text-text">{t("trialDaysDefault")}</label>
+            <label
+              htmlFor="admin-settings-trialDaysDefault"
+              className="text-xs font-medium text-text-secondary"
+            >
+              {t("trialDaysDefault")}
+            </label>
             <Input
+              id="admin-settings-trialDaysDefault"
               type="number"
               min={0}
               max={365}
@@ -283,12 +393,14 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 }))
               }
             />
-            <p className="text-xs text-text-secondary">{t("trialDaysDefaultDesc")}</p>
+            <p className="text-xs text-text-secondary">
+              {t("trialDaysDefaultDesc")}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-white/10 bg-surface/95 p-3 backdrop-blur-xl sm:flex-row sm:items-center">
         <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
           {isPending ? (
             <Loader2 size={16} className="mr-2 animate-spin" />

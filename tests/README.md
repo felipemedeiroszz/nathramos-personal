@@ -28,3 +28,20 @@ student-billing.test.mjs verifica acesso, isolamento do histórico, exportação
 ## Diagnóstico do painel
 
 admin-diagnostics.test.mjs verifica classificação de falhas, isolamento do endpoint administrativo e inspeção SQL do esquema/permissões. Consulte DIAGNOSTICO-PAINEL-ADMIN.md para investigar o ambiente publicado.
+
+
+## Sistema visual administrativo
+
+`node tests/preview-admin-system.mjs` renderiza 19 módulos reais com fixtures locais em 1440 e 390 px. Verifica transbordamento, Ctrl+K, navegação por teclado, permissões de navegação do coach em português e inglês, menu da conta, drawer mobile e foco dos modais. As ações remotas são substituídas; nenhum dado é gravado nos serviços. Os previews são gerados em `artifacts/admin-design-system/` (ignorado pelo Git). Requer Playwright com Chrome; use `PLAYWRIGHT_MODULE` para apontar para uma instalação existente.
+
+
+## Sistema visual do aluno
+
+`node tests/preview-student-system.mjs` renderiza as telas e estados de acesso com fixtures locais em 1440 e 390 px. Verifica alimentação, hidratação, peso/sono, séries, falhas de gravação, menu mobile e renovação com acesso bloqueado, além de cenários em inglês. Ações, fetch e Realtime são substituídos: o teste não altera serviços remotos. Os previews ficam em `artifacts/student-design-system/`. Requer Playwright com Chrome; configure `PLAYWRIGHT_MODULE` se necessário.
+
+
+## Site público
+
+`node tests/preview-public-motion.mjs` verifica o indicador de leitura, entradas por rolagem, retorno ao topo e foco do teclado em desktop e celular. Também testa movimento reduzido e leitura sem JavaScript. Usa o mesmo `PUBLIC_BASE_URL` e `PLAYWRIGHT_MODULE` do preview abaixo.
+
+Com o site iniciado (`npm run dev`), `node tests/preview-public-site.mjs` verifica 11 páginas públicas em português e inglês, em 1440 e 390 px. Confere navegação, menu mobile, foco, idioma, prévia interativa, FAQ, canonical, zoom e caminho do plano ao cadastro, sem enviar formulários ou pagamentos. Os screenshots são gerados em `artifacts/public-site/`. Requer Playwright e Chrome; configure `PLAYWRIGHT_MODULE` quando necessário. `PUBLIC_BASE_URL` troca o endereço de teste e `PUBLIC_ROUTES=home,planos` limita as páginas.

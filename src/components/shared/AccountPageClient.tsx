@@ -5,7 +5,13 @@ import { useFormState } from "react-dom";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -22,7 +28,10 @@ import {
   type MembershipPayment,
   type MembershipAccess,
 } from "@/components/shared/MembershipPanel";
-import type { NotificationPreferences, NotifySettings } from "@/services/NotificationService";
+import type {
+  NotificationPreferences,
+  NotifySettings,
+} from "@/services/NotificationService";
 import { cn } from "@/lib/utils";
 import { locales } from "@/i18n/config";
 import {
@@ -70,24 +79,43 @@ function initialsOf(firstName: string | null, lastName: string | null): string {
   return (first ?? "") + (last ?? "") || "U";
 }
 
-function AlertLine({ type, text }: { type: "success" | "error" | "info"; text: string }) {
+function AlertLine({
+  type,
+  text,
+}: {
+  type: "success" | "error" | "info";
+  text: string;
+}) {
   const styles = {
     success: "bg-primary/10 border-primary/30 text-primary",
     error: "bg-text/[0.08] border-text/25 text-text",
     info: "bg-surface-secondary border-border text-text-secondary",
   } as const;
-  const Icon = type === "success" ? CheckCircle2 : type === "error" ? AlertCircle : Info;
+  const Icon =
+    type === "success" ? CheckCircle2 : type === "error" ? AlertCircle : Info;
   return (
-    <div className={cn("rounded-xl border px-4 py-3 flex items-start gap-3 text-sm animate-in slide-in-from-top-2 fade-in duration-300", styles[type])}>
+    <div
+      className={cn(
+        "rounded-xl border px-4 py-3 flex items-start gap-3 text-sm animate-in slide-in-from-top-2 fade-in duration-300",
+        styles[type],
+      )}
+    >
       <Icon size={18} className="mt-0.5 shrink-0" />
       <span className="flex-1">{text}</span>
     </div>
   );
 }
 
-type TabType = "profile" | "security" | "notifications" | "subscription" | "settings";
+type TabType =
+  "profile" | "security" | "notifications" | "subscription" | "settings";
 
-const TAB_IDS: TabType[] = ["profile", "security", "notifications", "subscription", "settings"];
+const TAB_IDS: TabType[] = [
+  "profile",
+  "security",
+  "notifications",
+  "subscription",
+  "settings",
+];
 
 function isTabType(value: string | null): value is TabType {
   return !!value && (TAB_IDS as string[]).includes(value);
@@ -112,7 +140,7 @@ function TabButton({
         "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-text-secondary hover:text-text hover:bg-surface-secondary/50"
+          : "text-text-secondary hover:text-text hover:bg-surface-secondary/50",
       )}
     >
       <Icon size={18} />
@@ -149,9 +177,14 @@ export function AccountPageClient({
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
   const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<TabType>(isTabType(tabParam) ? tabParam : "profile");
+  const [activeTab, setActiveTab] = useState<TabType>(
+    isTabType(tabParam) ? tabParam : "profile",
+  );
   const [, startTransition] = useTransition();
 
   const handleTabChange = (tab: TabType) => {
@@ -162,7 +195,10 @@ export function AccountPageClient({
   };
 
   const [profileState, profileAction] = useFormState(updateProfileAction, null);
-  const [passwordState, passwordAction] = useFormState(changePasswordAction, null);
+  const [passwordState, passwordAction] = useFormState(
+    changePasswordAction,
+    null,
+  );
   const [uploadState, uploadAction] = useFormState(uploadPhotoAction, null);
 
   const handleFilePick = () => fileInputRef.current?.click();
@@ -214,20 +250,25 @@ export function AccountPageClient({
 
   return (
     <div className="space-y-6 md:space-y-8 w-full max-w-5xl mx-auto">
-      <header className="space-y-4">
+      <header className="space-y-4 rounded-[20px] border border-white/[0.07] bg-gradient-to-br from-primary/[0.06] via-surface to-surface p-5 sm:p-7">
         <div className="flex items-center gap-4">
           <Avatar
             size="xl"
             src={profile.avatar_url ?? undefined}
             fallback={initials}
             alt={initials}
-            className="h-20 w-20 text-2xl ring-4 ring-border shadow-lg"
+            className="h-16 w-16 shrink-0 text-xl ring-4 ring-primary/10"
           />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-text">
+          <div className="min-w-0">
+            <p className="student-eyebrow">
+              {locale === "en-US" ? "YOUR PROFILE" : "SEU PERFIL"}
+            </p>
+            <h1 className="break-words text-2xl md:text-3xl font-semibold tracking-tight text-text">
               {profile.first_name} {profile.last_name}
             </h1>
-            <p className="text-text-secondary text-sm">{profile.email}</p>
+            <p className="mt-2 break-all text-text-secondary text-xs">
+              {profile.email}
+            </p>
           </div>
         </div>
       </header>
@@ -258,9 +299,14 @@ export function AccountPageClient({
                 <div className="mb-4">
                   <AlertLine type="success" text={t("profileSaved")} />
                 </div>
-              ) : profileState?.success === false && profileState.message && profileState.message !== "validation" ? (
+              ) : profileState?.success === false &&
+                profileState.message &&
+                profileState.message !== "validation" ? (
                 <div className="mb-4">
-                  <AlertLine type="error" text={common(profileState.message) || profileState.message} />
+                  <AlertLine
+                    type="error"
+                    text={common(profileState.message) || profileState.message}
+                  />
                 </div>
               ) : null}
               {uploadMsg && (
@@ -323,31 +369,54 @@ export function AccountPageClient({
                       <User size={14} className="text-text-secondary" />
                       {t("firstName")}
                     </label>
-                    <Input name="first_name" defaultValue={profile.first_name ?? undefined} required maxLength={100} placeholder="João" />
+                    <Input
+                      name="first_name"
+                      defaultValue={profile.first_name ?? undefined}
+                      required
+                      maxLength={100}
+                      placeholder="João"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
                       <User size={14} className="text-text-secondary" />
                       {t("lastName")}
                     </label>
-                    <Input name="last_name" defaultValue={profile.last_name ?? undefined} required maxLength={100} placeholder="Silva" />
+                    <Input
+                      name="last_name"
+                      defaultValue={profile.last_name ?? undefined}
+                      required
+                      maxLength={100}
+                      placeholder="Silva"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
                       <PhoneIcon size={14} className="text-text-secondary" />
                       {t("phone")}
                     </label>
-                    <Input name="phone" defaultValue={profile.phone ?? undefined} maxLength={50} placeholder="(11) 99999-9999" />
+                    <Input
+                      name="phone"
+                      defaultValue={profile.phone ?? undefined}
+                      maxLength={50}
+                      placeholder="(11) 99999-9999"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
                       <Calendar size={14} className="text-text-secondary" />
                       {t("birthDate")}
                     </label>
-                    <Input name="birth_date" type="date" defaultValue={profile.birth_date ?? undefined} />
+                    <Input
+                      name="birth_date"
+                      type="date"
+                      defaultValue={profile.birth_date ?? undefined}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">{t("gender")}</label>
+                    <label className="text-sm font-medium text-text">
+                      {t("gender")}
+                    </label>
                     <select
                       name="gender"
                       defaultValue={profile.gender ?? ""}
@@ -364,21 +433,42 @@ export function AccountPageClient({
                       <Ruler size={14} className="text-text-secondary" />
                       {t("height")}
                     </label>
-                    <Input name="height_cm" type="number" min={50} max={260} step={1} defaultValue={profile.height_cm ?? undefined} placeholder="175" />
+                    <Input
+                      name="height_cm"
+                      type="number"
+                      min={50}
+                      max={260}
+                      step={1}
+                      defaultValue={profile.height_cm ?? undefined}
+                      placeholder="175"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
                       <Scale size={14} className="text-text-secondary" />
                       {t("weight")}
                     </label>
-                    <Input name="weight_kg" type="number" min={20} max={400} step={0.1} defaultValue={profile.weight_kg ?? undefined} placeholder="75.5" />
+                    <Input
+                      name="weight_kg"
+                      type="number"
+                      min={20}
+                      max={400}
+                      step={0.1}
+                      defaultValue={profile.weight_kg ?? undefined}
+                      placeholder="75.5"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
                       <MapPin size={14} className="text-text-secondary" />
                       {t("country")}
                     </label>
-                    <Input name="country" defaultValue={profile.country ?? undefined} maxLength={100} placeholder="Brasil" />
+                    <Input
+                      name="country"
+                      defaultValue={profile.country ?? undefined}
+                      maxLength={100}
+                      placeholder="Brasil"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text flex items-center gap-2">
@@ -404,9 +494,7 @@ export function AccountPageClient({
                         {common("success")}
                       </>
                     ) : (
-                      <>
-                        {common("save")}
-                      </>
+                      <>{common("save")}</>
                     )}
                   </Button>
                 </div>
@@ -428,28 +516,71 @@ export function AccountPageClient({
                 <div className="mb-4">
                   <AlertLine type="success" text={t("passwordChanged")} />
                 </div>
-              ) : passwordState?.success === false && passwordState.message && passwordState.message !== "validation" ? (
+              ) : passwordState?.success === false &&
+                passwordState.message &&
+                passwordState.message !== "validation" ? (
                 <div className="mb-4">
-                  <AlertLine type="error" text={passwordState.message === "wrong_password" ? common(passwordState.message) : passwordState.message} />
+                  <AlertLine
+                    type="error"
+                    text={
+                      passwordState.message === "wrong_password"
+                        ? common(passwordState.message)
+                        : passwordState.message
+                    }
+                  />
                 </div>
               ) : null}
               <form action={passwordAction} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">{t("currentPassword")}</label>
-                    <Input name="current_password" type="password" required minLength={6} autoComplete="current-password" placeholder="••••••" />
+                    <label className="text-sm font-medium text-text">
+                      {t("currentPassword")}
+                    </label>
+                    <Input
+                      name="current_password"
+                      type="password"
+                      required
+                      minLength={6}
+                      autoComplete="current-password"
+                      placeholder="••••••"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">{t("newPassword")}</label>
-                    <Input name="new_password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" placeholder="••••••••" />
+                    <label className="text-sm font-medium text-text">
+                      {t("newPassword")}
+                    </label>
+                    <Input
+                      name="new_password"
+                      type="password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-text">{t("confirmPassword")}</label>
-                    <Input name="confirm_password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" placeholder="••••••••" />
+                    <label className="text-sm font-medium text-text">
+                      {t("confirmPassword")}
+                    </label>
+                    <Input
+                      name="confirm_password"
+                      type="password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                    />
                   </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-border">
-                  <Button type="submit" variant="secondary" size="lg" className="min-w-[140px]">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="lg"
+                    className="min-w-[140px]"
+                  >
                     {passwordState?.success ? (
                       <>
                         <CheckCircle2 size={18} className="mr-2" />
@@ -495,14 +626,21 @@ export function AccountPageClient({
               <CardDescription>Sair da sua conta atual.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form action={logoutAction as any} className="flex flex-wrap gap-4 justify-between items-center p-4 rounded-xl bg-surface-secondary/30 border border-border">
+              <form
+                action={logoutAction as any}
+                className="flex flex-wrap gap-4 justify-between items-center p-4 rounded-xl bg-surface-secondary/30 border border-border"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-surface-secondary">
                     <LogOut size={20} className="text-text-secondary" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-text">{nav("logout")}</p>
-                    <p className="text-xs text-text-secondary">Sair da sua conta atual</p>
+                    <p className="text-sm font-medium text-text">
+                      {nav("logout")}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      Sair da sua conta atual
+                    </p>
                   </div>
                 </div>
                 <Button type="submit" variant="secondary" size="lg">

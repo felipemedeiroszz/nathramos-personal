@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -34,12 +35,12 @@ export default async function AdminRedesSociaisPage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
+      <AdminPageHeader locale={locale} section="relationship">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
         <p className="text-sm md:text-base text-text-secondary">
           {tAdminSocial("subtitle")}
         </p>
-      </header>
+      </AdminPageHeader>
 
       <AdminSocialLinksClient title={title} links={links} />
     </div>

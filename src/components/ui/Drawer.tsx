@@ -40,6 +40,7 @@ export function Drawer({
       />
       <div
         ref={drawerRef}
+        data-ui="drawer"
         role="dialog"
         aria-modal="true"
         aria-label={props["aria-label"] || "Dialog"}

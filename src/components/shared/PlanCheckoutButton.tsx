@@ -56,10 +56,11 @@ export function PlanCheckoutButton({
     <div className="space-y-3">
       <button
         type="button"
+        data-ui="plan-checkout"
         onClick={goToCheckout}
         className={cn(
           "group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary px-8 h-13 text-base font-semibold text-primary-foreground shadow-[0_0_35px_hsl(var(--primary)/0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_0_55px_hsl(var(--primary)/0.5)] disabled:cursor-not-allowed disabled:opacity-70 md:h-14 md:text-lg",
-          className
+          className,
         )}
       >
         <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />

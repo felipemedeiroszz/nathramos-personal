@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
@@ -26,7 +27,8 @@ export default async function AdminMentoriaPage({
 
   const rooms = await MentorshipService.listRooms();
 
-  const initialRoom = rooms.find((r) => r.unread_count_coach > 0) ?? rooms[0] ?? null;
+  const initialRoom =
+    rooms.find((r) => r.unread_count_coach > 0) ?? rooms[0] ?? null;
   const initialMessages: ChatMessageItem[] = initialRoom
     ? (await MentorshipService.listMessages(initialRoom.id)).map((m) => ({
         id: m.id,
@@ -47,10 +49,12 @@ export default async function AdminMentoriaPage({
 
   return (
     <div className="space-y-6 w-full">
-      <header className="space-y-1">
+      <AdminPageHeader locale={locale} section="relationship">
         <h1 className="text-2xl md:text-3xl font-bold text-text">{title}</h1>
-        <p className="text-sm md:text-base text-text-secondary">{tAdminMentoring("subtitle")}</p>
-      </header>
+        <p className="text-sm md:text-base text-text-secondary">
+          {tAdminMentoring("subtitle")}
+        </p>
+      </AdminPageHeader>
 
       <AdminMentoriaClient
         currentUserId={userId}

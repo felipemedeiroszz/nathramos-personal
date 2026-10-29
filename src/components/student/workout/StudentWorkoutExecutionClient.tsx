@@ -1,14 +1,31 @@
 "use client";
 
 import { useMemo, useState, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
-import { Check, Clock3, Dumbbell, Loader2, Star, Gauge, FileText } from "lucide-react";
+import {
+  Check,
+  Clock3,
+  Dumbbell,
+  Loader2,
+  Star,
+  Gauge,
+  FileText,
+} from "lucide-react";
 import { RestTimerDisplay } from "./RestTimerDisplay";
-import { logWorkoutSetAction, completeWorkoutSessionAction } from "@/app/actions/workouts";
+import {
+  logWorkoutSetAction,
+  completeWorkoutSessionAction,
+} from "@/app/actions/workouts";
 import type {
   WorkoutProgramRow,
   WorkoutDayRow,
@@ -18,6 +35,7 @@ import type {
 } from "@/types";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { getWorkoutLabels } from "@/lib/workoutLabels";
 
 export interface StudentWorkoutExecutionClientProps {
   program: WorkoutProgramRow;
@@ -48,18 +66,39 @@ export function StudentWorkoutExecutionClient({
   const tEquip = useTranslations("equipments");
   const tDiff = useTranslations("difficultyLevels");
   const tCommon = useTranslations("common");
+  const workoutLabels = getWorkoutLabels(locale);
+  const labelAliases: Record<string, string> = {
+    quadriceps: "quads",
+    bodyweight: "body_weight",
+  };
 
   const [isPending, setPending] = useState(false);
   const saving = useRef(false);
   async function startTransition(action: () => Promise<void>) {
     if (saving.current) return;
-    saving.current = true; setPending(true);
-    try { await action(); }
-    catch { setToast({ type: "err", msg: "Não foi possível salvar. Tente novamente." }); setCompleting(false); }
-    finally { saving.current = false; setPending(false); }
+    saving.current = true;
+    setPending(true);
+    try {
+      await action();
+    } catch {
+      setToast({
+        type: "err",
+        msg: "Não foi possível salvar. Tente novamente.",
+      });
+      setCompleting(false);
+    } finally {
+      saving.current = false;
+      setPending(false);
+    }
   }
-  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
-  const [activeTimer, setActiveTimer] = useState<{ key: string; seconds: number } | null>(null);
+  const [toast, setToast] = useState<{
+    type: "ok" | "err";
+    msg: string;
+  } | null>(null);
+  const [activeTimer, setActiveTimer] = useState<{
+    key: string;
+    seconds: number;
+  } | null>(null);
   const [feeling, setFeeling] = useState<number>(0);
   const [rpe, setRpe] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -72,9 +111,25 @@ export function StudentWorkoutExecutionClient({
       const list: SetState[] = [];
       for (let i = 1; i <= Math.max(1, wex.sets || 0); i++) {
         list.push({
-          reps_done: initialLogs.find(l => l.workout_exercise_id === wex.id && l.set_number === i)?.reps_done.toString() || "",
-          weight_kg: String(initialLogs.find(l => l.workout_exercise_id === wex.id && l.set_number === i)?.weight_kg ?? wex.weight_kg ?? ""),
-          logged: initialLogs.some(l => l.workout_exercise_id === wex.id && l.set_number === i && l.completed),
+          reps_done:
+            initialLogs
+              .find(
+                (l) => l.workout_exercise_id === wex.id && l.set_number === i,
+              )
+              ?.reps_done.toString() || "",
+          weight_kg: String(
+            initialLogs.find(
+              (l) => l.workout_exercise_id === wex.id && l.set_number === i,
+            )?.weight_kg ??
+              wex.weight_kg ??
+              "",
+          ),
+          logged: initialLogs.some(
+            (l) =>
+              l.workout_exercise_id === wex.id &&
+              l.set_number === i &&
+              l.completed,
+          ),
           logKey: `${wex.id}:${i}`,
         });
       }
@@ -83,7 +138,8 @@ export function StudentWorkoutExecutionClient({
     return map;
   }, [exercises, initialLogs]);
 
-  const [setsByExercise, setSetsByExercise] = useState<Record<string, SetState[]>>(initialSets);
+  const [setsByExercise, setSetsByExercise] =
+    useState<Record<string, SetState[]>>(initialSets);
 
   const updateSet = (wexId: string, idx: number, patch: Partial<SetState>) => {
     setSetsByExercise((prev) => {
@@ -95,13 +151,15 @@ export function StudentWorkoutExecutionClient({
 
   const logSet = async (
     wex: WorkoutExerciseRow & { exercise?: ExerciseRow | null },
-    idx: number
+    idx: number,
   ) => {
     const s = (setsByExercise[wex.id] || [])[idx];
     if (!s || s.logged) return;
 
     const repsNum = Math.max(0, Number(s.reps_done.replace(",", ".")) || 0);
-    const weightNum = s.weight_kg ? Number(s.weight_kg.replace(",", ".")) : wex.weight_kg ?? null;
+    const weightNum = s.weight_kg
+      ? Number(s.weight_kg.replace(",", "."))
+      : (wex.weight_kg ?? null);
     const set_number = idx + 1;
 
     startTransition(async () => {
@@ -125,7 +183,10 @@ export function StudentWorkoutExecutionClient({
           setActiveTimer({ key: `${wex.id}:${idx}`, seconds: restSec });
         }
       } else {
-        setToast({ type: "err", msg: res.message || "Falha ao registrar serie." });
+        setToast({
+          type: "err",
+          msg: res.message || "Falha ao registrar serie.",
+        });
         setTimeout(() => setToast(null), 3500);
       }
     });
@@ -144,20 +205,30 @@ export function StudentWorkoutExecutionClient({
       setCompleting(false);
       if (res.success) {
         setCompleted(true);
-        setToast({ type: "ok", msg: "Sessao de treino finalizada com sucesso!" });
+        setToast({
+          type: "ok",
+          msg: "Sessao de treino finalizada com sucesso!",
+        });
       } else {
-        setToast({ type: "err", msg: res.message || "Falha ao finalizar sessao." });
+        setToast({
+          type: "err",
+          msg: res.message || "Falha ao finalizar sessao.",
+        });
         setTimeout(() => setToast(null), 3500);
       }
     });
   };
 
-  const totalSets = Object.values(setsByExercise).reduce((acc, arr) => acc + arr.length, 0);
+  const totalSets = Object.values(setsByExercise).reduce(
+    (acc, arr) => acc + arr.length,
+    0,
+  );
   const doneSets = Object.values(setsByExercise).reduce(
     (acc, arr) => acc + arr.filter((s) => s.logged).length,
-    0
+    0,
   );
-  const progressPct = totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
+  const progressPct =
+    totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
 
   if (completed) {
     return (
@@ -176,7 +247,7 @@ export function StudentWorkoutExecutionClient({
         <CardContent className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-border bg-surface/70 p-4">
             <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
-              <Check size={14} /> Series
+              <Check size={14} /> Séries
             </div>
             <div className="text-xl font-bold text-text">
               {doneSets} / {totalSets}
@@ -184,13 +255,15 @@ export function StudentWorkoutExecutionClient({
           </div>
           <div className="rounded-xl border border-border bg-surface/70 p-4">
             <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
-              <Dumbbell size={14} /> Exercicios
+              <Dumbbell size={14} /> Exercícios
             </div>
-            <div className="text-xl font-bold text-text">{exercises.length}</div>
+            <div className="text-xl font-bold text-text">
+              {exercises.length}
+            </div>
           </div>
           <div className="rounded-xl border border-border bg-surface/70 p-4">
             <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
-              <Clock3 size={14} /> Concluido
+              <Clock3 size={14} /> Concluído
             </div>
             <div className="text-xl font-bold text-text">{progressPct}%</div>
           </div>
@@ -207,14 +280,14 @@ export function StudentWorkoutExecutionClient({
             "fixed top-4 right-4 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg animate-fade-in",
             toast.type === "ok"
               ? "border-primary/40 bg-primary/15 text-primary"
-              : "border-text/25 bg-text/[0.08] text-text"
+              : "border-text/25 bg-text/[0.08] text-text",
           )}
         >
           {toast.msg}
         </div>
       )}
 
-      <div className="sticky top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-background/85 backdrop-blur border-b border-border/60">
+      <div className="student-workout-progress sticky top-[72px] z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-background/85 backdrop-blur border-b border-border/60">
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-text">
@@ -227,7 +300,7 @@ export function StudentWorkoutExecutionClient({
             ) : null}
           </div>
           <Badge variant={progressPct === 100 ? "success" : "default"}>
-            {doneSets}/{totalSets} series ({progressPct}%)
+            {doneSets}/{totalSets} séries ({progressPct}%)
           </Badge>
         </div>
       </div>
@@ -247,9 +320,11 @@ export function StudentWorkoutExecutionClient({
           <CardContent className="py-10">
             <div className="flex flex-col items-center text-center gap-2 text-text-secondary">
               <Dumbbell size={36} className="text-text-secondary" />
-              <div className="font-semibold text-text">Nenhum exercicio configurado para hoje.</div>
+              <div className="font-semibold text-text">
+                Nenhum exercício configurado para hoje.
+              </div>
               <p className="text-sm max-w-md">
-                Entre em contato com sua personal caso julgue necessario.
+                Entre em contato com sua personal caso julgue necessário.
               </p>
             </div>
           </CardContent>
@@ -261,7 +336,7 @@ export function StudentWorkoutExecutionClient({
             ? locale === "pt-BR"
               ? ex.name_pt
               : ex.name_en
-            : "Exercicio";
+            : "Exercício";
           const sets = setsByExercise[wex.id] || [];
           const primary = ex?.primary_muscle ?? "";
           const equipment = ex?.equipment ?? "";
@@ -269,17 +344,18 @@ export function StudentWorkoutExecutionClient({
           const imgUrl = ex?.gif_url || ex?.thumbnail_url || null;
 
           return (
-            <Card key={wex.id} className="overflow-hidden">
+            <Card
+              key={wex.id}
+              className="student-exercise-card overflow-hidden p-0"
+            >
               <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-start border-b border-border">
                 <div className="w-full sm:w-40 shrink-0">
-                  <div
-                    className="aspect-video w-full sm:h-24 rounded-xl bg-gradient-to-br from-primary/15 to-surface-secondary flex items-center justify-center overflow-hidden"
-                  >
+                  <div className="aspect-video w-full sm:h-24 rounded-xl bg-gradient-to-br from-primary/15 to-surface-secondary flex items-center justify-center overflow-hidden">
                     {imgUrl ? (
                       <img
                         src={imgUrl}
                         alt={exName}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         loading="lazy"
                       />
                     ) : (
@@ -288,25 +364,32 @@ export function StudentWorkoutExecutionClient({
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-text mb-2">{exName}</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-text mb-2">
+                    {exName}
+                  </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {primary && (
                       <Badge variant="outline">
-                        {tryTranslate(tMuscle, primary)}
+                        {workoutLabels.muscle[
+                          labelAliases[primary] || primary
+                        ] || tryTranslate(tMuscle, primary)}
                       </Badge>
                     )}
                     {equipment && (
                       <Badge variant="outline">
-                        {tryTranslate(tEquip, equipment)}
+                        {workoutLabels.equipment[
+                          labelAliases[equipment] || equipment
+                        ] || tryTranslate(tEquip, equipment)}
                       </Badge>
                     )}
                     {difficulty && (
                       <Badge variant="default">
-                        {tryTranslate(tDiff, difficulty)}
+                        {workoutLabels.difficulty[difficulty] ||
+                          tryTranslate(tDiff, difficulty)}
                       </Badge>
                     )}
                     {wex.sets && (
-                      <Badge variant="outline">{wex.sets} series</Badge>
+                      <Badge variant="outline">{wex.sets} séries</Badge>
                     )}
                     {wex.reps && (
                       <Badge variant="outline">
@@ -317,7 +400,10 @@ export function StudentWorkoutExecutionClient({
                   {(wex.notes_pt || wex.notes_en) && (
                     <div className="mt-3 rounded-xl border border-border bg-surface-secondary/40 p-3">
                       <div className="flex items-start gap-2">
-                        <FileText size={14} className="mt-0.5 text-text-secondary shrink-0" />
+                        <FileText
+                          size={14}
+                          className="mt-0.5 text-text-secondary shrink-0"
+                        />
                         <div>
                           <div className="text-xs font-semibold text-text-secondary mb-0.5">
                             {tWorkout("observations")}
@@ -333,7 +419,7 @@ export function StudentWorkoutExecutionClient({
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="student-set-table w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-text-secondary text-xs">
                       <th className="text-left font-semibold px-4 sm:px-5 py-3 w-20">
@@ -356,7 +442,7 @@ export function StudentWorkoutExecutionClient({
                         key={s.logKey}
                         className={cn(
                           "border-b border-border last:border-0 transition-colors",
-                          s.logged ? "bg-primary/5" : ""
+                          s.logged ? "bg-primary/5" : "",
                         )}
                       >
                         <td className="px-4 sm:px-5 py-3 font-semibold text-text">
@@ -372,11 +458,14 @@ export function StudentWorkoutExecutionClient({
                               type="text"
                               inputMode="decimal"
                               value={s.reps_done}
+                              aria-label={`${tWorkout("doneReps")} · ${exName} · ${i + 1}`}
                               placeholder={wex.reps || tWorkout("enterReps")}
                               onChange={(e) =>
-                                updateSet(wex.id, i, { reps_done: e.target.value })
+                                updateSet(wex.id, i, {
+                                  reps_done: e.target.value,
+                                })
                               }
-                              className="h-9 text-sm max-w-[140px]"
+                              className="h-11 min-w-[72px] text-sm max-w-[140px]"
                             />
                           )}
                         </td>
@@ -390,15 +479,18 @@ export function StudentWorkoutExecutionClient({
                               type="text"
                               inputMode="decimal"
                               value={s.weight_kg}
+                              aria-label={`${tWorkout("weight")} · ${exName} · ${i + 1}`}
                               placeholder={
                                 wex.weight_kg != null
                                   ? String(wex.weight_kg)
                                   : tWorkout("enterWeight")
                               }
                               onChange={(e) =>
-                                updateSet(wex.id, i, { weight_kg: e.target.value })
+                                updateSet(wex.id, i, {
+                                  weight_kg: e.target.value,
+                                })
                               }
-                              className="h-9 text-sm max-w-[140px]"
+                              className="h-11 min-w-[72px] text-sm max-w-[140px]"
                             />
                           )}
                         </td>
@@ -413,12 +505,16 @@ export function StudentWorkoutExecutionClient({
                               type="button"
                               variant="primary"
                               size="sm"
-                              className="h-9 text-xs"
+                              className="h-9 whitespace-nowrap text-xs"
+                              title={tWorkout("completeSet")}
                               onClick={() => logSet(wex, i)}
                               disabled={isPending}
                             >
                               {isPending ? (
-                                <Loader2 size={14} className="mr-1 animate-spin" />
+                                <Loader2
+                                  size={14}
+                                  className="mr-1 animate-spin"
+                                />
                               ) : (
                                 <Check size={14} className="mr-1" />
                               )}
@@ -461,11 +557,12 @@ export function StudentWorkoutExecutionClient({
                     key={n}
                     type="button"
                     onClick={() => setFeeling(feeling === n ? 0 : n)}
+                    aria-pressed={feeling === n}
                     className={cn(
                       "flex flex-col items-center justify-center gap-1 h-16 sm:h-20 rounded-xl border transition-all",
                       active
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-text-secondary hover:border-primary/50 hover:text-text"
+                        : "border-border text-text-secondary hover:border-primary/50 hover:text-text",
                     )}
                   >
                     <Star size={20} className={active ? "fill-current" : ""} />
@@ -481,8 +578,11 @@ export function StudentWorkoutExecutionClient({
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-text flex items-center gap-2">
-                <Gauge size={14} className="text-text-secondary" /> RPE Medio (1-10)
-                <span className="text-xs font-normal text-text-secondary">(opcional)</span>
+                <Gauge size={14} className="text-text-secondary" /> RPE médio
+                (1-10)
+                <span className="text-xs font-normal text-text-secondary">
+                  (opcional)
+                </span>
               </label>
               <Input
                 type="number"
@@ -496,7 +596,8 @@ export function StudentWorkoutExecutionClient({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-text flex items-center gap-2">
-                <Clock3 size={14} className="text-text-secondary" /> {tWorkout("duration")}
+                <Clock3 size={14} className="text-text-secondary" />{" "}
+                {tWorkout("duration")}
                 <span className="text-xs font-normal text-text-secondary">
                   (minutos, opcional)
                 </span>
@@ -512,7 +613,9 @@ export function StudentWorkoutExecutionClient({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-text">{tWorkout("notes")}</label>
+            <label className="text-sm font-semibold text-text">
+              {tWorkout("notes")}
+            </label>
             <Textarea
               rows={3}
               placeholder={tWorkout("notesPlaceholder")}
@@ -541,10 +644,15 @@ export function StudentWorkoutExecutionClient({
   );
 }
 
-function tryTranslate(t: (k: any) => string, key: string): string {
+function tryTranslate(
+  t: ((k: any) => string) & { has?: (key: string) => boolean },
+  key: string,
+): string {
   try {
     if (!key) return key;
-    return t(key as any);
+    if (t.has && !t.has(key)) return key.replace(/[_-]/g, " ");
+    const label = t(key as any);
+    return label.endsWith(`.${key}`) ? key.replace(/[_-]/g, " ") : label;
   } catch {
     return key;
   }

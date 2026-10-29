@@ -18,9 +18,10 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
+      data-ui="empty-state"
       className={cn(
         "flex flex-col items-center justify-center p-8 text-center",
-        className
+        className,
       )}
       {...props}
     >
@@ -31,7 +32,9 @@ export function EmptyState({
       )}
       <h3 className="text-lg font-semibold text-text mb-2">{title}</h3>
       {description && (
-        <p className="text-sm text-text-secondary mb-4 max-w-sm">{description}</p>
+        <p className="text-sm text-text-secondary mb-4 max-w-sm">
+          {description}
+        </p>
       )}
       {action}
     </div>

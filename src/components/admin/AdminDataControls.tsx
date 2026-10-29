@@ -29,7 +29,7 @@ export function AdminDataControls({
     return "?" + next.toString();
   };
   return (
-    <section className="space-y-3">
+    <section className="admin-data-controls space-y-3">
       <form className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           {en ? "Search all records" : "Buscar em todos os registros"}
@@ -96,7 +96,7 @@ export function AdminDataControls({
         )}
         <button
           type="submit"
-          className="rounded-lg bg-primary text-primary-foreground px-4 py-2"
+          className="inline-flex h-[38px] items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:bg-yellow-300"
         >
           {en ? "Apply" : "Aplicar"}
         </button>

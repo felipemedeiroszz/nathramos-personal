@@ -7,9 +7,12 @@ import { CalendarClock, History, Video } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
 import { requireStudentPage } from "@/lib/auth/platform";
-import { MentorshipService, type MeetingWithStudent } from "@/services/MentorshipService";
+import {
+  MentorshipService,
+  type MeetingWithStudent,
+} from "@/services/MentorshipService";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 function statusVariant(
-  status: string
+  status: string,
 ): "success" | "warning" | "error" | "default" | "outline" {
   switch (status) {
     case "completed":
@@ -108,6 +111,7 @@ export default async function StudentMeetingsPage({
   return (
     <div className="space-y-6 w-full">
       <PageHeader
+        locale={locale}
         title={nav("meetings")}
         description={t("meetingsSubtitle")}
         icon={<CalendarClock size={22} />}
@@ -117,7 +121,9 @@ export default async function StudentMeetingsPage({
         <Card className="p-5 space-y-4 h-fit">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-text">{t("upcomingTitle")}</h2>
+              <h2 className="text-lg font-bold text-text">
+                {t("upcomingTitle")}
+              </h2>
               <p className="text-xs text-text-secondary">{t("upcomingDesc")}</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -126,9 +132,13 @@ export default async function StudentMeetingsPage({
           </div>
 
           {upcoming.length === 0 ? (
-            <p className="text-sm text-text-secondary py-6 text-center">{t("noMeetings")}</p>
+            <p className="text-sm text-text-secondary py-6 text-center">
+              {t("noMeetings")}
+            </p>
           ) : (
-            <div className="space-y-3">{upcoming.map((m) => renderCard(m, true))}</div>
+            <div className="space-y-3">
+              {upcoming.map((m) => renderCard(m, true))}
+            </div>
           )}
         </Card>
 
@@ -145,7 +155,9 @@ export default async function StudentMeetingsPage({
               {t("noPastMeetings")}
             </p>
           ) : (
-            <div className="space-y-3">{past.map((m) => renderCard(m, false))}</div>
+            <div className="space-y-3">
+              {past.map((m) => renderCard(m, false))}
+            </div>
           )}
         </Card>
       </div>

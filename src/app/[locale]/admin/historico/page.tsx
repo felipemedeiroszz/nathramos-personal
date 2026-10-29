@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/access";
 import {
@@ -54,14 +55,18 @@ export default async function HistoryPage({
     `?page=${n}${student.success ? "&student=" + student.data : ""}${specific ? "&kind=" + kind.data + "&record=" + record.data : ""}`;
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">
-        {en ? "Prescription history" : "Histórico de prescrições e atribuições"}
-      </h1>
-      <p className="text-text-secondary">
-        {en
-          ? "Changes recorded from the installation of this feature."
-          : "Alterações registradas a partir da instalação deste recurso."}
-      </p>
+      <AdminPageHeader locale={locale} section="system">
+        <h1 className="text-2xl font-bold">
+          {en
+            ? "Prescription history"
+            : "Histórico de prescrições e atribuições"}
+        </h1>
+        <p className="text-text-secondary">
+          {en
+            ? "Changes recorded from the installation of this feature."
+            : "Alterações registradas a partir da instalação deste recurso."}
+        </p>
+      </AdminPageHeader>
       {data.map((entry: any) => {
         const before = entry.before_data || {},
           after = entry.after_data || {};
@@ -75,9 +80,9 @@ export default async function HistoryPage({
         return (
           <details
             key={entry.id}
-            className="border border-border rounded-xl p-4"
+            className="rounded-2xl border border-white/[0.08] bg-surface p-5"
           >
-            <summary className="cursor-pointer">
+            <summary className="cursor-pointer text-xs font-medium text-zinc-300">
               {new Intl.DateTimeFormat(locale, {
                 dateStyle: "short",
                 timeStyle: "short",

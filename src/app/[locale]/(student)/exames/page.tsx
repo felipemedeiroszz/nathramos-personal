@@ -3,7 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
 import { FlaskConical } from "lucide-react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
 import { requireStudentPage } from "@/lib/auth/platform";
 import { ExamService } from "@/services/ExamService";
 import type { ExamCategoryRow, ExamRow } from "@/types";
@@ -35,12 +35,21 @@ export default async function ExamsPage({
   return (
     <div className="space-y-6 md:space-y-8 w-full">
       <PageHeader
-        title="Exames Médicos"
-        description="Envie seus exames e receba o parecer do seu treinador"
+        locale={locale}
+        title={locale === "en-US" ? "My exams" : "Exames Médicos"}
+        description={
+          locale === "en-US"
+            ? "Upload your exams and follow your coach’s reviews."
+            : "Envie seus exames e acompanhe os pareceres da sua treinadora."
+        }
         icon={<FlaskConical size={22} />}
       />
 
-      <StudentExamsClient locale={locale} exams={exams} categories={categories} />
+      <StudentExamsClient
+        locale={locale}
+        exams={exams}
+        categories={categories}
+      />
     </div>
   );
 }
