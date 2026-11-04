@@ -1,92 +1,188 @@
-import { createServiceClientSSR } from "../lib/supabase/server"
-import type { LocaleT } from "../lib/supabase/types"
+import {
+  createClientSSR,
+  createServiceClientSSR,
+} from "../lib/supabase/server";
+import type { LocaleT } from "../lib/supabase/types";
 import type {
   EbookRow,
+  StudentEbook,
   EbookDownloadRow,
   EbookPurchaseRow,
   PaymentProvider,
   Currency,
-} from "../types"
-import { AuditLogService } from "./AuditLogService"
-import { upsertEbookSchema, type UpsertEbookInput } from "../schemas/ebooks"
+} from "../types";
+import { checked, readPages } from "./StudentRoutineService";
+import { AccessError } from "@/lib/auth/platform";
+import { AuditLogService } from "./AuditLogService";
+import { upsertEbookSchema, type UpsertEbookInput } from "../schemas/ebooks";
 
 export class EbookService {
   private static async getSupabase() {
-    return createServiceClientSSR()
+    return createServiceClientSSR();
   }
 
   // ---------------------------------------------------------------------
   // EBOOKS
   // ---------------------------------------------------------------------
   static async listEbooks(filters?: {
-    is_published?: boolean
-    is_free?: boolean
-    language?: LocaleT
-    search?: string
-    limit?: number
+    is_published?: boolean;
+    is_free?: boolean;
+    language?: LocaleT;
+    search?: string;
+    limit?: number;
   }): Promise<EbookRow[]> {
     try {
-      const supabase = await this.getSupabase()
-      const limit = filters?.limit ?? 100
+      const supabase = await this.getSupabase();
+      const limit = filters?.limit ?? 100;
       let q: any = supabase
         .from("ebooks")
         .select("*")
+        .eq("is_deleted", false)
         .order("created_at", { ascending: false })
-        .limit(limit)
+        .limit(limit);
 
-      if (typeof filters?.is_published !== "undefined") q = q.eq("is_published", filters.is_published)
-      if (typeof filters?.is_free !== "undefined") q = q.eq("is_free", filters.is_free)
-      if (filters?.language) q = q.eq("language", filters.language)
+      if (typeof filters?.is_published !== "undefined")
+        q = q.eq("is_published", filters.is_published);
+      if (typeof filters?.is_free !== "undefined")
+        q = q.eq("is_free", filters.is_free);
+      if (filters?.language) q = q.eq("language", filters.language);
       if (filters?.search) {
-        const s = `%${filters.search}%`
-        q = q.or(`title_pt.ilike.${s},title_en.ilike.${s},summary_pt.ilike.${s},summary_en.ilike.${s}`)
+        const s = `%${filters.search}%`;
+        q = q.or(
+          `title_pt.ilike.${s},title_en.ilike.${s},summary_pt.ilike.${s},summary_en.ilike.${s}`,
+        );
       }
 
-      const { data, error } = await q
-      if (error) return []
-      return (data as EbookRow[]) ?? []
+      const { data, error } = await q;
+      if (error) return [];
+      return (data as EbookRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
+  }
+
+  static async studentLibrary(): Promise<StudentEbook[]> {
+    const db: any = await this.getSupabase();
+    const client: any = await createClientSSR();
+    const fields =
+      "id,title_pt,title_en,slug,summary_pt,summary_en,cover_url,pages_count,language,is_free,price_cents,currency,categories_pt,categories_en,author";
+    const [catalog, access] = await Promise.all([
+      readPages<any>(
+        () =>
+          db
+            .from("ebooks")
+            .select(`${fields},file_bucket_path,external_url`)
+            .eq("is_deleted", false)
+            .eq("is_published", true)
+            .or(`publish_at.is.null,publish_at.lte.${new Date().toISOString()}`)
+            .order("created_at")
+            .order("id"),
+        "ebook catalog",
+      ),
+      readPages<any>(
+        () =>
+          client
+            .from("ebooks")
+            .select("id")
+            .eq("is_deleted", false)
+            .eq("is_published", true)
+            .order("id"),
+        "ebook entitlements",
+      ),
+    ]);
+    const allowed = new Set(access.data.map((b) => b.id));
+    // Never include private object paths or external delivery URLs in a catalog.
+    return catalog.data.map(
+      (row) =>
+        ({
+          ...Object.fromEntries(
+            fields.split(",").map((key) => [key, row[key]]),
+          ),
+          accessible: allowed.has(row.id),
+          has_content: Boolean(row.file_bucket_path || row.external_url),
+        }) as StudentEbook,
+    );
+  }
+  static async authorizedContent(
+    ebookId: string,
+    userId: string,
+  ): Promise<string> {
+    const db: any = await this.getSupabase();
+    const allowed = checked<boolean>(
+      await db.rpc("student_ebook_access", {
+        p_ebook: ebookId,
+        p_user: userId,
+      }),
+      "ebook access",
+    );
+    if (!allowed) throw new AccessError("E-book indisponível para esta conta.");
+    const book = checked<EbookRow>(
+      await db
+        .from("ebooks")
+        .select("*")
+        .eq("id", ebookId)
+        .eq("is_deleted", false)
+        .eq("is_published", true)
+        .maybeSingle(),
+      "ebook delivery",
+    );
+    if (!book) throw new AccessError("E-book indisponível.", 404);
+    if (book.file_bucket_path) {
+      const signed = checked<any>(
+        await db.storage
+          .from("ebook-files")
+          .createSignedUrl(book.file_bucket_path, 60),
+        "ebook signed URL",
+      );
+      if (!signed?.signedUrl) throw new Error("Arquivo indisponível.");
+      return signed.signedUrl;
+    }
+    if (book.external_url) {
+      const url = new URL(book.external_url);
+      if (url.protocol !== "https:")
+        throw new Error("Link de acesso inválido.");
+      return url.href;
+    }
+    throw new AccessError("Conteúdo ainda não disponível.", 404);
   }
 
   static async getEbook(id: string): Promise<EbookRow | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("ebooks")
         .select("*")
         .eq("id", id)
-        .maybeSingle()
-      if (error) return null
-      return (data as EbookRow | null) ?? null
+        .maybeSingle();
+      if (error) return null;
+      return (data as EbookRow | null) ?? null;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async upsertEbook(
     input: UpsertEbookInput,
-    adminId?: string
+    adminId?: string,
   ): Promise<EbookRow | null> {
     try {
-      const parsed = upsertEbookSchema.parse(input)
-      const supabase = await this.getSupabase()
-      const payload: Record<string, any> = { ...parsed }
-      delete payload.id
+      const parsed = upsertEbookSchema.parse(input);
+      const supabase = await this.getSupabase();
+      const payload: Record<string, any> = { ...parsed };
+      delete payload.id;
 
-      let q: any
+      let q: any;
       if (parsed.id) {
         q = supabase
           .from("ebooks")
           .update(payload as never)
-          .eq("id", parsed.id)
+          .eq("id", parsed.id);
       } else {
-        q = supabase.from("ebooks").insert(payload as never)
+        q = supabase.from("ebooks").insert(payload as never);
       }
 
-      const { data, error } = await q.select().single()
-      if (error || !data) return null
+      const { data, error } = await q.select().single();
+      if (error || !data) return null;
 
       void AuditLogService.log({
         adminId,
@@ -94,70 +190,77 @@ export class EbookService {
         entity_type: "ebooks",
         entity_id: data.id,
         details: { title_pt: parsed.title_pt, title_en: parsed.title_en },
-      })
+      });
 
-      return data as EbookRow
+      return data as EbookRow;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async deleteEbook(id: string, adminId?: string): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from("ebooks")
         .update({ is_deleted: true } as never)
-        .eq("id", id)
-      if (error) return false
+        .eq("id", id);
+      if (error) return false;
       void AuditLogService.log({
         adminId,
         action: "ebook.delete",
         entity_type: "ebooks",
         entity_id: id,
-      })
-      return true
+      });
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   // ---------------------------------------------------------------------
   // EBOOK DOWNLOADS
   // ---------------------------------------------------------------------
-  static async recordDownload(ebookId: string, userId: string, ipAddress?: string): Promise<EbookDownloadRow | null> {
+  static async recordDownload(
+    ebookId: string,
+    userId: string,
+    ipAddress?: string,
+  ): Promise<EbookDownloadRow | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("ebook_downloads")
-        .upsert({
-          user_id: userId,
-          ebook_id: ebookId,
-          ip_address: ipAddress ?? null,
-        } as never, {
-          onConflict: "user_id,ebook_id"
-        })
+        .upsert(
+          {
+            user_id: userId,
+            ebook_id: ebookId,
+            ip_address: ipAddress ?? null,
+          } as never,
+          {
+            onConflict: "user_id,ebook_id",
+          },
+        )
         .select()
-        .single()
-      if (error) return null
-      return data as EbookDownloadRow
+        .single();
+      if (error) return null;
+      return data as EbookDownloadRow;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async getUserDownloads(userId: string): Promise<EbookDownloadRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("ebook_downloads")
         .select("*")
         .eq("user_id", userId)
-        .order("downloaded_at", { ascending: false })
-      if (error) return []
-      return (data as EbookDownloadRow[]) ?? []
+        .order("downloaded_at", { ascending: false });
+      if (error) return [];
+      return (data as EbookDownloadRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
@@ -166,36 +269,38 @@ export class EbookService {
   // ---------------------------------------------------------------------
   static async getPurchases(userId: string): Promise<EbookPurchaseRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("ebook_purchases")
         .select("*")
-        .eq("user_id", userId)
-      if (error) return []
-      return (data as EbookPurchaseRow[]) ?? []
+        .eq("user_id", userId);
+      if (error) return [];
+      return (data as EbookPurchaseRow[]) ?? [];
     } catch {
-      return []
+      return [];
     }
   }
 
   static async getPaidEbookIds(userId: string): Promise<string[]> {
-    const purchases = await this.getPurchases(userId)
-    return purchases.filter((p) => ["paid", "partially_refunded"].includes(p.status)).map((p) => p.ebook_id)
+    const purchases = await this.getPurchases(userId);
+    return purchases
+      .filter((p) => ["paid", "partially_refunded"].includes(p.status))
+      .map((p) => p.ebook_id);
   }
 
   static async createPendingPurchase(input: {
-    userId: string
-    ebookId: string
-    provider: PaymentProvider
-    amountCents: number
-    currency: Currency
-    externalId?: string | null
-    pixQrCode?: string | null
-    pixCopyPaste?: string | null
-    pixExpiresAt?: string | null
+    userId: string;
+    ebookId: string;
+    provider: PaymentProvider;
+    amountCents: number;
+    currency: Currency;
+    externalId?: string | null;
+    pixQrCode?: string | null;
+    pixCopyPaste?: string | null;
+    pixExpiresAt?: string | null;
   }): Promise<EbookPurchaseRow | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("ebook_purchases")
         .upsert(
@@ -214,48 +319,46 @@ export class EbookService {
             failed_at: null,
             refunded_at: null,
           } as never,
-          { onConflict: "user_id,ebook_id" }
+          { onConflict: "user_id,ebook_id" },
         )
         .select()
-        .single()
-      if (error) return null
-      return data as EbookPurchaseRow
+        .single();
+      if (error) return null;
+      return data as EbookPurchaseRow;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async markPurchasePaid(input: {
-    userId: string
-    ebookId: string
-    provider: PaymentProvider
-    amountCents: number
-    currency: Currency
-    externalId?: string | null
-    externalEventId?: string | null
-    paidAt?: string
+    userId: string;
+    ebookId: string;
+    provider: PaymentProvider;
+    amountCents: number;
+    currency: Currency;
+    externalId?: string | null;
+    externalEventId?: string | null;
+    paidAt?: string;
   }): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
-      const { error } = await supabase
-        .from("ebook_purchases")
-        .upsert(
-          {
-            user_id: input.userId,
-            ebook_id: input.ebookId,
-            provider: input.provider,
-            status: "paid",
-            amount_cents: input.amountCents,
-            currency: input.currency,
-            external_id: input.externalId ?? null,
-            external_event_id: input.externalEventId ?? null,
-            paid_at: input.paidAt ?? new Date().toISOString(),
-          } as never,
-          { onConflict: "user_id,ebook_id" }
-        )
-      return !error
+      const supabase = await this.getSupabase();
+      const { error } = await supabase.from("ebook_purchases").upsert(
+        {
+          user_id: input.userId,
+          ebook_id: input.ebookId,
+          provider: input.provider,
+          status: "paid",
+          amount_cents: input.amountCents,
+          currency: input.currency,
+          external_id: input.externalId ?? null,
+          external_event_id: input.externalEventId ?? null,
+          paid_at: input.paidAt ?? new Date().toISOString(),
+        } as never,
+        { onConflict: "user_id,ebook_id" },
+      );
+      return !error;
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -263,10 +366,10 @@ export class EbookService {
     provider: PaymentProvider,
     externalId: string,
     status: "failed" | "canceled" | "expired" | "refunded",
-    timestampField: "failed_at" | "refunded_at"
+    timestampField: "failed_at" | "refunded_at",
   ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from("ebook_purchases")
         .update({
@@ -274,10 +377,10 @@ export class EbookService {
           [timestampField]: new Date().toISOString(),
         } as never)
         .eq("provider", provider)
-        .eq("external_id", externalId)
-      return !error
+        .eq("external_id", externalId);
+      return !error;
     } catch {
-      return false
+      return false;
     }
   }
 }

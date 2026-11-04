@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClientSSR } from "@/lib/supabase/server"
 import { locales } from "@/i18n/config"
-export async function GET(request: NextRequest, { params }: { params: { locale: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ locale: string }> }) {
+ const params = await props.params;
  const locale = locales.includes(params.locale as any) ? params.locale : "pt-BR"
  const code = request.nextUrl.searchParams.get("code")
  const token = request.nextUrl.searchParams.get("token_hash")

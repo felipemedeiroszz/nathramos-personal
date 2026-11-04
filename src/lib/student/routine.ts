@@ -19,11 +19,12 @@ export function sumNutrition(rows: Nutrition[]): Nutrition {
   }, emptyNutrition())
 }
 
-export function workoutWeek(startDate: string, date: string, totalWeeks: number) {
+export function workoutWeek(startDate: string, date: string, totalWeeks: number, repeatCycle = true) {
   const elapsed = Math.max(0, Math.floor((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${startDate}T12:00:00Z`)) / 86400000))
-  return Math.floor(elapsed / 7) % Math.max(1,totalWeeks) + 1
+  const week = Math.floor(elapsed / 7) + 1
+  return repeatCycle ? (week - 1) % Math.max(1,totalWeeks) + 1 : week
 }
-export function selectWorkoutDays<T extends { week_number: number; day_of_week: number }>(days: T[], week: number, weekday: number): T[] {
-  const effectiveWeek = days.some(d => d.week_number === week) ? week : 1
+export function selectWorkoutDays<T extends { week_number: number; day_of_week: number }>(days: T[], week: number, weekday: number, fallbackWeekOne = true): T[] {
+  const effectiveWeek = days.some(d => d.week_number === week) || !fallbackWeekOne ? week : 1
   return days.filter(d => d.week_number === effectiveWeek && d.day_of_week === weekday)
 }

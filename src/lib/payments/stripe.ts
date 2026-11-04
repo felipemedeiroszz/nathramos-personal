@@ -72,9 +72,6 @@ export const StripeProvider = {
           plan_id: input.planId,
           ...(input.metadata ?? {}),
         },
-        ...(input.trialDays && input.trialDays > 0
-          ? { trial_period_days: input.trialDays }
-          : {}),
       },
       allow_promotion_codes: true,
       ...(input.customerId ? { customer: input.customerId } : {}),
@@ -147,8 +144,7 @@ export const StripeProvider = {
 
   /**
    * Cria a assinatura usando um cartão já salvo (SetupIntent confirmado).
-   * - Com trial: a assinatura entra em `trialing` sem cobrança imediata.
-   * - Sem trial: o Stripe cobra a primeira fatura com o cartão salvo.
+   * O Stripe cobra a primeira fatura na contratação com o cartão salvo, sem teste.
    */
   async createSubscriptionWithPaymentMethod(input: {
     customerId: string
@@ -172,9 +168,6 @@ export const StripeProvider = {
       payment_behavior: "allow_incomplete",
       expand: ["latest_invoice.payment_intent"],
       metadata: { user_id: input.userId, plan_id: input.planId, ...(input.idempotencyKey ? {checkout_id:input.idempotencyKey} : {}) },
-      ...(input.trialDays && input.trialDays > 0
-        ? { trial_period_days: input.trialDays }
-        : {}),
     }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined)
 
     return subscription

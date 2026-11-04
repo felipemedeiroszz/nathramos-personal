@@ -1,3 +1,4 @@
+import { getPublicPlatformSettings } from "@/services/PlatformSettingsService";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -9,17 +10,24 @@ export const metadata: Metadata = {
   title: "Pagamento",
 };
 
-export default async function AssinaturaCanceladoPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function AssinaturaCanceladoPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const t = await getTranslations("plans");
+  const settings = await getPublicPlatformSettings();
 
   return (
     <>
-      <PublicHeader locale={locale} />
+      <PublicHeader locale={locale} settings={settings} />
 
       <main className="animate-fade-in px-4 md:px-6 py-20 md:py-28">
         <div className="mx-auto max-w-xl">
@@ -48,7 +56,7 @@ export default async function AssinaturaCanceladoPage({
         </div>
       </main>
 
-      <PublicFooter locale={locale} />
+      <PublicFooter locale={locale} settings={settings} />
     </>
   );
 }

@@ -1,182 +1,96 @@
-import { TrainerPortrait } from "@/components/public/TrainerPortrait";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicShell } from "@/components/public/PublicShell";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import {
-  Target,
-  Eye,
-  Heart,
-  Award,
-  GraduationCap,
-  Dumbbell,
-  MessageCircle,
-  Calendar,
-} from "lucide-react";
+import { TrainerPortrait } from "@/components/public/TrainerPortrait";
+import { ArrowDown, ArrowUpRight, ArrowRight, Check, Dumbbell, Heart, MessageCircle, Target, Eye, GraduationCap } from "lucide-react";
+import "@/components/public/about.css";
 
-export const metadata: Metadata = {
-  title: "Sobre",
-  description:
-    "Conheça Nath Ramos, educadora física e mentora fitness com mais de 10 anos de experiência em transformar vidas através do movimento e da nutrição.",
-};
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const params = await props.params;
 
-export default async function SobrePage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+  const {
+    locale
+  } = params;
+
+  const en = locale === "en-US";
+  return {
+    title: en ? "Meet Nath Ramos" : "Conheça Nath Ramos",
+    description: en ? "Meet Nath Ramos and discover her approach to personal training: thoughtful planning, sustainable habits and close support." : "Conheça Nath Ramos e sua forma de acompanhar: treino com direção, hábitos sustentáveis e presença em cada etapa.",
+    alternates: { canonical: `/${locale}/sobre` },
+  };
+}
+
+export default async function SobrePage(props: { params: Promise<{ locale: string }> }) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
-
   const t = await getTranslations("about");
-  const tn = await getTranslations("nav");
-  const tc = await getTranslations("common");
-
-  const valueIcons = [Target, Eye, Heart];
-  const valueKeys = ["mission", "vision", "valuesTitle2"];
-
-  const credentials = [
-    { icon: GraduationCap, label: t("teamCredentials").split(", ")[0] },
-    { icon: Award, label: t("teamCredentials").split(", ")[1] },
-    { icon: Dumbbell, label: t("teamCredentials").split(", ")[2] },
-    { icon: MessageCircle, label: t("teamCredentials").split(", ")[3] },
+  const en = locale === "en-US";
+  const copy = (pt: string, english: string) => en ? english : pt;
+  const approach = [
+    { icon: Dumbbell, title: copy("Treino com direção.", "Training with direction."), description: copy("Escolhas que fazem sentido para o seu objetivo e para o seu ponto de partida.", "Choices that make sense for your goals and your starting point.") },
+    { icon: Heart, title: copy("Hábitos que cabem na vida.", "Habits that fit your life."), description: copy("Constância se constrói com uma rotina possível de manter, um passo de cada vez.", "Consistency grows from a routine you can maintain, one step at a time.") },
+    { icon: MessageCircle, title: copy("Acompanhamento de perto.", "Support that stays close."), description: copy("Espaço para conversar, entender suas dificuldades e ajustar a direção ao longo do caminho.", "Room to talk, understand your challenges and adjust direction along the way.") },
   ];
+  const values = [{ icon: Target, key: "mission" }, { icon: Eye, key: "vision" }, { icon: Heart, key: "valuesTitle2" }];
+  const credentials = t("teamCredentials").split(", ").filter(Boolean);
 
-  return (
-    <>
-      <PublicShell locale={locale}>
-        <main className="animate-fade-in">
-          <section className="public-inner-hero relative overflow-hidden border-b border-border">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-            <div className="mx-auto max-w-7xl px-4 md:px-6 py-20 md:py-28 relative">
-              <div className="max-w-3xl space-y-6">
-                <Badge variant="outline">{tn("about")}</Badge>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-text text-balance leading-tight">
-                  {t("heroTitle")}
-                </h1>
-                <p className="text-lg md:text-xl text-text-secondary max-w-2xl">
-                  {t("heroSubtitle")}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button asChild size="lg">
-                    <Link href={`/${locale}/cadastro`}>{tc("startNow")}</Link>
-                  </Button>
-                  <Button asChild variant="secondary" size="lg">
-                    <Link href={`/${locale}/mentoria`}>{tn("mentoring")}</Link>
-                  </Button>
-                </div>
-              </div>
+  return <PublicShell locale={locale}>
+    <main className="about-page">
+      <section className="about-hero">
+        <div className="public-wrap about-hero-grid">
+          <div className="about-intro">
+            <p className="public-eyebrow">{copy("A PESSOA POR TRÁS DO SEU PLANO", "THE PERSON BEHIND YOUR PLAN")}</p>
+            <h1 className="about-title">{copy("Seu objetivo.", "Your goal.")}<br /><span>{copy("Meu compromisso.", "My commitment.")}</span></h1>
+            <p className="about-intro-copy">{copy("Sou Nath Ramos.", "I'm Nath Ramos.")} <span>{copy("Educadora física, personal trainer e mentora. Meu trabalho é ajudar você a encontrar uma forma de evoluir que faça sentido para a sua vida.", "Physical educator, personal trainer and mentor. My work is about helping you find a way to grow that makes sense for your life.")}</span></p>
+            <div className="about-actions">
+              <Link href={`/${locale}/planos`} className="public-cta">{copy("Conhecer o acompanhamento", "Explore coaching")}<ArrowUpRight size={17} /></Link>
+              <Link href="#minha-historia" className="about-story-link">{copy("Minha história", "My story")}<ArrowDown size={15} /></Link>
             </div>
-          </section>
+            <div className="about-intro-note"><span /><p>{copy("Um plano individual. Uma relação de confiança.", "An individual plan. A relationship built on trust.")}</p></div>
+          </div>
+          <div className="about-portrait-wrap">
+            <div className="about-photo-label"><span>NR /</span> {copy("PERSONAL TRAINER & MENTORA", "PERSONAL TRAINER & MENTOR")}</div>
+            <TrainerPortrait className="about-portrait" priority />
+            <div className="about-portrait-caption"><div><p>{copy("PRESENÇA EM CADA ETAPA", "PRESENT AT EVERY STEP")}</p><h2>Nath Ramos<span>.</span></h2></div><ArrowDown size={27} strokeWidth={1} aria-hidden="true" /></div>
+          </div>
+        </div>
+        <div className="public-wrap"><div className="about-principle-strip">
+          {[copy("Planejamento individual", "Individual planning"), copy("Evolução com constância", "Consistent progress"), copy("Acompanhamento humano", "Human connection")].map((label, i) => <div key={label}><span>0{i + 1}</span><p>{label}</p><ArrowUpRight size={15} aria-hidden="true" /></div>)}
+        </div></div>
+      </section>
 
-          <section className="mx-auto max-w-7xl px-4 md:px-6 py-20 md:py-24">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
-              <div className="lg:col-span-2 lg:sticky lg:top-28">
-                <div className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-surface">
-                  <TrainerPortrait className="aspect-[.8]" />
-                  <div className="border-t border-white/[0.07] p-5">
-                    <h2 className="text-xl font-medium">{t("teamTitle")}</h2>
-                    <p className="mt-2 text-xs text-zinc-500">
-                      {t("teamRole")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-3 space-y-10">
-                <div>
-                  <Badge variant="outline">{t("storyTitle")}</Badge>
-                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-text mt-4 mb-6">
-                    {t("storyTitle")}
-                  </h2>
-                </div>
-                <div className="space-y-5 text-text-secondary leading-relaxed text-base md:text-lg">
-                  <p>{t("storyParagraph1")}</p>
-                  <p>{t("storyParagraph2")}</p>
-                  <p>{t("storyParagraph3")}</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                  {credentials
-                    .filter((c) => Boolean(c.label))
-                    .map((c, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-surface-secondary/60 border border-border/60"
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                          <c.icon size={18} className="text-primary" />
-                        </div>
-                        <span className="text-sm text-text">{c.label}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          </section>
+      <section id="minha-historia" className="public-wrap about-story">
+        <div className="about-section-heading"><p className="public-eyebrow">{copy("PRAZER, NATH", "NICE TO MEET YOU")}</p><h2>{copy("Antes do plano,", "Before the plan,")}<br /><span>{copy("vem a pessoa.", "comes the person.")}</span></h2><div className="about-small-signature">Nath Ramos <ArrowUpRight size={18} /></div></div>
+        <div className="about-story-content">
+          <p className="about-story-lead">{copy("Acredito em um acompanhamento que olha para a sua rotina, respeita a sua individualidade e constrói evolução junto com você.", "I believe in coaching that considers your routine, respects your individuality and builds progress alongside you.")}</p>
+          <div className="about-story-text"><p>{t("storyParagraph1")}</p><p>{t("storyParagraph3")}</p></div>
+          <div className="about-credentials"><p><GraduationCap size={17} />{copy("FORMAÇÃO E ATUAÇÃO", "EDUCATION & PRACTICE")}</p><ul>{credentials.map(label => <li key={label}><Check size={14} /><span>{label}</span></li>)}</ul></div>
+        </div>
+      </section>
 
-          <section className="bg-surface border-y border-border">
-            <div className="mx-auto max-w-7xl px-4 md:px-6 py-20 md:py-24">
-              <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-                <Badge variant="outline">{t("valuesTitle")}</Badge>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-text">
-                  {t("valuesTitle")}
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[0, 1, 2].map((i) => {
-                  const Icon = valueIcons[i];
-                  const k = valueKeys[i];
-                  return (
-                    <Card
-                      key={k}
-                      className="hover:-translate-y-1 transition-transform duration-300"
-                    >
-                      <CardHeader>
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                          <Icon size={22} className="text-primary" />
-                        </div>
-                        <CardTitle>{t(`${k}Title`)}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="text-base leading-relaxed">
-                          {t(`${k}Desc`)}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
+      <section className="about-method">
+        <div className="public-wrap">
+          <div className="about-method-header"><div><p className="public-eyebrow">{copy("MEU JEITO DE ACOMPANHAR", "MY APPROACH TO COACHING")}</p><h2>{copy("Direção para começar.", "Direction to begin.")}<br /><span>{copy("Presença para continuar.", "Support to keep going.")}</span></h2></div><p className="public-copy">{copy("Resultados sustentáveis vêm de hábitos reais. O acompanhamento conecta planejamento, rotina e conversa para que cada etapa tenha um propósito.", "Sustainable results come from real habits. Coaching connects planning, routine and conversation so every step has a purpose.")}</p></div>
+          <div className="about-method-grid">{approach.map((item, i) => <article className="about-method-item" key={item.title} data-reveal><div className="about-method-top"><item.icon size={25} strokeWidth={1.3} /><span>/ 0{i + 1}</span></div><h3>{item.title}</h3><p>{item.description}</p></article>)}</div>
+          <Link href={`/${locale}/como-funciona`} className="about-inline-link">{copy("Entenda como funciona na prática", "See how it works in practice")}<ArrowRight size={16} /></Link>
+        </div>
+      </section>
 
-          <section className="mx-auto max-w-4xl px-4 md:px-6 py-16 md:py-20">
-            <Card className="bg-gradient-to-br from-primary/15 via-surface to-surface border-primary/30">
-              <CardContent className="p-10 md:p-14 text-center space-y-6">
-                <div className="mx-auto w-14 h-14 rounded-2xl bg-primary shadow-[0_0_30px_hsl(var(--primary)/0.25)] flex items-center justify-center mx-auto">
-                  <Calendar size={26} className="text-primary-foreground" />
-                </div>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-text">
-                  {t("ctaTitle")}
-                </h2>
-                <p className="text-lg text-text-secondary max-w-xl mx-auto">
-                  {t("ctaSubtitle")}
-                </p>
-                <Button asChild size="lg">
-                  <Link href={`/${locale}/cadastro`}>{t("ctaButton")}</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
-        </main>
-      </PublicShell>
-    </>
-  );
+      <section className="public-wrap about-values">
+        <div className="about-section-heading"><p className="public-eyebrow">{copy("O QUE ORIENTA MEU TRABALHO", "WHAT GUIDES MY WORK")}</p><h2>{copy("Princípios que", "Principles that")}<br /><span>{copy("viram prática.", "become practice.")}</span></h2></div>
+        <div className="about-values-list">{values.map(item => <article key={item.key} className="about-value-row"><item.icon size={21} strokeWidth={1.4} /><div><h3>{t(`${item.key}Title`)}</h3><p>{t(`${item.key}Desc`)}</p></div></article>)}</div>
+      </section>
+
+      <section className="public-wrap about-final-wrap"><div className="about-final" data-reveal>
+        <div><p className="about-final-eyebrow">{copy("O PRÓXIMO PASSO É SEU", "THE NEXT STEP IS YOURS")}</p><h2>{copy("Vamos construir", "Let's build")}<br />{copy("a sua evolução?", "your progress.")}</h2><p>{copy("Conheça o plano e encontre o seu ponto de partida. Eu te acompanho no caminho.", "Explore the plan and find your starting point. I'll be alongside you on the journey.")}</p></div>
+        <div className="about-final-actions"><Link href={`/${locale}/planos`} className="about-final-cta">{copy("Quero dar o próximo passo", "I'm ready for the next step")}<ArrowUpRight size={20} /></Link><Link href={`/${locale}/como-funciona`}>{copy("Primeiro, quero entender como funciona", "First, I'd like to see how it works")}<ArrowRight size={14} /></Link></div>
+      </div></section>
+    </main>
+  </PublicShell>;
 }

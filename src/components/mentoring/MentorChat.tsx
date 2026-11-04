@@ -182,6 +182,7 @@ export function MentorChat({
     const timer = setInterval(() => {
       if (!live) void sync();
     }, 15000);
+    window.addEventListener("app:data-refresh", sync);
     window.addEventListener("online", sync);
     document.addEventListener("visibilitychange", onVisible);
     void sync();
@@ -223,6 +224,7 @@ export function MentorChat({
     return () => {
       active = false;
       clearInterval(timer);
+      window.removeEventListener("app:data-refresh", sync);
       window.removeEventListener("online", sync);
       document.removeEventListener("visibilitychange", onVisible);
       try {

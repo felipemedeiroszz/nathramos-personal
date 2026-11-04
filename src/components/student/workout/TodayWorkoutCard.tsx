@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useLiveResource } from "@/hooks/useLiveResource";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -18,6 +19,7 @@ interface TodayWorkoutData {
   estimatedMinutes: number;
   available: boolean;
   reason?: string;
+  notes?: string;
   completedToday?: boolean;
 }
 export function TodayWorkoutCard({
@@ -29,28 +31,21 @@ export function TodayWorkoutCard({
 }) {
   const en = locale === "en-US",
     t = (pt: string, eng: string) => (en ? eng : pt);
-  const [loading, setLoading] = useState(true),
-    [data, setData] = useState<TodayWorkoutData | null>(null),
-    [error, setError] = useState(false),
-    [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const abort = new AbortController();
-    setLoading(true);
-    setError(false);
-    fetch("/api/workout/today", { cache: "no-store", signal: abort.signal })
-      .then((r) => {
-        if (!r.ok) throw Error("Workout unavailable");
-        return r.json();
-      })
-      .then(setData)
-      .catch((e) => {
-        if (e.name !== "AbortError") setError(true);
-      })
-      .finally(() => {
-        if (!abort.signal.aborted) setLoading(false);
+  const load = useCallback(
+    async (signal: AbortSignal): Promise<TodayWorkoutData> => {
+      const response = await fetch("/api/workout/today", {
+        cache: "no-store",
+        signal,
       });
-    return () => abort.abort();
-  }, [locale, userId, retry]);
+      if (!response.ok) throw new Error("Workout unavailable");
+      return response.json();
+    },
+    [],
+  );
+  const { data, loading, reload } = useLiveResource(
+    `${locale}:${userId}`,
+    load,
+  );
   return (
     <article className="relative flex min-h-[310px] min-w-0 flex-col overflow-hidden rounded-[20px] border border-yellow-400/15 bg-gradient-to-br from-yellow-400/[0.07] via-surface to-surface p-5 sm:p-7">
       <div
@@ -80,7 +75,7 @@ export function TodayWorkoutCard({
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="mt-8 h-12 w-full" />
         </div>
-      ) : error || !data ? (
+      ) : !data ? (
         <div className="relative my-auto">
           <h2 className="text-lg font-semibold">
             {t(
@@ -96,7 +91,7 @@ export function TodayWorkoutCard({
           </p>
           <button
             className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-xs text-zinc-300"
-            onClick={() => setRetry((v) => v + 1)}
+            onClick={reload}
           >
             <RefreshCw size={14} />
             {t("Tentar novamente", "Try again")}
@@ -142,7 +137,12 @@ export function TodayWorkoutCard({
           <h2 className="text-2xl font-semibold tracking-tight">
             {data.completedToday
               ? t("Treino de hoje concluído.", "Today's workout is complete.")
-              : t("Sem treino programado hoje.", "No workout scheduled today.")}
+              : data.reason === "rest"
+                ? t("Hoje é dia de descanso.", "Today is a rest day.")
+                : t(
+                    "Sem treino programado hoje.",
+                    "No workout scheduled today.",
+                  )}
           </h2>
           <p className="mb-6 mt-2 max-w-sm text-sm leading-relaxed text-zinc-400">
             {data.completedToday
@@ -150,10 +150,16 @@ export function TodayWorkoutCard({
                   "Seu registro já faz parte da sua evolução.",
                   "Your log is now part of your progress.",
                 )
-              : t(
-                  "Consulte sua programação ou converse com sua treinadora sobre os próximos passos.",
-                  "Check your schedule or talk with your coach about the next steps.",
-                )}
+              : data.reason === "rest"
+                ? data.notes ||
+                  t(
+                    "Descanso programado pela sua treinadora.",
+                    "Rest scheduled by your coach.",
+                  )
+                : t(
+                    "Consulte sua programação ou converse com sua treinadora sobre os próximos passos.",
+                    "Check your schedule or talk with your coach about the next steps.",
+                  )}
           </p>
           <Link
             href={`/${locale}/${data.completedToday ? "progresso" : "treino"}`}

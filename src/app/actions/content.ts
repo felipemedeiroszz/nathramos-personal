@@ -8,6 +8,7 @@ import {
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { ProductImageUploadService } from "@/services/ProductImageUploadService";
 import { requireRole } from "@/lib/auth/access";
 import { DietService } from "@/services/DietService";
 import { SupplementService } from "@/services/SupplementService";
@@ -461,57 +462,21 @@ export async function upsertContentPageAction(input: UpsertContentPageInput) {
 // ---------------------------------------------------------------------
 // IMAGENS DE PRODUTOS (ALIMENTOS / SUPLEMENTOS)
 // ---------------------------------------------------------------------
-const PRODUCT_IMAGES_BUCKET = "product-images";
-
-export async function uploadProductImageAction(formData: FormData) {
+export async function prepareProductImageUploadAction(input: unknown) {
   const { userId } = await requireRole(["admin"], "/dashboard");
   try {
-    const file = formData.get("file") as File | null;
-    if (!file || file.size === 0) {
-      return { success: false as const, message: "Arquivo obrigatório." };
-    }
-    if (file.size > 5_000_000) {
-      return {
-        success: false as const,
-        message: "A imagem deve ter no máximo 5MB.",
-      };
-    }
-    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-    if (!["jpg", "jpeg", "png", "webp"].includes(ext)) {
-      return {
-        success: false as const,
-        message: "Formato inválido. Use JPG, PNG ou WEBP.",
-      };
-    }
+    return { success: true as const, data: await ProductImageUploadService.prepare(userId, input) };
+  } catch {
+    return { success: false as const, message: "Não foi possível autorizar a imagem. Use PNG, JPG ou WEBP de até 5 MiB." };
+  }
+}
 
-    const supabase = await createServiceClientSSR();
-    const key = `${userId}/${Date.now()}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const { error } = await supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .upload(key, buffer, {
-        contentType: file.type || "image/jpeg",
-        cacheControl: "3600",
-        upsert: true,
-      });
-    if (error) {
-      return { success: false as const, message: error.message };
-    }
-
-    const { data } = supabase.storage
-      .from(PRODUCT_IMAGES_BUCKET)
-      .getPublicUrl(key);
-    if (!data?.publicUrl) {
-      return {
-        success: false as const,
-        message: "Falha ao obter a URL da imagem.",
-      };
-    }
-    return { success: true as const, url: data.publicUrl };
-  } catch (e: any) {
-    return {
-      success: false as const,
-      message: e?.message ?? "Falha ao enviar a imagem.",
-    };
+export async function completeProductImageUploadAction(path: string) {
+  const { userId } = await requireRole(["admin"], "/dashboard");
+  try {
+    z.string().max(200).parse(path);
+    return { success: true as const, url: await ProductImageUploadService.complete(userId, path) };
+  } catch {
+    return { success: false as const, message: "Não foi possível validar a imagem. Use PNG, JPG ou WEBP de até 5 MiB." };
   }
 }

@@ -20,13 +20,22 @@ export const metadata: Metadata = {
   title: "App",
 };
 
-export default async function StudentLayout({
-  children,
-  params: { locale },
-}: {
-  children: React.ReactNode;
-  params: { locale: string };
-}) {
+export default async function StudentLayout(
+  props: {
+    children: React.ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
+  const {
+    children
+  } = props;
+
   if (!locales.includes(locale as any)) {
     notFound();
   }
@@ -52,10 +61,10 @@ export default async function StudentLayout({
     !isAdmin && subscriptionAllowed
       ? await SubscriptionService.getActive(userId)
       : null;
-  const pixExpiresAt =
-    subscription?.provider === "asaas" &&
+  const prepaidExpiresAt =
+    (subscription?.source === "admin_manual" || (subscription?.provider === "asaas" &&
     (subscription.source === "asaas_pix" ||
-      subscription.external_id?.startsWith("pay_"))
+      subscription.external_id?.startsWith("pay_"))))
       ? subscription.current_period_end
       : null;
 
@@ -97,7 +106,7 @@ export default async function StudentLayout({
       lastName={lastName}
       photoUrl={photoUrl}
       subscriptionAllowed={subscriptionAllowed}
-      accessExpiresAt={pixExpiresAt}
+      accessExpiresAt={prepaidExpiresAt}
       maintenance={maintenance}
       onLogout={logoutAction}
     >

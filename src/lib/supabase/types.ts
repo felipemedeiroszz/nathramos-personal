@@ -31,12 +31,12 @@ export type PaymentStatusT =
   | "refunded"
   | "expired"
   | "partially_refunded"
-export type PaymentProviderT = "stripe" | "asaas"
+export type PaymentProviderT = "stripe" | "asaas" | "manual"
 export type PaymentMethodT =
   | "credit_card"
   | "pix"
   | "boleto"
-  | "bank_transfer"
+  | "bank_transfer" | "cash"
 export type NotificationTypeT =
   | "system"
   | "payment"

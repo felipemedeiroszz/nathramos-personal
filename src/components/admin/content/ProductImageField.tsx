@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useLocale } from "next-intl";
 import { Loader2, X } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { uploadProductImageAction } from "@/app/actions/content";
+import { prepareProductImageUploadAction, completeProductImageUploadAction } from "@/app/actions/content";
+import { createClientBrowser } from "@/lib/supabase/client";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
+import { productImageSchema, PRODUCT_IMAGE_MAX_BYTES } from "@/lib/uploads/product-image";
 
 interface ProductImageFieldProps {
   value: string;
@@ -15,7 +18,7 @@ interface ProductImageFieldProps {
 
 export function ProductImageField({ value, onChange }: ProductImageFieldProps) {
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
   const [error, setError] = useState<string | null>(null);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
@@ -24,23 +27,28 @@ export function ProductImageField({ value, onChange }: ProductImageFieldProps) {
     const file = files[0];
     if (!file) return;
     setError(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    startTransition(async () => {
-      const result = await uploadProductImageAction(formData);
-      if (result.success && result.url) {
+    void startTransition(async () => {
+      try {
+        const metadata = { size: file.size, type: file.type };
+        if (!productImageSchema.safeParse(metadata).success)
+          throw new Error(label("Use PNG, JPG ou WEBP de até 5 MiB.", "Use PNG, JPG or WEBP up to 5 MiB."));
+        const prepared = await prepareProductImageUploadAction(metadata);
+        if (!prepared.success) throw new Error(prepared.message);
+        const { bucket, path, token } = prepared.data;
+        const { error: uploadError } = await createClientBrowser().storage.from(bucket)
+          .uploadToSignedUrl(path, token, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw new Error(label("Falha ao enviar a imagem. Tente novamente.", "Image upload failed. Please try again."));
+        const result = await completeProductImageUploadAction(path);
+        if (!result.success) throw new Error(result.message);
         onChange(result.url);
-      } else {
-        setError(
-          result.message ||
-            label("Falha ao enviar a imagem.", "Failed to upload the image.")
-        );
+      } catch (error) {
+        setError(error instanceof Error ? error.message : label("Falha ao enviar a imagem.", "Image upload failed."));
       }
     });
   };
 
   return (
-    <div className="space-y-2">
+    <fieldset disabled={isPending} data-upload-pending={isPending} aria-busy={isPending} className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-text">
           {label("Imagem", "Image")}
@@ -72,7 +80,7 @@ export function ProductImageField({ value, onChange }: ProductImageFieldProps) {
       ) : (
         <FileUpload
           accept="image/png,image/jpeg,image/webp"
-          maxSize={5 * 1024 * 1024}
+          maxSize={PRODUCT_IMAGE_MAX_BYTES}
           onFileSelect={handleFiles}
           className="p-4"
         />
@@ -85,8 +93,9 @@ export function ProductImageField({ value, onChange }: ProductImageFieldProps) {
         placeholder={label("ou cole uma URL: https://...", "or paste a URL: https://...")}
       />
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
-    </div>
+      {isPending && <p role="status">{label("Enviando imagem…", "Uploading image…")}</p>}
+      {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
+    </fieldset>
   );
 }
 

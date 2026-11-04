@@ -15,13 +15,19 @@ export const metadata: Metadata = {
   title: "Admin | Assinaturas",
 };
 
-export default async function AdminAssinaturasPage({
-  params: { locale },
-  searchParams = {},
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams?: Record<string, string | undefined>;
-}) {
+export default async function AdminAssinaturasPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams?: Promise<Record<string, string | undefined>>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");

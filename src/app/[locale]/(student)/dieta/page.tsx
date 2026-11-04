@@ -6,11 +6,17 @@ import { StudentRoutineService } from "@/services/StudentRoutineService";
 import { DailyItemsClient } from "@/components/student/RoutineClients";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dieta" };
-export default async function Page({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const userId = await requireStudentPage();
   const data = await StudentRoutineService.get(userId);

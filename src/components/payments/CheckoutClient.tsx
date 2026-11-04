@@ -28,7 +28,6 @@ export interface CheckoutLabels {
   paymentError: string;
   secureNote: string;
   totalDueToday: string;
-  trialNote: string;
   card: CardFormLabels;
   pixPanel: PixLabels;
 }
@@ -39,9 +38,9 @@ interface CheckoutClientProps {
   planId: string;
   planName: string;
   priceLabel: string;
-  totalTodayLabel: string;
+
   cycleLabel: string;
-  trialDays: number;
+
   cardAvailable: boolean;
   pixAvailable: boolean;
   pixNeedsDocument?: boolean;
@@ -56,9 +55,9 @@ export function CheckoutClient({
   planId,
   planName,
   priceLabel,
-  totalTodayLabel,
+
   cycleLabel,
-  trialDays,
+
   cardAvailable,
   pixAvailable,
   pixNeedsDocument,
@@ -268,9 +267,9 @@ export function CheckoutClient({
         locale={locale}
         planName={planName}
         priceLabel={priceLabel}
-        totalTodayLabel={totalTodayLabel}
+
         cycleLabel={cycleLabel}
-        trialDays={trialDays}
+
         method={tab}
         labels={labels}
       />

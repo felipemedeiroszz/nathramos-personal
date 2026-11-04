@@ -13,7 +13,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 });
     }
 
-    const todaysProgram = await WorkoutService.getTodaysProgram(userId);
+    const schedule = await WorkoutService.getDaySchedule(userId);
+    const todaysProgram = schedule.plans.find(p => !p.sessionCompletedToday) || schedule.plans[0];
 
     if (!todaysProgram || !todaysProgram.program || !todaysProgram.day) {
       return NextResponse.json({
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
         exerciseCount: 0,
         estimatedMinutes: 0,
         available: false,
-        reason: "No workout assigned for today",
+        reason: schedule.state,
+        notes: schedule.notes,
         completedToday: todaysProgram?.sessionCompletedToday ?? false,
       });
     }

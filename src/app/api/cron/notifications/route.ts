@@ -1,40 +1,42 @@
-import { NextResponse } from "next/server"
-import { NotificationDispatcher } from "@/services/NotificationDispatcher"
-
-export const dynamic = "force-dynamic"
-
-function isAuthorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return false
-  const header = request.headers.get("authorization") ?? ""
-  return header === `Bearer ${secret}`
-}
-
-/**
- * Processa notificações agendadas e gera lembretes de rotina.
- * Protegida por `Authorization: Bearer <CRON_SECRET>` (usada pelo Vercel Cron).
- * `?task=deliver|reminders|all` permite executar apenas uma das etapas.
- */
+import { NextResponse } from "next/server";
+import { NotificationDispatcher } from "@/services/NotificationDispatcher";
+import { ExamUploadService } from "@/services/ExamUploadService";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-  }
-
-  const task = new URL(request.url).searchParams.get("task") ?? "all"
-
-  const result: Record<string, unknown> = { task }
-
-  try {
-  if (task === "all" || task === "reminders") {
-    result.reminders = await NotificationDispatcher.generateRoutineReminders()
-  }
-  if (task === "all" || task === "deliver") {
-    result.deliveries = await NotificationDispatcher.processDueNotifications()
-  }
-
-  return NextResponse.json({ success: true, ...result })
-  } catch (error) {
-    console.error("[cron/notifications]", error)
-    return NextResponse.json({ error: "Falha ao processar notificações." }, { status: 500 })
-  }
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const task = new URL(request.url).searchParams.get("task") || "all";
+  if (!["all", "reminders", "deliver", "uploads"].includes(task))
+    return NextResponse.json({ error: "invalid_task" }, { status: 400 });
+  const result: Record<string, unknown> = { task };
+  let failed = false;
+  const run = async (name: string, action: () => Promise<any>) => {
+    try {
+      const value = await action();
+      result[name] = value;
+      if (value.failed > 0) failed = true;
+    } catch {
+      failed = true;
+      result[name] = {
+        error: "Falha nesta etapa. As outras etapas foram executadas.",
+      };
+      console.error("[cron/notifications] stage_failed", { stage: name });
+    }
+  };
+  if (task === "all" || task === "reminders")
+    await run("reminders", () =>
+      NotificationDispatcher.generateRoutineReminders(),
+    );
+  if (task === "all" || task === "deliver")
+    await run("deliveries", () =>
+      NotificationDispatcher.processDueNotifications(),
+    );
+  if (task === "all" || task === "uploads")
+    await run("uploads", () => ExamUploadService.cleanExpired());
+  return NextResponse.json(
+    { success: !failed, ...result },
+    { status: failed ? 500 : 200 },
+  );
 }

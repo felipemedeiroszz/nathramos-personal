@@ -9,14 +9,21 @@ import { StudentWorkoutExecutionClient } from "@/components/student/workout/Stud
 import { StartWorkoutButton } from "@/components/student/workout/StartWorkoutButton";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Treino" };
-export default async function Page({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const userId = await requireStudentPage();
-  const plans = await WorkoutService.getTodayPlans(userId);
+  const schedule = await WorkoutService.getDaySchedule(userId);
+  const plans = schedule.plans;
   const views = await Promise.all(
     plans.map(async (plan) => {
       const exercises = await WorkoutService.applyStudentOverrides(
@@ -37,6 +44,7 @@ export default async function Page({
             sessionId={session.id}
             exercises={exercises}
             initialLogs={logs}
+            guidance={plan.assignment.notes}
             locale={locale}
           />
         );
@@ -51,6 +59,8 @@ export default async function Page({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {plan.assignment.workout_time && <p className="text-sm text-text-secondary">{locale === "en-US" ? "Scheduled time" : "Horário programado"}: {plan.assignment.workout_time}</p>}
+            {plan.assignment.notes && <p className="whitespace-pre-wrap text-sm text-text-secondary">{plan.assignment.notes}</p>}
             <p>
               {locale === "en-US" ? plan.day.name_en : plan.day.name_pt} ·{" "}
               {exercises.length} exercícios
@@ -88,7 +98,8 @@ export default async function Page({
       {!plans.length && (
         <Card>
           <CardContent className="p-6 space-y-3">
-            <p>Nenhum treino programado para hoje.</p>
+            <p>{schedule.state === "rest" ? (locale === "en-US" ? "Rest scheduled by your coach." : "Descanso programado pelo personal.") : (locale === "en-US" ? "No workout scheduled for today." : "Nenhum treino programado para hoje.")}</p>
+            {schedule.notes && <p className="whitespace-pre-wrap text-sm">{schedule.notes}</p>}
             <Link
               className="text-primary underline"
               href={`/${locale}/conversas`}

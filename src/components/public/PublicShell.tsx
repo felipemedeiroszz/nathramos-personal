@@ -2,13 +2,15 @@ import { PublicHeader } from "@/components/shared/PublicHeader";
 import { PublicFooter } from "@/components/shared/PublicFooter";
 import "./public.css";
 import { PublicMotion } from "./PublicMotion";
-export function PublicShell({
+import { getPublicPlatformSettings } from "@/services/PlatformSettingsService";
+export async function PublicShell({
   locale,
   children,
 }: {
   locale: string;
   children: React.ReactNode;
 }) {
+  const settings = await getPublicPlatformSettings();
   return (
     <div className="public-site flex min-h-dvh flex-col bg-background text-text">
       <PublicMotion locale={locale} />
@@ -18,7 +20,7 @@ export function PublicShell({
       >
         {locale === "en-US" ? "Skip to content" : "Ir para o conteúdo"}
       </a>
-      <PublicHeader locale={locale} />
+      <PublicHeader locale={locale} settings={settings} />
       <div
         id="public-content"
         tabIndex={-1}
@@ -26,7 +28,7 @@ export function PublicShell({
       >
         {children}
       </div>
-      <PublicFooter locale={locale} />
+      <PublicFooter locale={locale} settings={settings} />
     </div>
   );
 }

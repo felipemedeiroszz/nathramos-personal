@@ -12,20 +12,26 @@ export const metadata: Metadata = {
   title: "Biblioteca Digital",
 };
 
-export default async function EbooksPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams: { purchase?: string };
-}) {
+export default async function EbooksPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams: Promise<{ purchase?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   await getTranslations("studentPages");
 
   const userId = await requireStudentPage();
 
-  const ebooks = await EbookService.listEbooks({ is_published: true });
+  const ebooks = await EbookService.studentLibrary();
   const paidIds = await EbookService.getPaidEbookIds(userId);
 
   return (

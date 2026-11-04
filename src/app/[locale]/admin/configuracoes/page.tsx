@@ -13,11 +13,17 @@ export const metadata: Metadata = {
   title: "Admin | Configurações",
 };
 
-export default async function AdminConfiguracoesPage({
-  params: { locale },
-}: {
-  params: { locale: (typeof locales)[number] };
-}) {
+export default async function AdminConfiguracoesPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");

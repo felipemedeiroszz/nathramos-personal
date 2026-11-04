@@ -71,7 +71,7 @@ export function DayUpsertModal({
     focus_pt: day?.focus_pt ?? "",
     focus_en: day?.focus_en ?? "",
     week_number: day?.week_number ?? 1,
-    day_of_week: day?.day_of_week ?? 0,
+    day_of_week: day?.day_of_week ?? 1,
     order_index: day?.order_index ?? 0,
     est_minutes: day?.est_minutes ?? 60,
     warmup_minutes: day?.warmup_minutes ?? 5,
@@ -89,7 +89,7 @@ export function DayUpsertModal({
         focus_pt: day.focus_pt ?? "",
         focus_en: day.focus_en ?? "",
         week_number: day.week_number ?? 1,
-        day_of_week: day.day_of_week ?? 0,
+        day_of_week: day.day_of_week ?? 1,
         order_index: day.order_index ?? 0,
         est_minutes: day.est_minutes ?? 60,
         warmup_minutes: day.warmup_minutes ?? 5,
@@ -104,7 +104,7 @@ export function DayUpsertModal({
         focus_pt: "",
         focus_en: "",
         week_number: 1,
-        day_of_week: 0,
+        day_of_week: 1,
         order_index: 0,
         est_minutes: 60,
         warmup_minutes: 5,
@@ -239,7 +239,7 @@ export function DayUpsertModal({
                 required
               >
                 {dayLabels.map((d, i) => (
-                  <option key={i} value={i}>
+                  <option key={i} value={i === 0 ? 7 : i}>
                     {d}
                   </option>
                 ))}

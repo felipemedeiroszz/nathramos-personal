@@ -31,11 +31,17 @@ export const metadata: Metadata = {
 const typeIcons = [Dumbbell, Flame, Gauge, Activity];
 const typeKeys = ["hypertrophy", "fatLoss", "strength", "functional"];
 
-export default async function TreinosPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function TreinosPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("workoutsPage");

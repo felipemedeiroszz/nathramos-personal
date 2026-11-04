@@ -16,7 +16,7 @@ export function RoutineSummary({ data }: { data: RoutineData }) {
       label: t("Alimentação", "Nutrition"),
       value: `${foodDone}`,
       suffix: `/ ${data.diet.length}`,
-      detail: t("alimentos registrados hoje", "food items logged today"),
+      detail: t("alimentos registrados no dia", "food items logged on this day"),
       icon: Utensils,
       color: "#facc15",
       progress: data.diet.length ? (foodDone / data.diet.length) * 100 : null,
@@ -40,7 +40,7 @@ export function RoutineSummary({ data }: { data: RoutineData }) {
       label: t("Suplementos", "Supplements"),
       value: `${suppDone}`,
       suffix: `/ ${data.supplements.length}`,
-      detail: t("doses registradas hoje", "doses logged today"),
+      detail: t("doses registradas no dia", "doses logged on this day"),
       icon: Pill,
       color: "#a78bfa",
       progress: data.supplements.length

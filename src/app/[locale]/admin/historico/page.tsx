@@ -8,18 +8,24 @@ import {
 import { createServiceClientSSR } from "@/lib/supabase/server";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
-export default async function HistoryPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: string };
-  searchParams: {
-    student?: string;
-    page?: string;
-    kind?: string;
-    record?: string;
-  };
-}) {
+export default async function HistoryPage(
+  props: {
+    params: Promise<{ locale: string }>;
+    searchParams: Promise<{
+      student?: string;
+      page?: string;
+      kind?: string;
+      record?: string;
+    }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   const actor = await requireRole(["admin", "coach"], "/dashboard");
   const student = z.string().uuid().safeParse(searchParams.student);
   const kind = z

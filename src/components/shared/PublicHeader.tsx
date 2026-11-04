@@ -14,7 +14,9 @@ import {
 import { publicLinks, publicServices } from "@/components/public/navigation";
 import { useDialogFocus } from "@/components/ui/useDialogFocus";
 import { cn } from "@/lib/utils";
-export function PublicHeader({ locale }: { locale: string }) {
+import { PUBLIC_SETTINGS_DEFAULTS, localizedBrand, type PublicPlatformSettings } from "@/lib/platform/publicSettings";
+export function PublicHeader({ locale, settings = PUBLIC_SETTINGS_DEFAULTS }: { locale: string; settings?: PublicPlatformSettings }) {
+  const brand = localizedBrand(settings, locale);
   const en = locale === "en-US",
     pathname = usePathname(),
     router = useRouter();
@@ -82,24 +84,24 @@ export function PublicHeader({ locale }: { locale: string }) {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-5 px-5 sm:px-8">
           <Link
             href={`/${locale}`}
-            className="flex shrink-0 items-center gap-3"
-            aria-label={en ? "Nath Ramos · Home" : "Nath Ramos · Início"}
+            className="flex min-w-0 shrink items-center gap-3"
+            aria-label={`${brand.name} · ${en ? "Home" : "Início"}`}
           >
-            <div className="relative h-11 w-11">
+            <div className="relative h-11 w-11 shrink-0">
               <Image
                 src="/logo.png"
-                alt="Nath Ramos"
+                alt={brand.name}
                 fill
                 className="object-contain"
                 priority
               />
             </div>
-            <span>
-              <span className="block text-xs font-semibold tracking-[0.15em]">
-                NATH RAMOS
+            <span className="min-w-0 max-w-[180px]">
+              <span title={brand.name} className="block truncate text-xs font-semibold uppercase tracking-[0.15em]">
+                {brand.name}
               </span>
-              <span className="mt-1 block text-[8px] tracking-[0.25em] text-zinc-500">
-                PERSONAL TRAINER
+              <span title={brand.tagline} className="mt-1 block truncate text-[8px] uppercase tracking-[0.25em] text-zinc-500">
+                {brand.tagline}
               </span>
             </span>
           </Link>
@@ -227,8 +229,8 @@ export function PublicHeader({ locale }: { locale: string }) {
             className="ml-auto flex h-dvh w-[min(390px,100vw)] flex-col border-l border-white/10 bg-[#0e1113] text-zinc-100"
           >
             <div className="flex h-20 shrink-0 items-center justify-between border-b border-white/[0.07] px-6">
-              <span className="text-xs font-semibold tracking-[0.15em]">
-                NATH RAMOS
+              <span title={brand.name} className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.15em]">
+                {brand.name}
               </span>
               <button
                 onClick={() => setMobileOpen(false)}

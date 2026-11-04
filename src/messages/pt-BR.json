@@ -1153,7 +1153,7 @@
     "saveError": "Não foi possível salvar o plano."
   },
   "adminPages": {
-    "subtitle": "Edite o conteúdo das páginas institucionais exibidas no site.",
+    "subtitle": "Organize o conteúdo, confira a prévia e publique as páginas do seu site.",
     "tabTermos": "Termos",
     "tabPrivacidade": "Privacidade",
     "tabFaq": "FAQ",
@@ -1258,6 +1258,7 @@
     "method_pix": "PIX",
     "method_boleto": "Boleto",
     "method_bank_transfer": "Transferência",
+    "method_cash": "Dinheiro",
     "status_pending": "Pendente",
     "status_processing": "Processando",
     "status_paid": "Pago",
@@ -1323,6 +1324,10 @@
     "systemActor": "Sistema"
   },
   "adminSettings": {
+    "whatsappHelp": "Inclua o código do país e o DDD. Ex.: +55 11 99999-0000. Deixe vazio para ocultar o contato.",
+    "maintenanceAfterSave": "A nova data de término será calculada ao salvar as alterações.",
+    "restartMaintenance": "Iniciar nova janela de manutenção",
+    "reload": "Recarregar configurações",
     "subtitle": "Configurações gerais da plataforma e preferências do sistema.",
     "generalTitle": "Geral & Contato",
     "generalDesc": "Identidade da marca e canais de atendimento.",

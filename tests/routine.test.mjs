@@ -29,3 +29,25 @@ test('calendário respeita semana e dia, sem liberar treino de descanso ou próx
  assert.equal(workoutWeek('2026-10-01','2026-10-08',4),2)
  assert.equal(workoutWeek('2026-10-01','2026-10-29',4),1)
 })
+
+const {upsertWorkoutKitItemSchema}=loadTs('src/schemas/workouts.ts')
+const uuid='00000000-0000-4000-8000-000000000001'
+test('exercícios avulsos exigem dia e não podem misturar programa e exercício',()=>{
+ assert.equal(upsertWorkoutKitItemSchema.safeParse({kit_id:uuid,exercise_id:uuid}).success,false)
+ for(let day=1;day<=7;day++) assert.equal(upsertWorkoutKitItemSchema.safeParse({kit_id:uuid,exercise_id:uuid,day_of_week:day}).success,true)
+ assert.equal(upsertWorkoutKitItemSchema.safeParse({kit_id:uuid,exercise_id:uuid,program_id:uuid,day_of_week:1}).success,false)
+ assert.equal(upsertWorkoutKitItemSchema.safeParse({kit_id:uuid,program_id:uuid}).success,true)
+})
+test('perna de segunda não aparece terça nem domingo; domingo usa ISO 7',()=>{
+ const leg={week_number:1,day_of_week:1,name:'Perna'}
+ assert.deepEqual(selectWorkoutDays([leg],1,1),[leg])
+ assert.deepEqual(selectWorkoutDays([leg],1,2),[])
+ assert.deepEqual(selectWorkoutDays([leg],1,7),[])
+ const sunday={week_number:1,day_of_week:7}
+ assert.deepEqual(selectWorkoutDays([sunday],1,7),[sunday])
+})
+test('virada do dia usa o fuso do aluno',()=>{
+ const {getZonedParts}=loadTs('src/lib/notifications/time.ts')
+ assert.equal(getZonedParts(new Date('2026-11-03T02:59:00Z'),'America/Sao_Paulo').weekday,1)
+ assert.equal(getZonedParts(new Date('2026-11-03T03:00:00Z'),'America/Sao_Paulo').weekday,2)
+})

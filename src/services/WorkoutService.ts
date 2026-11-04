@@ -1,3 +1,10 @@
+import {
+  dateKeySchema,
+  rulesForDate,
+  defaultRule,
+  weekdayOf,
+  type WorkoutState,
+} from "@/lib/student/schedule";
 import { requirePlatformUser, staffStudentIds } from "@/lib/auth/platform";
 import { getZonedParts } from "@/lib/notifications/time";
 import { checked } from "./StudentRoutineService";
@@ -176,10 +183,10 @@ export class WorkoutService {
       }
 
       const { data, error } = await q;
-      if (error) return [];
+      if (error) throw error;
       return (data as WorkoutProgramRow[]) ?? [];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -448,6 +455,8 @@ export class WorkoutService {
     if (!plans.some((p) => p.day.id === dayId && p.program.id === programId))
       return null;
     const db = await this.getSupabase();
+    const { StudentRoutineService } = await import("./StudentRoutineService");
+    await StudentRoutineService.get(userId);
     const result = await (db.rpc as any)("start_student_workout", {
       p_user_id: userId,
       p_day_id: dayId,
@@ -541,6 +550,7 @@ export class WorkoutService {
   }
   static async getTodayPlans(
     userId: string,
+    dateOverride?: string,
   ): Promise<
     Array<{
       assignment: any;
@@ -553,7 +563,22 @@ export class WorkoutService {
     }>
   > {
     const db: any = await this.getSupabase();
-    const local = await this.localToday(userId);
+    const local = dateOverride
+      ? {
+          dateKey: dateKeySchema.parse(dateOverride),
+          weekday: weekdayOf(dateOverride),
+        }
+      : await this.localToday(userId);
+    const ruleRows = checked<any[]>(
+      await db
+        .from("student_daily_rules")
+        .select("*")
+        .eq("student_id", userId)
+        .eq("kind", "workout")
+        .lte("effective_from", local.dateKey),
+      "workout rules",
+    );
+    const rules = rulesForDate(ruleRows, local.dateKey);
     const assignments = checked<any[]>(
       await db
         .from("student_workout_kits")
@@ -618,17 +643,22 @@ export class WorkoutService {
     const plans: Awaited<ReturnType<typeof WorkoutService.getTodayPlans>> = [];
     const seen = new Set<string>();
     for (const assignment of assignments) {
+      const rule =
+        rules.get(`workout:${assignment.id}`) || defaultRule("workout");
+      if (
+        (rule.on_date
+          ? rule.on_date !== local.dateKey
+          : !rule.weekdays.includes(local.weekday)) ||
+        rule.rest_weekdays.includes(local.weekday)
+      )
+        continue;
       if (assignment.kit_id && (!assignment.kit || assignment.kit.is_deleted))
         continue;
       const eligible = new Set([
         assignment.program_id,
         assignment.kit?.generated_program_id,
         ...items
-          .filter(
-            (i) =>
-              i.kit_id === assignment.kit_id &&
-              (!i.day_of_week || i.day_of_week === local.weekday),
-          )
+          .filter((i) => i.kit_id === assignment.kit_id)
           .map((i) => i.program_id),
       ]);
       for (const program of programs.filter((p) => eligible.has(p.id))) {
@@ -636,17 +666,24 @@ export class WorkoutService {
           assignment.start_date,
           local.dateKey,
           program.total_weeks,
+          rule.repeat_cycle,
         );
+        if (!rule.repeat_cycle && week > program.total_weeks) continue;
         const selected = selectWorkoutDays(
           days.filter((d) => d.program_id === program.id),
-          week,
+          assignment.kit?.generated_program_id === program.id ? 1 : week,
           local.weekday,
+          rule.fallback_week_one,
         );
         for (const day of selected) {
           if (seen.has(day.id)) continue;
           seen.add(day.id);
           plans.push({
-            assignment,
+            assignment: {
+              ...assignment,
+              notes: rule.notes || assignment.notes,
+              workout_time: rule.workout_time,
+            },
             kit: assignment.kit,
             program,
             day,
@@ -660,6 +697,46 @@ export class WorkoutService {
       }
     }
     return plans;
+  }
+  static async getDaySchedule(userId: string, date?: string) {
+    const day = date || (await this.localToday(userId)).dateKey;
+    const plans = await this.getTodayPlans(userId, day);
+    if (plans.length)
+      return { plans, state: "training" as WorkoutState, notes: "" };
+    const db: any = await this.getSupabase();
+    const [assignmentsResult, rulesResult] = await Promise.all([
+      db
+        .from("student_workout_kits")
+        .select("*, kit:workout_kits(*)")
+        .eq("student_id", userId)
+        .eq("status", "active")
+        .lte("start_date", day)
+        .or(`end_date.is.null,end_date.gte.${day}`),
+      db
+        .from("student_daily_rules")
+        .select("*")
+        .eq("student_id", userId)
+        .eq("kind", "workout")
+        .lte("effective_from", day),
+    ]);
+    const rules = rulesForDate(checked<any[]>(rulesResult, "rest rules"), day);
+    for (const a of checked<any[]>(assignmentsResult, "rest assignments")) {
+      if (a.kit_id && (!a.kit || a.kit.is_deleted)) continue;
+      const rule = rules.get(`workout:${a.id}`) || defaultRule("workout");
+      if (
+        (rule.on_date
+          ? rule.on_date === day
+          : rule.weekdays.includes(weekdayOf(day))) &&
+        rule.rest_weekdays.includes(weekdayOf(day))
+      ) {
+        return {
+          plans,
+          state: "rest" as WorkoutState,
+          notes: rule.notes || a.notes || "",
+        };
+      }
+    }
+    return { plans, state: "unassigned" as WorkoutState, notes: "" };
   }
   static async getTodaysProgram(userId: string) {
     const plans = await this.getTodayPlans(userId);

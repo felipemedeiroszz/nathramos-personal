@@ -42,9 +42,7 @@ export class SubscriptionService {
     const started_at = now.toISOString()
     const current_period_start = started_at
     const current_period_end = addDays(now, plan.billing_cycle_days).toISOString()
-    const trial_ends_at = plan.trial_days > 0
-      ? addDays(now, plan.trial_days).toISOString()
-      : undefined
+    const trial_ends_at = undefined
 
     return { current_period_start, current_period_end, trial_ends_at, started_at }
   }
@@ -71,7 +69,7 @@ export class SubscriptionService {
     }
 
     const dates = this.getDates(plan)
-    const status: SubscriptionStatusT = dates.trial_ends_at ? "trialing" : "past_due"
+    const status: SubscriptionStatusT = "inactive"
 
     const insertPayload: SubInsertT = {
       user_id: userId,
@@ -83,7 +81,7 @@ export class SubscriptionService {
       currency: plan.currency as CurrencyT,
       unit_amount_cents: plan.price_cents,
       billing_cycle_days: plan.billing_cycle_days,
-      trial_ends_at: dates.trial_ends_at ?? inputs.trial_ends_at ?? null,
+      trial_ends_at: null,
       current_period_start: dates.current_period_start,
       current_period_end: dates.current_period_end,
       grace_until: null,
@@ -169,6 +167,9 @@ export class SubscriptionService {
   ): Pick<SubscriptionRow, "status" | "grace_until" | "block_reason"> {
     const now = new Date()
     const periodEnd = parseISO(sub.current_period_end)
+    if (sub.source === "admin_manual" && periodEnd.getTime() <= now.getTime()) {
+      return { status: "blocked", grace_until: null, block_reason: "manual_period_expired" }
+    }
     const prepaidPix = sub.provider === "asaas" && (sub.source === "asaas_pix" || sub.external_id?.startsWith("pay_"))
     if (prepaidPix && periodEnd.getTime() <= now.getTime()) {
       return { status: "blocked", grace_until: null, block_reason: "pix_period_expired_payment_required" }

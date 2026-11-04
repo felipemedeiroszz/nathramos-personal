@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import {
   setRequestLocale,
   getTranslations,
-  unstable_setRequestLocale,
 } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
@@ -21,11 +20,17 @@ export const metadata: Metadata = {
   title: "Conta",
 };
 
-export default async function AccountPage({
-  params: { locale },
-}: {
-  params: { locale: LocaleKey };
-}) {
+export default async function AccountPage(
+  props: {
+    params: Promise<{ locale: LocaleKey }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   await getTranslations("account");

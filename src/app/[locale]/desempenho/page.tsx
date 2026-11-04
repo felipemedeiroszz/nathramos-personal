@@ -54,11 +54,17 @@ const weightMockData = [
   { name: "29", value: 78 },
 ];
 
-export default async function DesempenhoPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function DesempenhoPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("performancePage");

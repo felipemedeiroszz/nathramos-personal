@@ -112,8 +112,8 @@ export default function CadastroPage() {
   ];
 
   const gender = watch("gender");
-  const acceptsTerms = watch("accepts_terms");
-  const acceptsPrivacy = watch("accepts_privacy");
+  const acceptsTerms = watch("accepts_terms") === true;
+  const acceptsPrivacy = watch("accepts_privacy") === true;
 
   const onSubmit: SubmitHandler<SignUpFormValues> = async (values) => {
     if (isPending) return;

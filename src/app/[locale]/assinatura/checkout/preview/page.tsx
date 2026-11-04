@@ -17,11 +17,17 @@ export const metadata: Metadata = {
 
 const KNOWN_CYCLES = [7, 30, 90, 180, 365];
 
-export default async function CheckoutPreviewPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function CheckoutPreviewPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("payments");
@@ -47,7 +53,6 @@ export default async function CheckoutPreviewPage({
   const currency = (plan?.currency ?? (isPt ? "BRL" : "USD")) as CurrencyT;
   const priceCents = plan?.price_cents ?? (isPt ? 9700 : 1900);
   const billingCycleDays = plan?.billing_cycle_days ?? 30;
-  const trialDays = plan?.trial_days ?? 7;
 
   const cycleKey = KNOWN_CYCLES.includes(billingCycleDays)
     ? billingCycleDays
@@ -58,8 +63,6 @@ export default async function CheckoutPreviewPage({
     currency,
     locale as Locale,
   );
-  const totalTodayLabel =
-    trialDays > 0 ? formatCurrency(0, currency, locale as Locale) : priceLabel;
   const cycleLabel = tp(`cycle_${cycleKey}` as any);
 
   return (
@@ -83,9 +86,9 @@ export default async function CheckoutPreviewPage({
               locale={locale}
               planName={planName}
               priceLabel={priceLabel}
-              totalTodayLabel={totalTodayLabel}
+
               cycleLabel={cycleLabel}
-              trialDays={trialDays}
+
               notice={t("previewNotice")}
               labels={{
                 planSummary: t("planSummary"),
@@ -101,7 +104,7 @@ export default async function CheckoutPreviewPage({
                 paymentError: t("paymentError"),
                 secureNote: t("secureNote"),
                 totalDueToday: t("totalDueToday"),
-                trialNote: t("trialNote", { days: trialDays }),
+
                 card: {
                   number: t("cardNumber"),
                   holder: t("cardHolder"),

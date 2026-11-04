@@ -12,7 +12,7 @@ try {
       page.on("pageerror", (e) => errors.push(e.message));
       for (const route of ["login", "cadastro"]) {
         const response = await page.goto(
-          `http://localhost:3000/${locale}/${route}`,
+          `${process.env.PUBLIC_BASE_URL || "http://localhost:3000"}/${locale}/${route}`,
           { waitUntil: "domcontentloaded", timeout: 60000 },
         );
         if (!response.ok()) throw Error("HTTP " + response.status());

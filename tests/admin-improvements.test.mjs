@@ -270,7 +270,7 @@ test("reordenação de treino é atômica, mantém versão e rejeita item de out
   ).rows[0].id;
   const item = (
     await db.query(
-      "insert into workout_kit_items(kit_id,exercise_id,order_index) values($1,$2,1) returning id",
+      "insert into workout_kit_items(kit_id,exercise_id,day_of_week,order_index) values($1,$2,1,1) returning id",
       [workout.id, exercise],
     )
   ).rows[0].id;

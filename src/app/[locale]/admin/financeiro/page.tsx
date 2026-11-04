@@ -17,13 +17,19 @@ export const metadata: Metadata = {
   title: "Admin | Financeiro",
 };
 
-export default async function AdminFinanceiroPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams: { currency?: string; from?: string; to?: string };
-}) {
+export default async function AdminFinanceiroPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams: Promise<{ currency?: string; from?: string; to?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");

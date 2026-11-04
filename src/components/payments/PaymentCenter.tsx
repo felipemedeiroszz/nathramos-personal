@@ -41,6 +41,8 @@ const labels: Record<string, [string, string]> = {
   credit_card: ["Cartão", "Card"],
   pix: ["PIX avulso", "One-off PIX"],
   boleto: ["Boleto", "Bank slip"],
+  cash: ["Dinheiro", "Cash"],
+  manual: ["Manual", "Manual"],
   bank_transfer: ["Transferência", "Bank transfer"],
 };
 const box = "rounded-2xl border border-border bg-surface p-5 md:p-6";
@@ -61,6 +63,9 @@ export function PaymentCenter({
     [message, setMessage] = useState(""),
     [selected, setSelected] = useState<any>(null),
     [confirm, setConfirm] = useState<{ kind: string; id: string } | null>(null);
+  useEffect(()=>{
+    setSelected((previous:any)=>previous ? payments.rows.find((payment:any)=>payment.id===previous.id)||null : null);
+  },[payments.rows]);
   const money = (cents: number, currency = "BRL") =>
     new Intl.NumberFormat(locale, { style: "currency", currency }).format(
       cents / 100,
@@ -74,6 +79,7 @@ export function PaymentCenter({
         })
       : "—";
   const label = (value: string) => labels[value]?.[en ? 1 : 0] || value;
+  const manual = sub?.source === "admin_manual";
   const recurring = sub?.provider === "stripe",
     prepaid =
       sub?.provider === "asaas" &&
@@ -261,7 +267,7 @@ export function PaymentCenter({
                   )}
             </h2>
             <p className="mt-2 max-w-2xl text-text-secondary">
-              {prepaid
+              {manual ? text("Seu acesso foi liberado pela administração até o vencimento abaixo, sem renovação automática.", "Your access was granted by the administrator until the expiration below, with no automatic renewal.") : prepaid
                 ? text(
                     "PIX é um pagamento único. Seu acesso termina no vencimento abaixo, sem cobrança automática e sem dias extras.",
                     "PIX is a one-off payment. Access ends on the date below, without automatic renewal or extra days.",
@@ -310,7 +316,7 @@ export function PaymentCenter({
                 {text("Período contratado", "Billing cycle")}
               </dt>
               <dd className="mt-1 font-semibold">
-                {sub.billing_cycle_days === 30
+                {manual ? text("Liberado manualmente", "Manually granted") : sub.billing_cycle_days === 30
                   ? text("Mensal", "Monthly")
                   : sub.billing_cycle_days === 365
                     ? text("Anual", "Yearly")
@@ -322,7 +328,7 @@ export function PaymentCenter({
                 {text("Renovação", "Renewal")}
               </dt>
               <dd className="mt-1 font-semibold">
-                {prepaid
+                {manual ? text("Consulte a administração", "Contact the administrator") : prepaid
                   ? text("Novo pagamento necessário", "New payment required")
                   : sub.cancel_at_period_end
                     ? text("Desativada", "Disabled")

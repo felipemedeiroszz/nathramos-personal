@@ -38,6 +38,8 @@ export function AssinaturaStatusCard({
   const [checkError,setCheckError] = useState(false);
   const doneRef = useRef(initialActive);
 
+  useEffect(()=>{setActive(initialActive);doneRef.current=initialActive;},[initialActive]);
+
   const check = useCallback(async () => {
     if (doneRef.current) return;
     try {

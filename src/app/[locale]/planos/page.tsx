@@ -28,13 +28,19 @@ export const metadata: Metadata = {
 const perkIcons = [RefreshCcw, ShieldCheck, Headphones];
 const perkKeys = ["noCommitment", "securePayment", "support"] as const;
 
-export default async function PlanosPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: string };
-  searchParams: { checkout?: string };
-}) {
+export default async function PlanosPage(
+  props: {
+    params: Promise<{ locale: string }>;
+    searchParams: Promise<{ checkout?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("plans");

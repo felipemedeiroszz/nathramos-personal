@@ -24,10 +24,8 @@ const ERROR_MESSAGE: Record<ExerciseDbErrorCode, string> = {
   invalid_response: "Resposta inesperada da ExerciseDB.",
 }
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = await getCurrentUserId()
   if (!userId) return errorResponse("Não autorizado.", 401, "UNAUTHENTICATED")
 

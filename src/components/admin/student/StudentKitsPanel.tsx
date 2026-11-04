@@ -107,6 +107,7 @@ export function StudentKitsPanel({
         <div>
           <h2 className="text-lg font-bold text-text">{title}</h2>
           <p className="text-sm text-text-secondary">{t("subtitle")}</p>
+          <p className="mt-2 text-xs text-text-secondary">{locale === "pt-BR" ? "Configure dias, horários e alternativas na aba Rotina após vincular. Dietas usam uma alternativa por grupo; suplementos são complementares por padrão." : "Configure days, times and alternatives in the Routine tab after assigning. Diets use one alternative per group; supplements are complementary by default."}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">

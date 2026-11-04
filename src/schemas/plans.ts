@@ -59,7 +59,7 @@ export const upsertPlanSchema = z.object({
       message: "Ciclo de cobrança inválido.",
     })
     .default(30),
-  trial_days: z.coerce.number().int().min(0).max(60).default(0),
+  trial_days: z.coerce.number().int().min(0).max(0).default(0),
   grace_days: z.coerce.number().int().min(0).max(30).default(3),
   stripe_price_id: optionalText(200),
   stripe_product_id: optionalText(200),

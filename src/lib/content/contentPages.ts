@@ -325,7 +325,7 @@ function pick(pt: string | null | undefined, en: string | null | undefined, loca
   const isPt = locale.startsWith("pt")
   const primary = isPt ? pt : en
   const secondary = isPt ? en : pt
-  return (primary ?? secondary ?? "").trim()
+  return primary?.trim() || secondary?.trim() || ""
 }
 
 /**
@@ -338,7 +338,9 @@ export function resolveContentPage(
   fallback: DefaultContentPage,
   locale: string
 ): ResolvedContentPage {
-  const sourceBlocks = row && row.blocks.length > 0 ? row.blocks : fallback.blocks
+  if (row?.is_active === false) row = null
+  const customized = row && (row.title_pt || row.title_en || row.blocks.length > 0)
+  const sourceBlocks = customized && row ? row.blocks : fallback.blocks
   const blocks = sourceBlocks.map((block) => ({
     id: block.id,
     title: pick(block.title_pt, block.title_en, locale),

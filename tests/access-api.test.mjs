@@ -9,7 +9,7 @@ function environment(options={}) {
  'server-only':{},'@/lib/supabase/server':{createClientSSR:async()=>({auth:{getUser:async()=>({data:{user:state.userId?{id:state.userId}:null},error:null})}}),createServiceClientSSR:async()=>db},
  './access':{canAccessPlatform:async()=>({allowed:state.allowed})},'@/services/PlatformSettingsService':{getMaintenanceStatus:async()=>({active:state.maintenance})},'next/navigation':{redirect(){throw Error('redirect')}},
  })
- function route(file){return loadTs(file,{'next/server':{NextResponse:{json:(body,init)=>({body,status:init?.status||200})}},'@/lib/auth/platform':platform,'@/services/WorkoutService':{WorkoutService:{userHistory:async(id,limit)=>{state.calls++;return [{user_id:id,limit}]},getTodaysProgram:async()=>{state.calls++;return null}}}})}
+ function route(file){return loadTs(file,{'next/server':{NextResponse:{json:(body,init)=>({body,status:init?.status||200})}},'@/lib/auth/platform':platform,'@/services/WorkoutService':{WorkoutService:{userHistory:async(id,limit)=>{state.calls++;return [{user_id:id,limit}]},getDaySchedule:async()=>{state.calls++;return {plans:[],state:'unassigned',notes:''}}}}})}
  return {state,platform,route}
 }
 for(const file of ['src/app/api/workout/today/route.ts','src/app/api/workout/history/route.ts']) {

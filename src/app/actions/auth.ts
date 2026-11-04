@@ -11,9 +11,9 @@ import { defaultLocale } from "@/i18n/config";
 import { isSignupOpen } from "@/services/PlatformSettingsService";
 import type { UserRole } from "@/types";
 
-function detectLocale(preferred?: FormDataEntryValue | null): string {
+async function detectLocale(preferred?: FormDataEntryValue | null): Promise<string> {
   if (preferred === "pt-BR" || preferred === "en-US") return preferred;
-  const headersList = headers();
+  const headersList = await headers();
   const acceptLanguage = headersList.get("accept-language") ?? "";
   if (acceptLanguage.toLowerCase().startsWith("en")) return "en-US";
   return defaultLocale;
@@ -43,7 +43,7 @@ export async function loginAction(formData: FormData) {
     password,
   });
 
-  const locale = detectLocale(formData.get("locale"));
+  const locale = await detectLocale(formData.get("locale"));
 
   if (error) {
     const isInvalidCredentials = /invalid login credentials/i.test(
@@ -138,8 +138,8 @@ export async function signUpAction(formData: FormData) {
 
   const supabase = await createClientSSR();
 
-  const origin = headers().get("origin") ?? "http://localhost:3000";
-  const locale = language ?? detectLocale();
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const locale = language ?? await detectLocale();
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -231,8 +231,8 @@ export async function forgotPasswordAction(formData: FormData) {
 
   const { email } = parsed.data;
 
-  const origin = headers().get("origin") ?? "http://localhost:3000";
-  const locale = detectLocale();
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const locale = await detectLocale();
 
   const supabase = await createClientSSR();
 

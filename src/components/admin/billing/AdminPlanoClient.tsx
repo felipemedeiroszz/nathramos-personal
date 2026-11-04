@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useLiveDraft } from "@/hooks/useLiveDraft";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check, Sparkles, ArrowUp, ArrowDown, Plus, Trash2 } from "lucide-react";
@@ -77,7 +78,7 @@ function buildForm(plan: PlanRow | null): FormState {
     price: plan ? (plan.price_cents / 100).toFixed(2) : "",
     currency: plan?.currency ?? "BRL",
     billing_cycle_days: String(plan?.billing_cycle_days ?? 30),
-    trial_days: String(plan?.trial_days ?? 0),
+    trial_days: "0",
     grace_days: String(plan?.grace_days ?? 3),
     highlight_hex: plan?.highlight_hex ?? "",
     badge_pt: plan?.badge_pt ?? "",
@@ -108,7 +109,7 @@ export function AdminPlanoClient({ plan }: AdminPlanoClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [slugEdited, setSlugEdited] = useState(!!plan);
-  const [form, setForm] = useState<FormState>(() => buildForm(plan));
+  const { draft: form, setDraft: setForm, accept, dirty } = useLiveDraft(buildForm(plan));
 
   const update = (key: keyof FormState, value: any) => {
     setSaved(false);
@@ -183,7 +184,7 @@ export function AdminPlanoClient({ plan }: AdminPlanoClientProps) {
         price_cents: Number.isFinite(priceCents) ? priceCents : 0,
         currency: form.currency as any,
         billing_cycle_days: Number(form.billing_cycle_days),
-        trial_days: Number(form.trial_days),
+        trial_days: 0,
         grace_days: Number(form.grace_days),
         highlight_hex: form.highlight_hex || null,
         badge_pt: form.badge_pt || null,
@@ -210,13 +211,14 @@ export function AdminPlanoClient({ plan }: AdminPlanoClientProps) {
         setError(result.message ?? t("saveError"));
         return;
       }
+      accept(buildForm(result.data));
       setSaved(true);
       router.refresh();
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 w-full">
+    <form onSubmit={handleSubmit} data-panel-editing={dirty} className="space-y-6 w-full">
       {/* Aviso: acesso total */}
       <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
         <Sparkles size={18} className="text-primary mt-0.5 shrink-0" />
@@ -343,16 +345,7 @@ export function AdminPlanoClient({ plan }: AdminPlanoClientProps) {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text">{t("trialDays")}</label>
-              <Input
-                type="number"
-                min="0"
-                max="60"
-                value={form.trial_days}
-                onChange={(e) => update("trial_days", e.target.value)}
-              />
-            </div>
+
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">{t("highlightHex")}</label>
               <Input

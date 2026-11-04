@@ -244,6 +244,9 @@ export async function addWorkoutKitItemAction(input: {
   await requireRole(["admin", "coach"], "/dashboard");
   try {
     await requireOwnedPrescription("workout_kits", input.kit_id);
+    if (!input.program_id && !input.day_of_week) {
+      return { success: false as const, message: "Selecione o dia da semana do exercício." };
+    }
     let exerciseId = input.exercise_id ?? null;
 
     // Treino vindo do catálogo da API: garante o exercício no banco antes de vincular.

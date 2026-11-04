@@ -18,7 +18,7 @@ export function analyticsFilters(params: AnalyticsParams, now = new Date()) {
       currency: z.enum(["BRL", "USD"]),
       coach: z.string().uuid().optional(),
       plan: z.string().uuid().optional(),
-      provider: z.enum(["stripe", "asaas"]).optional(),
+      provider: z.enum(["stripe", "asaas", "manual"]).optional(),
       q: z.string().trim().max(200),
       page: z.coerce.number().int().min(1).max(100000),
     })

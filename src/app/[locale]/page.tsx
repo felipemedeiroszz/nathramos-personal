@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicHome } from "@/components/public/PublicHome";
-export async function generateMetadata({
-  params: { locale },
-}: {
-  params: { locale: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   const en = locale === "en-US";
   const title = en
     ? "Train with direction. Grow with support."
@@ -35,11 +41,17 @@ export async function generateMetadata({
     },
   };
 }
-export default async function HomePage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function HomePage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const t = await getTranslations("home");
   const steps = [1, 2, 3].map((i) => ({

@@ -1,6 +1,8 @@
 "use client";
+import { mergeWorkoutSets } from "@/lib/live/workout";
+import { notifyDataChanged } from "@/lib/live/events";
 
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -44,6 +46,7 @@ export interface StudentWorkoutExecutionClientProps {
   exercises: Array<WorkoutExerciseRow & { exercise?: ExerciseRow | null }>;
   locale?: string;
   initialLogs?: ExerciseSetLogRow[];
+  guidance?: string | null;
 }
 
 type SetState = {
@@ -60,6 +63,7 @@ export function StudentWorkoutExecutionClient({
   exercises,
   locale = "pt-BR",
   initialLogs = [],
+  guidance,
 }: StudentWorkoutExecutionClientProps) {
   const tWorkout = useTranslations("workout");
   const tMuscle = useTranslations("muscleGroups");
@@ -140,6 +144,14 @@ export function StudentWorkoutExecutionClient({
 
   const [setsByExercise, setSetsByExercise] =
     useState<Record<string, SetState[]>>(initialSets);
+  const previousSets = useRef(initialSets);
+  useEffect(() => {
+    const baseline = previousSets.current;
+    previousSets.current = initialSets;
+    setSetsByExercise((previous) =>
+      mergeWorkoutSets(previous, baseline, initialSets),
+    );
+  }, [initialSets]);
 
   const updateSet = (wexId: string, idx: number, patch: Partial<SetState>) => {
     setSetsByExercise((prev) => {
@@ -176,6 +188,7 @@ export function StudentWorkoutExecutionClient({
 
       if (res.success) {
         updateSet(wex.id, idx, { logged: true });
+        notifyDataChanged();
         setToast({ type: "ok", msg: `Serie ${set_number} registrada.` });
         setTimeout(() => setToast(null), 2000);
         const restSec = wex.rest_seconds ?? 60;
@@ -205,6 +218,7 @@ export function StudentWorkoutExecutionClient({
       setCompleting(false);
       if (res.success) {
         setCompleted(true);
+        notifyDataChanged();
         setToast({
           type: "ok",
           msg: "Sessao de treino finalizada com sucesso!",
@@ -274,6 +288,11 @@ export function StudentWorkoutExecutionClient({
 
   return (
     <div className="space-y-5">
+      {guidance && (
+        <p className="whitespace-pre-wrap rounded-xl border border-border p-4 text-sm text-text-secondary">
+          {guidance}
+        </p>
+      )}
       {toast && (
         <div
           className={cn(

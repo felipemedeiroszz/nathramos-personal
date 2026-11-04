@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { ArrowUpRight, Check, ShieldCheck, ReceiptText } from "lucide-react";
+import { ArrowUpRight, ShieldCheck, ReceiptText } from "lucide-react";
 import type { CheckoutLabels } from "./CheckoutClient";
 
 export function CheckoutSummary({
   locale,
   planName,
   priceLabel,
-  totalTodayLabel,
+
   cycleLabel,
-  trialDays,
+
   method,
   labels,
   preview = false,
@@ -16,9 +16,9 @@ export function CheckoutSummary({
   locale: string;
   planName: string;
   priceLabel: string;
-  totalTodayLabel: string;
+
   cycleLabel: string;
-  trialDays: number;
+
   method: "card" | "pix";
   labels: CheckoutLabels;
   preview?: boolean;
@@ -58,22 +58,16 @@ export function CheckoutSummary({
         >
           <p className="text-xs text-zinc-400">{labels.totalDueToday}</p>
           <p className="mt-2 text-[2.5rem] font-medium leading-tight tracking-[-.05em] text-yellow-300">
-            {method === "pix" ? priceLabel : totalTodayLabel}
+            {priceLabel}
           </p>
-          {method === "card" && trialDays > 0 && (
-            <p className="mt-3 flex items-start gap-2 text-xs leading-6 text-yellow-300/80">
-              <Check size={14} className="mt-1 shrink-0" />
-              {labels.trialNote.replace("{days}", String(trialDays))}
-            </p>
-          )}
           <p className="mt-3 text-[11px] leading-6 text-zinc-500">
             {method === "pix"
               ? en
-                ? "Single payment. No automatic renewal or free trial."
-                : "Pagamento único. Sem renovação automática ou teste gratuito."
+                ? "Single payment. Access starts after payment confirmation."
+                : "Pagamento único. Acesso após a confirmação do pagamento."
               : en
-                ? `Then ${priceLabel} / ${cycleLabel}. Manage renewal in your billing center.`
-                : `Depois, ${priceLabel} / ${cycleLabel}. Gerencie a renovação na central de pagamentos.`}
+                ? `Charged today: ${priceLabel}. Renews every ${cycleLabel}. Manage renewal in your billing center.`
+                : `Cobrança hoje: ${priceLabel}. Renovação a cada ${cycleLabel}. Gerencie a renovação na central de pagamentos.`}
           </p>
         </div>
         <div className="flex items-start gap-3 text-[11px] leading-6 text-zinc-500">

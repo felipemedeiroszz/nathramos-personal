@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { useCallback } from "react";
+import { useLiveResource } from "@/hooks/useLiveResource";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -18,30 +25,25 @@ interface WorkoutHistoryProps {
 export function WorkoutHistory({ locale, userId }: WorkoutHistoryProps) {
   const t = useTranslations("workout");
   const tCommon = useTranslations("common");
-  
-  const [loading, setLoading] = useState(true);
-  const [sessions, setSessions] = useState<WorkoutSessionRow[]>([]);
-  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const response = await fetch(`/api/workout/history?userId=${userId}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Failed to fetch");
-        const data = await response.json();
-        setSessions(data.sessions || []);
-      } catch (err) {
-        console.error("Failed to fetch workout history:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchHistory();
-  }, [locale, userId]);
+  const load = useCallback(
+    async (signal: AbortSignal): Promise<WorkoutSessionRow[]> => {
+      const response = await fetch(
+        `/api/workout/history?userId=${encodeURIComponent(userId)}`,
+        { cache: "no-store", signal },
+      );
+      if (!response.ok) throw new Error("History unavailable");
+      const data = await response.json();
+      return data.sessions || [];
+    },
+    [userId],
+  );
+  const {
+    data: snapshot,
+    loading,
+    error,
+  } = useLiveResource(`${locale}:${userId}`, load);
+  const sessions = snapshot || [];
 
   if (loading) {
     return (
@@ -65,7 +67,7 @@ export function WorkoutHistory({ locale, userId }: WorkoutHistoryProps) {
     );
   }
 
-  if (error) {
+  if (error && !snapshot) {
     return (
       <Card>
         <CardHeader>
@@ -110,18 +112,21 @@ export function WorkoutHistory({ locale, userId }: WorkoutHistoryProps) {
       <CardContent className="space-y-3">
         {sessions.map((session) => {
           const date = new Date(session.scheduled_date);
-          const formattedDate = date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          });
-          
+          const formattedDate = date.toLocaleDateString(
+            locale === "pt-BR" ? "pt-BR" : "en-US",
+            {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            },
+          );
+
           const duration = session.duration_min
             ? `${session.duration_min} min`
             : session.completed_at && session.started_at
-            ? `${Math.round((new Date(session.completed_at).getTime() - new Date(session.started_at).getTime()) / 60000)} min`
-            : "-";
+              ? `${Math.round((new Date(session.completed_at).getTime() - new Date(session.started_at).getTime()) / 60000)} min`
+              : "-";
 
           return (
             <div

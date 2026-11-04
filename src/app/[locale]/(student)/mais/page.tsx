@@ -5,11 +5,17 @@ import { requireStudentPage } from "@/lib/auth/platform";
 import { StudentPageHeader } from "@/components/student/StudentPageHeader";
 import { studentNavigation } from "@/components/student/navigation";
 export const dynamic = "force-dynamic";
-export default async function Page({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   await requireStudentPage();
   const en = locale === "en-US";

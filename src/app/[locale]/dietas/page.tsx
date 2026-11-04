@@ -37,11 +37,17 @@ const typeKeys = ["cutting", "bulking", "maintenance"];
 const macroIcons = [Beef, Wheat, Droplets];
 const macroKeys = ["protein", "carbs", "fats"];
 
-export default async function DietasPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function DietasPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("dietsPage");

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation"
 import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server"
 import type { UserRole, SubscriptionStatus } from "@/types"
-import { headers } from "next/headers"
+import { headers } from "next/headers";
 import { defaultLocale, locales } from "@/i18n/config"
 
 export interface CanAccessResult {
@@ -18,9 +18,9 @@ const defaultBlocked: CanAccessResult = {
   reason: "auth_missing",
 }
 
-function localeFromHeaders(): string {
+async function localeFromHeaders(): Promise<string> {
   try {
-    const h = headers()
+    const h = await headers()
     const pathname = h.get("x-next-pathname") ?? h.get("x-pathname") ?? ""
     const segment = pathname.split("/")[1]
     if (segment && locales.includes(segment as any)) return segment
@@ -80,7 +80,7 @@ export async function getCurrentRole(): Promise<UserRole | null> {
 export async function requireAuthenticated(): Promise<string> {
   const userId = await getCurrentUserId()
   if (!userId) {
-    const locale = localeFromHeaders()
+    const locale = await localeFromHeaders()
     redirect(`/${locale}/login`)
   }
   return userId
@@ -94,7 +94,7 @@ export async function requireRole(
   const role = (await getCurrentRole()) ?? "student"
   const access = await canAccessPlatform(userId)
   if (!allowed.includes(role)) {
-    const locale = localeFromHeaders()
+    const locale = await localeFromHeaders()
     redirect(`/${locale}${redirectTo.startsWith("/") ? redirectTo : "/" + redirectTo}`)
   }
   return { userId, role, access }
@@ -117,7 +117,7 @@ export async function ensurePlatformAccessOrRedirect(
     return { userId, role, access: { ...access, allowed: true } }
   }
   if (!access.allowed) {
-    const locale = localeFromHeaders()
+    const locale = await localeFromHeaders()
     const target = blockedPath.startsWith("/") ? blockedPath : "/" + blockedPath
     redirect(`/${locale}${target}?r=${encodeURIComponent(access.reason)}`)
   }

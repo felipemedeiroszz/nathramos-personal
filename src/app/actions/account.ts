@@ -8,8 +8,8 @@ import { requireAuthenticated } from "@/lib/auth/access";
 import { headers } from "next/headers";
 import { defaultLocale, locales } from "@/i18n/config";
 
-function detectLocale(): string {
-  const h = headers();
+async function detectLocale(): Promise<string> {
+  const h = await headers();
   const accept = h.get("accept-language") ?? "";
   if (accept.toLowerCase().startsWith("en")) return "en-US";
   return defaultLocale;
@@ -20,7 +20,7 @@ export async function logoutAction() {
   try {
     await supabase.auth.signOut().catch(() => {});
   } catch {}
-  const locale = detectLocale();
+  const locale = await detectLocale();
   redirect(`/${locale}/login`);
 }
 
@@ -83,7 +83,7 @@ export async function updateProfileAction(_prev: any, formData: FormData) {
   if (parsed.data.language) {
     data.language = parsed.data.language;
     const locale = parsed.data.language;
-    const origin = headers().get("origin") ?? "";
+    const origin = (await headers()).get("origin") ?? "";
     if (origin) revalidatePath(`${origin}/${locale}/account`);
   }
 
@@ -253,7 +253,7 @@ export async function deleteAccountAction(_prev: any, formData: FormData) {
     await supabase.auth.signOut().catch(() => {});
   } catch {}
 
-  const locale = detectLocale();
+  const locale = await detectLocale();
   redirect(`/${locale}?deleted=1`);
 }
 

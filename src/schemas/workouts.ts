@@ -243,6 +243,12 @@ export const upsertWorkoutKitItemSchema = z
     id: uuidSchema.optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.exercise_id && !data.day_of_week) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione o dia da semana do exercício.", path: ["day_of_week"] });
+    }
+    if (data.program_id && data.exercise_id) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione apenas um programa ou exercício.", path: ["program_id"] });
+    }
     if (!data.program_id && !data.exercise_id) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

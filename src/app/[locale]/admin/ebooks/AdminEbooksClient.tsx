@@ -321,9 +321,10 @@ export function AdminEbooksClient({
           }}
           ebook={editingEbook ?? undefined}
           onSubmit={async (data) => {
-            await upsertEbookAction(
+            const result = await upsertEbookAction(
               data as Parameters<typeof upsertEbookAction>[0],
             );
+            if (!result.success) throw new Error(result.message);
           }}
           onSaved={onModalSaved}
         />

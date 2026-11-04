@@ -9,11 +9,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function PrivacidadePage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function PrivacidadePage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const navT = await getTranslations("nav");
 

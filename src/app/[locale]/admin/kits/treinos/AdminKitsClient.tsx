@@ -574,7 +574,7 @@ export function AdminKitsClient({
                                   {kit.items.map((item, i) => {
                                     const isExercise =
                                       !item.program && !!item.exercise;
-                                    const weekday = item.day_of_week
+                                    const weekday = !item.program_id && item.day_of_week
                                       ? WEEKDAY_LABELS[item.day_of_week]
                                       : null;
                                     const originLabel = item.program

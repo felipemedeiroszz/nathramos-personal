@@ -502,10 +502,10 @@ export class DietService {
       }
 
       const { data, error } = await q;
-      if (error) return [];
+      if (error) throw error;
       return (data as DietKitRow[]) ?? [];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -699,10 +699,10 @@ export class DietService {
         .eq("student_id", studentId)
         .eq("status", status)
         .order("assigned_at", { ascending: false });
-      if (error) return [];
+      if (error) throw error;
       return (data as StudentDietKitWithKit[]) ?? [];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 

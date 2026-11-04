@@ -55,10 +55,10 @@ export class WorkoutKitService {
       }
 
       const { data, error } = await q;
-      if (error) return [];
+      if (error) throw error;
       return (data as WorkoutKitRow[]) ?? [];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -168,7 +168,7 @@ export class WorkoutKitService {
         program_id: parsed.program_id ?? null,
         exercise_id: parsed.exercise_id ?? null,
         category_label: parsed.category_label ?? null,
-        day_of_week: parsed.day_of_week ?? null,
+        day_of_week: parsed.program_id ? null : parsed.day_of_week ?? null,
         order_index: parsed.order_index,
         notes_pt: parsed.notes_pt ?? null,
         notes_en: parsed.notes_en ?? null,
@@ -341,10 +341,10 @@ export class WorkoutKitService {
         .order("assigned_at", { ascending: false });
       if (status) q = q.eq("status", status);
       const { data, error } = await q;
-      if (error) return [];
+      if (error) throw error;
       return (data as StudentWorkoutKitRow[]) ?? [];
-    } catch {
-      return [];
+    } catch (error) {
+      throw error;
     }
   }
 }

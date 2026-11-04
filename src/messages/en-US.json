@@ -1111,7 +1111,7 @@
     "saveError": "Could not save the plan."
   },
   "adminPages": {
-    "subtitle": "Edit the content of the institutional pages shown on the site.",
+    "subtitle": "Organize your content, review the preview and publish your website pages.",
     "tabTermos": "Terms",
     "tabPrivacidade": "Privacy",
     "tabFaq": "FAQ",
@@ -1216,6 +1216,7 @@
     "method_pix": "PIX",
     "method_boleto": "Boleto",
     "method_bank_transfer": "Bank transfer",
+    "method_cash": "Cash",
     "status_pending": "Pending",
     "status_processing": "Processing",
     "status_paid": "Paid",
@@ -1281,6 +1282,10 @@
     "systemActor": "System"
   },
   "adminSettings": {
+    "whatsappHelp": "Include the country and area codes, e.g. +55 11 99999-0000. Leave blank to hide the contact.",
+    "maintenanceAfterSave": "The new end time will be calculated when you save your changes.",
+    "restartMaintenance": "Start a new maintenance window",
+    "reload": "Reload settings",
     "subtitle": "General platform settings and system preferences.",
     "generalTitle": "General & Contact",
     "generalDesc": "Brand identity and support channels.",

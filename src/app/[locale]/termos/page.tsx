@@ -9,11 +9,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function TermosPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function TermosPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const navT = await getTranslations("nav");
 

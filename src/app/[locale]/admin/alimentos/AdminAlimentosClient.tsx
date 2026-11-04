@@ -299,9 +299,10 @@ export function AdminAlimentosClient({
           onClose={closeModal}
           food={editingFood ?? undefined}
           onSubmit={async (data) => {
-            await upsertDietFoodAction(
+            const result = await upsertDietFoodAction(
               data as Parameters<typeof upsertDietFoodAction>[0],
             );
+            if (!result.success) throw new Error(result.message);
           }}
           onSaved={onModalSaved}
         />

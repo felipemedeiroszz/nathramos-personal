@@ -297,9 +297,10 @@ export function AdminSuplementosClient({
           }}
           supplement={editingSupplement ?? undefined}
           onSubmit={async (data) => {
-            await upsertSupplementAction(
+            const result = await upsertSupplementAction(
               data as Parameters<typeof upsertSupplementAction>[0],
             );
+            if (!result.success) throw new Error(result.message);
           }}
           onSaved={onModalSaved}
         />

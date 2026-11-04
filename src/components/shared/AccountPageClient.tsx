@@ -1,4 +1,6 @@
 "use client";
+import { useLiveDraft } from "@/hooks/useLiveDraft";
+import { notifyDataChanged } from "@/lib/live/events";
 
 import { useRef, useState, useTransition } from "react";
 import { useFormState } from "react-dom";
@@ -107,7 +109,11 @@ function AlertLine({
 }
 
 type TabType =
-  "profile" | "security" | "notifications" | "subscription" | "settings";
+  | "profile"
+  | "security"
+  | "notifications"
+  | "subscription"
+  | "settings";
 
 const TAB_IDS: TabType[] = [
   "profile",
@@ -194,7 +200,38 @@ export function AccountPageClient({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const [profileState, profileAction] = useFormState(updateProfileAction, null);
+  const {
+    draft: profileDraft,
+    setDraft: setProfileDraft,
+    markSaved: markProfileSaved,
+  } = useLiveDraft({
+    first_name: String(profile.first_name ?? ""),
+    last_name: String(profile.last_name ?? ""),
+    phone: String(profile.phone ?? ""),
+    birth_date: String(profile.birth_date ?? ""),
+    gender: String(profile.gender ?? ""),
+    height_cm: String(profile.height_cm ?? ""),
+    weight_kg: String(profile.weight_kg ?? ""),
+    country: String(profile.country ?? ""),
+    language: String(profile.language ?? ""),
+  });
+  const [profileState, profileAction] = useFormState(
+    async (previous: any, form: FormData) => {
+      const submitted = Object.fromEntries(
+        Object.keys(profileDraft).map((key) => [
+          key,
+          String(form.get(key) ?? ""),
+        ]),
+      ) as typeof profileDraft;
+      const result = await updateProfileAction(previous, form);
+      if (result?.success) {
+        markProfileSaved(submitted);
+        notifyDataChanged();
+      }
+      return result;
+    },
+    null,
+  );
   const [passwordState, passwordAction] = useFormState(
     changePasswordAction,
     null,
@@ -216,6 +253,7 @@ export function AccountPageClient({
       if (res?.success) {
         setUploadMsg({ type: "success", text: t("photoUploaded") });
         router.refresh();
+        notifyDataChanged();
       } else {
         setUploadMsg({ type: "error", text: res?.message || common("error") });
       }
@@ -232,6 +270,7 @@ export function AccountPageClient({
       if (res?.success) {
         setUploadMsg({ type: "success", text: t("photoRemoved") });
         router.refresh();
+        notifyDataChanged();
       } else {
         setUploadMsg({ type: "error", text: res?.message || common("error") });
       }
@@ -371,7 +410,13 @@ export function AccountPageClient({
                     </label>
                     <Input
                       name="first_name"
-                      defaultValue={profile.first_name ?? undefined}
+                      value={profileDraft.first_name}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          first_name: e.target.value,
+                        }))
+                      }
                       required
                       maxLength={100}
                       placeholder="João"
@@ -384,7 +429,13 @@ export function AccountPageClient({
                     </label>
                     <Input
                       name="last_name"
-                      defaultValue={profile.last_name ?? undefined}
+                      value={profileDraft.last_name}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          last_name: e.target.value,
+                        }))
+                      }
                       required
                       maxLength={100}
                       placeholder="Silva"
@@ -397,7 +448,13 @@ export function AccountPageClient({
                     </label>
                     <Input
                       name="phone"
-                      defaultValue={profile.phone ?? undefined}
+                      value={profileDraft.phone}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          phone: e.target.value,
+                        }))
+                      }
                       maxLength={50}
                       placeholder="(11) 99999-9999"
                     />
@@ -410,7 +467,13 @@ export function AccountPageClient({
                     <Input
                       name="birth_date"
                       type="date"
-                      defaultValue={profile.birth_date ?? undefined}
+                      value={profileDraft.birth_date}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          birth_date: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -419,7 +482,13 @@ export function AccountPageClient({
                     </label>
                     <select
                       name="gender"
-                      defaultValue={profile.gender ?? ""}
+                      value={profileDraft.gender}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          gender: e.target.value,
+                        }))
+                      }
                       className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-text placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
                     >
                       <option value="">-</option>
@@ -439,7 +508,13 @@ export function AccountPageClient({
                       min={50}
                       max={260}
                       step={1}
-                      defaultValue={profile.height_cm ?? undefined}
+                      value={profileDraft.height_cm}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          height_cm: e.target.value,
+                        }))
+                      }
                       placeholder="175"
                     />
                   </div>
@@ -454,7 +529,13 @@ export function AccountPageClient({
                       min={20}
                       max={400}
                       step={0.1}
-                      defaultValue={profile.weight_kg ?? undefined}
+                      value={profileDraft.weight_kg}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          weight_kg: e.target.value,
+                        }))
+                      }
                       placeholder="75.5"
                     />
                   </div>
@@ -465,7 +546,13 @@ export function AccountPageClient({
                     </label>
                     <Input
                       name="country"
-                      defaultValue={profile.country ?? undefined}
+                      value={profileDraft.country}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          country: e.target.value,
+                        }))
+                      }
                       maxLength={100}
                       placeholder="Brasil"
                     />
@@ -477,7 +564,13 @@ export function AccountPageClient({
                     </label>
                     <select
                       name="language"
-                      defaultValue={profile.language ?? ""}
+                      value={profileDraft.language}
+                      onChange={(e) =>
+                        setProfileDraft((d) => ({
+                          ...d,
+                          language: e.target.value,
+                        }))
+                      }
                       className="flex h-11 w-full rounded-xl border border-border bg-surface px-4 py-2 text-text placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
                     >
                       <option value="">-</option>

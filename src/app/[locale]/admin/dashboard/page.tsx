@@ -11,13 +11,19 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dashboard | Administração" };
 
-export default async function AdminDashboardPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams: { currency?: string };
-}) {
+export default async function AdminDashboardPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams: Promise<{ currency?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const actor = await requireRole(["admin", "coach"], "/dashboard");

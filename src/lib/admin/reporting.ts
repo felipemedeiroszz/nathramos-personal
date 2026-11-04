@@ -47,6 +47,7 @@ export function effectiveSubscriptionStatus(
 ): string {
   const end = Date.parse(sub.current_period_end || "");
   if (sub.ended_at && Date.parse(sub.ended_at) <= now.getTime()) return "canceled";
+  if (sub.source === "admin_manual" && end <= now.getTime()) return "blocked";
   if (sub.provider === "asaas" && (sub.source === "asaas_pix" || sub.external_id?.startsWith("pay_")) && end <= now.getTime()) return "blocked";
   if (sub.status === "trialing")
     return Date.parse(sub.trial_ends_at || "") > now.getTime()
@@ -212,7 +213,7 @@ export function aggregateAdminReport(
     month_after_refunds_cents: sum(monthPaid) - refundCents,
     currency,
     mrr_cents: moneySubs
-      .filter((s) => status(s) === "active" && !s.cancel_at_period_end && s.source !== "asaas_pix")
+      .filter((s) => status(s) === "active" && !s.cancel_at_period_end && !["asaas_pix", "admin_manual"].includes(s.source))
       .reduce(
         (n, s) =>
           n +

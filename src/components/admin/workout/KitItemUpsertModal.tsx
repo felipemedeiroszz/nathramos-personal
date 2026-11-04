@@ -163,10 +163,10 @@ export function KitItemUpsertModal({
     };
   }, [isOpen, source, debouncedQuery]);
 
-  const canSubmit =
+  const canSubmit = (source === "program" || !!dayOfWeek) && (
     (source === "program" && !!programId) ||
     (source === "catalog" && !!exerciseId) ||
-    (source === "api" && !!apiExercise);
+    (source === "api" && !!apiExercise));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -178,7 +178,7 @@ export function KitItemUpsertModal({
         const result = await addWorkoutKitItemAction({
           kit_id: kitId,
           category_label: categoryLabel || null,
-          day_of_week: dayOfWeek ? Number(dayOfWeek) : null,
+          day_of_week: source === "program" ? null : dayOfWeek ? Number(dayOfWeek) : null,
           program_id: source === "program" ? programId : null,
           exercise_id: source === "catalog" ? exerciseId : null,
           api_exercise: source === "api" ? apiExercise : null,
@@ -255,19 +255,22 @@ export function KitItemUpsertModal({
               <label className="text-sm font-medium text-text">
                 {label("Dia da semana", "Day of week")}
               </label>
-              <Select
+              {source === "program" ? (
+                <p className="text-sm text-text-secondary">{label("Segue os dias configurados dentro do programa.", "Uses the days configured inside the program.")}</p>
+              ) : <Select
+                required
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(e.target.value)}
               >
                 <option value="">
-                  -- {label("Sem dia definido", "No day set")} --
+                  -- {label("Selecione um dia", "Select a day")} --
                 </option>
                 {Object.entries(WEEKDAY_LABELS).map(([value, names]) => (
                   <option key={value} value={value}>
                     {label(names.pt, names.en)}
                   </option>
                 ))}
-              </Select>
+              </Select>}
             </div>
           </div>
 

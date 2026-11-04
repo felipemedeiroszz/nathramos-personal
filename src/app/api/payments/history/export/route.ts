@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       credit_card: "Cartão",
       pix: "PIX",
       boleto: "Boleto",
+      cash: "Dinheiro",
       bank_transfer: "Transferência",
     };
     const value = (row: any, key: string) => {

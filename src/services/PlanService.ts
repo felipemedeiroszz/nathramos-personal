@@ -41,7 +41,7 @@ export class PlanService {
 
       const { data, error } = await q
       if (error) return []
-      return (data as PlanRow[]) ?? []
+      return ((data as PlanRow[]) ?? []).map(plan => ({ ...plan, trial_days: 0 }))
     } catch {
       return []
     }
@@ -63,7 +63,7 @@ export class PlanService {
         .eq("is_deleted", false)
         .maybeSingle()
       if (error) return null
-      return (data as PlanRow | null) ?? null
+      return data ? { ...(data as PlanRow), trial_days: 0 } : null
     } catch {
       return null
     }
@@ -86,7 +86,7 @@ export class PlanService {
         price_cents: parsed.price_cents,
         currency: parsed.currency,
         billing_cycle_days: parsed.billing_cycle_days,
-        trial_days: parsed.trial_days,
+        trial_days: 0,
         grace_days: parsed.grace_days,
         stripe_price_id: parsed.stripe_price_id ?? null,
         stripe_product_id: parsed.stripe_product_id ?? null,

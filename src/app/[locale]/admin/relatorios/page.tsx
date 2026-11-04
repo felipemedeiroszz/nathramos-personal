@@ -5,13 +5,19 @@ import { analyticsFilters, type AnalyticsParams } from "@/lib/analytics/model";
 import { AnalyticsClient } from "@/components/admin/analytics/AnalyticsClient";
 import Link from "next/link";
 export const dynamic = "force-dynamic";
-export default async function AnalyticsPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: string };
-  searchParams: AnalyticsParams;
-}) {
+export default async function AnalyticsPage(
+  props: {
+    params: Promise<{ locale: string }>;
+    searchParams: Promise<AnalyticsParams>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   await requireRole(["admin", "coach"], "/dashboard");
   try {

@@ -25,6 +25,33 @@ export async function checkAdminDatabase(db: any, actorId: string) {
     run: () => any;
   }> = [
     {
+      id: "daily_prescriptions",
+      label: "Prescrição e histórico diário",
+      migration: "000050_daily_prescription.sql",
+      run: () =>
+        db
+          .from("student_day_prescriptions")
+          .select("user_id,prescribed_date,payload")
+          .limit(0),
+    },
+    {
+      id: "exam_uploads",
+      label: "Envio direto de exames privados",
+      migration: "000051_student_content_security.sql",
+      run: () =>
+        db.from("exam_upload_intents").select("id,file_size,exam_id").limit(0),
+    },
+    {
+      id: "ebook_access",
+      label: "Autorização de conteúdo pago",
+      migration: "000051_student_content_security.sql",
+      run: () =>
+        db.rpc("student_ebook_access", {
+          p_ebook: "00000000-0000-0000-0000-000000000000",
+          p_user: actorId,
+        }),
+    },
+    {
       id: "base",
       label: "Tabelas e perfil",
       run: () =>
@@ -33,6 +60,13 @@ export async function checkAdminDatabase(db: any, actorId: string) {
           .select("id,role,is_deleted")
           .eq("id", actorId)
           .limit(1),
+    },
+    {
+      id: "manual_billing",
+      label: "Registros manuais de alunos e pagamentos",
+      migration: "000045_manual_student_billing.sql",
+      run: () =>
+        db.from("admin_manual_operations").select("id,request,result").limit(0),
     },
     {
       id: "payments",

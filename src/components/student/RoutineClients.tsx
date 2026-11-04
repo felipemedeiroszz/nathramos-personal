@@ -1,5 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useLiveDraft } from "@/hooks/useLiveDraft";
+import { notifyDataChanged } from "@/lib/live/events";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -66,6 +68,7 @@ function useSave() {
       else {
         setFeedback({ text: t("Registro salvo.", "Log saved."), error: false });
         router.refresh();
+        notifyDataChanged();
       }
     } catch {
       setFeedback({
@@ -243,7 +246,8 @@ export function DailyItemsClient({
             ))}
           </div>
           <span className="text-xs text-zinc-500">
-            {done} / {items.length} {t("registrados hoje", "logged today")}
+            {done} / {items.length}{" "}
+            {t("registrados no dia", "logged on this day")}
           </span>
         </div>
       )}
@@ -261,8 +265,8 @@ export function DailyItemsClient({
                 : "Your supplements will appear here",
             )}
             description={t(
-              "Ainda não há itens atribuídos para hoje. Suas orientações aparecerão após a prescrição da sua treinadora.",
-              "There are no items assigned for today. Your guidance will appear after your coach assigns a plan.",
+              "Não há itens programados para este dia. Consulte as orientações da sua treinadora.",
+              "There are no items scheduled for this day. Check your coach’s guidance.",
             )}
           />
         </Card>
@@ -378,11 +382,24 @@ export function HydrationClient({
 }) {
   const t = useLabels(),
     { busy, save, status } = useSave();
-  const [amount, setAmount] = useState("250"),
-    [goal, setGoal] = useState(String(data.waterGoal || 2000)),
-    [reminders, setReminders] = useState(data.hydrationReminders),
-    [frequency, setFrequency] = useState(data.hydrationFrequency),
-    [silent, setSilent] = useState(data.hydrationSilent);
+  const [amount, setAmount] = useState("250");
+  const {
+    draft: settings,
+    setDraft: setSettings,
+    markSaved: acceptSettings,
+  } = useLiveDraft({
+    goal: String(data.waterGoal || 2000),
+    reminders: data.hydrationReminders,
+    frequency: data.hydrationFrequency,
+    silent: data.hydrationSilent,
+  });
+  const { goal, reminders, frequency, silent } = settings;
+  const setGoal = (goal: string) => setSettings((s) => ({ ...s, goal }));
+  const setReminders = (reminders: boolean) =>
+    setSettings((s) => ({ ...s, reminders }));
+  const setFrequency = (frequency: number) =>
+    setSettings((s) => ({ ...s, frequency }));
+  const setSilent = (silent: boolean) => setSettings((s) => ({ ...s, silent }));
   const today = data.water.filter((w) => w.logged_date === data.date);
   const dates = Array.from({ length: 7 }, (_, index) => {
     const d = new Date(`${data.date}T12:00:00Z`);
@@ -579,12 +596,14 @@ export function HydrationClient({
               className="space-y-5"
               onSubmit={(e) => {
                 e.preventDefault();
-                save(() =>
-                  saveHydrationAction(
+                save(async () => {
+                  const result = await saveHydrationAction(
                     { goal: Number(goal), reminders, frequency, silent },
                     targetId,
-                  ),
-                );
+                  );
+                  if (result.success) acceptSettings(settings);
+                  return result;
+                });
               }}
             >
               <label className="block text-xs text-zinc-400">

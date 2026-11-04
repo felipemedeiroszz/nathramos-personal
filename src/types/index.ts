@@ -23,9 +23,9 @@ export type PaymentStatus =
   | "expired"
   | "partially_refunded";
 
-export type PaymentProvider = "stripe" | "asaas";
+export type PaymentProvider = "stripe" | "asaas" | "manual";
 
-export type PaymentMethod = "credit_card" | "pix" | "boleto" | "bank_transfer";
+export type PaymentMethod = "credit_card" | "pix" | "boleto" | "bank_transfer" | "cash";
 
 export type NotificationType =
   | "system"
@@ -802,6 +802,8 @@ export interface ExamRow {
   is_deleted: boolean;
   deleted_at?: string | null;
 }
+
+export type StudentEbook = Pick<EbookRow, "id" | "title_pt" | "title_en" | "slug" | "summary_pt" | "summary_en" | "cover_url" | "pages_count" | "language" | "is_free" | "price_cents" | "currency" | "categories_pt" | "categories_en" | "author"> & { accessible: boolean; has_content: boolean };
 
 // Ebook types
 export interface EbookRow {

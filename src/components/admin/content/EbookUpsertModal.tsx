@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -38,7 +39,9 @@ export function EbookUpsertModal({
 }: EbookUpsertModalProps) {
   const t = useTranslations("common");
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
+
+  const [saveError, setSaveError] = useState("");
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
 
@@ -65,6 +68,7 @@ export function EbookUpsertModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setSaveError("");
     if (ebook) {
       setForm({
         id: ebook.id,
@@ -116,7 +120,13 @@ export function EbookUpsertModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    startTransition(async () => {
+    if (e.currentTarget.querySelector('[data-upload-pending="true"]')) {
+      setSaveError(label("Aguarde o envio da imagem.", "Wait for the image upload."));
+      return;
+    }
+    setSaveError("");
+    void startTransition(async () => {
+      try {
       const splitArr = (s: string) =>
         s.split(",").map((x: string) => x.trim()).filter(Boolean);
       const parsedPrice = form.is_free ? 0 : Math.round(parseFloat(String(form.price || "0").replace(",", ".")) * 100);
@@ -133,8 +143,12 @@ export function EbookUpsertModal({
       };
       delete payload.price;
       if (!payload.id) delete payload.id;
-      if (onSubmit) await onSubmit(payload);
+      if (!onSubmit) throw new Error(label("Não foi possível salvar.", "Could not save."));
+      await onSubmit(payload);
       onSaved?.();
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : label("Não foi possível salvar. Tente novamente.", "Could not save. Please try again."));
+      }
     });
   };
 
@@ -144,7 +158,7 @@ export function EbookUpsertModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => { if (!isPending) onClose(); }}
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
@@ -152,7 +166,9 @@ export function EbookUpsertModal({
         <ModalClose onClick={onClose} />
       </ModalHeader>
       <form onSubmit={handleSubmit}>
+        <fieldset disabled={isPending} className="contents">
         <ModalBody className="space-y-5">
+          {saveError && <p role="alert" className="text-sm text-red-500">{saveError}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">
@@ -387,6 +403,7 @@ export function EbookUpsertModal({
             {isPending ? t("loading") : t("save")}
           </Button>
         </ModalFooter>
+        </fieldset>
       </form>
     </Modal>
   );

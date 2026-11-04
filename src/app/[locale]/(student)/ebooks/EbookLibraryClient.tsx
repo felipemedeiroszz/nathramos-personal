@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardHeader,
@@ -33,13 +33,13 @@ import {
   QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { EbookRow } from "@/types";
+import type { StudentEbook } from "@/types";
 
 type Locale = "pt-BR" | "en-US";
 
 interface EbookLibraryClientProps {
   locale: Locale;
-  ebooks: EbookRow[];
+  ebooks: StudentEbook[];
   paidIds: string[];
   purchaseStatus: string | null;
 }
@@ -62,22 +62,30 @@ export function EbookLibraryClient({
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [selected, setSelected] = useState<EbookRow | null>(null);
+  const [selected, setSelected] = useState<StudentEbook | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [loading, setLoading] = useState<"stripe" | "pix" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const paidSet = useMemo(() => new Set(paidIds), [paidIds]);
 
-  const titleOf = (e: EbookRow) =>
-    locale === "en-US" ? e.title_en : e.title_pt;
-  const summaryOf = (e: EbookRow) =>
-    (locale === "en-US" ? e.summary_en : e.summary_pt) ?? "";
-  const categoriesOf = (e: EbookRow) =>
-    (locale === "en-US" ? e.categories_en : e.categories_pt) ?? [];
-  const isOwned = (e: EbookRow) => e.is_free || paidSet.has(e.id);
+  useEffect(() => {
+    setSelected((previous) => {
+      if (!previous) return null;
+      const current = ebooks.find((e) => e.id === previous.id);
+      return current && !current.accessible ? current : null;
+    });
+  }, [ebooks, paidSet]);
 
-  const formatPrice = (e: EbookRow) => {
+  const titleOf = (e: StudentEbook) =>
+    locale === "en-US" ? e.title_en : e.title_pt;
+  const summaryOf = (e: StudentEbook) =>
+    (locale === "en-US" ? e.summary_en : e.summary_pt) ?? "";
+  const categoriesOf = (e: StudentEbook) =>
+    (locale === "en-US" ? e.categories_en : e.categories_pt) ?? [];
+  const isOwned = (e: StudentEbook) => e.accessible;
+
+  const formatPrice = (e: StudentEbook) => {
     if (e.is_free || !e.price_cents) return L("Grátis", "Free");
     return new Intl.NumberFormat(locale, {
       style: "currency",
@@ -110,7 +118,7 @@ export function EbookLibraryClient({
   const ownedList = filtered.filter(isOwned);
   const catalogList = filtered.filter((e) => !isOwned(e));
 
-  const openPurchase = (ebook: EbookRow) => {
+  const openPurchase = (ebook: StudentEbook) => {
     setSelected(ebook);
     setPixData(null);
     setError(null);
@@ -187,7 +195,7 @@ export function EbookLibraryClient({
     }
   };
 
-  const renderCover = (ebook: EbookRow, accent: string) => {
+  const renderCover = (ebook: StudentEbook, accent: string) => {
     if (ebook.cover_url) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
@@ -366,7 +374,7 @@ export function EbookLibraryClient({
                       )}
                     </div>
                     <div className="mt-auto pt-1">
-                      {ebook.external_url ? (
+                      {ebook.has_content ? (
                         <Button
                           asChild
                           size="sm"
@@ -374,7 +382,7 @@ export function EbookLibraryClient({
                           className="w-full gap-1.5 text-xs h-9"
                         >
                           <a
-                            href={ebook.external_url}
+                            href={`/api/ebooks/${ebook.id}/access`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

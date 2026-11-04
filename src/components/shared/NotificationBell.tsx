@@ -1,5 +1,7 @@
 "use client";
 
+import { useLiveResource } from "@/hooks/useLiveResource";
+import { notifyDataChanged } from "@/lib/live/events";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -28,25 +30,17 @@ export function NotificationBell({
   const t = useTranslations(namespace);
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationRow[]>([]);
-  const [unread, setUnread] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const fetchInbox = useCallback(async () => getMyNotificationsAction(), []);
+  const {
+    data: snapshot,
+    loading,
+    reload: load,
+    update,
+  } = useLiveResource(locale, fetchInbox);
+  const items = snapshot?.items || [],
+    unread = snapshot?.unread || 0;
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const result = await getMyNotificationsAction();
-      setItems(result.items);
-      setUnread(result.unread);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
@@ -87,24 +81,35 @@ export function NotificationBell({
     setOpen(false);
     if (!item.read_at) {
       const readAt = new Date().toISOString();
-      setItems((prev) =>
-        prev.map((row) =>
-          row.id === item.id ? { ...row, read_at: readAt } : row,
-        ),
+      update(
+        (prev) =>
+          prev && {
+            items: prev.items.map((row) =>
+              row.id === item.id ? { ...row, read_at: readAt } : row,
+            ),
+            unread: Math.max(0, prev.unread - 1),
+          },
       );
-      setUnread((prev) => Math.max(0, prev - 1));
       await markNotificationReadAction(item.id);
+      notifyDataChanged();
     }
     if (item.url) router.push(item.url);
   };
 
   const handleMarkAll = async () => {
     const readAt = new Date().toISOString();
-    setItems((prev) =>
-      prev.map((row) => ({ ...row, read_at: row.read_at ?? readAt })),
+    update(
+      (prev) =>
+        prev && {
+          items: prev.items.map((row) => ({
+            ...row,
+            read_at: row.read_at ?? readAt,
+          })),
+          unread: 0,
+        },
     );
-    setUnread(0);
     await markAllNotificationsReadAction();
+    notifyDataChanged();
   };
 
   const formatDate = (iso: string) => {

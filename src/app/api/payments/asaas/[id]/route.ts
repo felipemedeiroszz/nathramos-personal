@@ -5,7 +5,8 @@ import { handleApiError,jsonResponse,errorResponse,requireApiUser } from "@/lib/
 import { billingDb,syncAsaasPayment } from "@/lib/payments/sync"
 export const dynamic="force-dynamic"
 export const runtime="nodejs"
-export async function GET(_req: NextRequest,{params}:{params:{id:string}}) {
+export async function GET(_req: NextRequest, props:{params: Promise<{id:string}>}) {
+ const params = await props.params;
  try {
   const {userId}=await requireApiUser()
   await billingProfile(userId)

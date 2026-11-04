@@ -98,7 +98,6 @@ export class StripeProvider implements PaymentProvider {
         customer: input.customerId,
         items: items.length > 0 ? items : undefined,
         default_payment_method: input.paymentMethodId,
-        trial_period_days: input.trialDays,
         metadata: input.metadata as Record<string, string> | undefined,
         payment_behavior: input.paymentMethodId ? 'default_incomplete' : undefined,
         expand: ['latest_invoice.payment_intent'],
@@ -331,13 +330,9 @@ export class StripeProvider implements PaymentProvider {
         success_url: new URL(input.successUrl, appUrl).toString(),
         cancel_url: new URL(input.cancelUrl, appUrl).toString(),
         line_items: lineItems.length > 0 ? lineItems : undefined,
-        subscription_data:
-          input.mode === 'subscription' && input.trialDays
-            ? {
-                trial_period_days: input.trialDays,
-                metadata: input.metadata as Record<string, string> | undefined,
-              }
-            : undefined,
+        subscription_data: input.mode === 'subscription'
+          ? { metadata: input.metadata as Record<string, string> | undefined }
+          : undefined,
         payment_intent_data:
           input.mode === 'payment'
             ? {

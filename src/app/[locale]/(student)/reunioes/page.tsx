@@ -39,11 +39,17 @@ function statusVariant(
   }
 }
 
-export default async function StudentMeetingsPage({
-  params: { locale },
-}: {
-  params: { locale: (typeof locales)[number] };
-}) {
+export default async function StudentMeetingsPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const nav = await getTranslations("navigation");

@@ -74,6 +74,13 @@ export const adminNavigation: AdminNavGroup[] = [
         coach: true,
       },
       {
+        key: "coaches",
+        path: "coaches",
+        pt: "Coaches",
+        en: "Coaches",
+        icon: ShieldCheck,
+      },
+      {
         key: "workouts",
         path: "treinos",
         pt: "Treinos",

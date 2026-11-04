@@ -160,7 +160,7 @@ export function CardCheckoutForm({
       const verified = await verification.json();
       if (
         !verification.ok ||
-        !["active", "trialing"].includes(verified.status)
+        verified.status !== "active"
       ) {
         throw new Error(labels.paymentError);
       }

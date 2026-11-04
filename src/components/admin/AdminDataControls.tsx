@@ -81,6 +81,7 @@ export function AdminDataControls({
                 <option value="all">{en ? "All" : "Todos"}</option>
                 <option value="stripe">Stripe</option>
                 <option value="asaas">Asaas</option>
+                <option value="manual">Manual</option>
               </select>
             </label>
             <label className="text-sm">

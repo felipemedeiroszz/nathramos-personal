@@ -17,13 +17,19 @@ const PAGE_SIZE = 20;
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
-export default async function AdminAuditoriaPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams: SearchParams;
-}) {
+export default async function AdminAuditoriaPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");

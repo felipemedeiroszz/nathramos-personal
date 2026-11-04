@@ -23,9 +23,9 @@ interface CheckoutPreviewProps {
   locale: string;
   planName: string;
   priceLabel: string;
-  totalTodayLabel: string;
+
   cycleLabel: string;
-  trialDays: number;
+
   labels: CheckoutLabels;
   notice: string;
 }
@@ -36,9 +36,9 @@ export function CheckoutPreview({
   locale,
   planName,
   priceLabel,
-  totalTodayLabel,
+
   cycleLabel,
-  trialDays,
+
   labels,
   notice,
 }: CheckoutPreviewProps) {
@@ -176,9 +176,9 @@ export function CheckoutPreview({
         locale={locale}
         planName={planName}
         priceLabel={priceLabel}
-        totalTodayLabel={totalTodayLabel}
+
         cycleLabel={cycleLabel}
-        trialDays={trialDays}
+
         method={tab}
         labels={labels}
         preview

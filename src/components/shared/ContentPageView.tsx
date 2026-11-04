@@ -1,15 +1,31 @@
+"use client";
+
+import { useId, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { FAQItem } from "@/components/shared/FAQItem";
-import type { ResolvedContentPage } from "@/lib/content/contentPages";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  ChevronDown,
+  Clock3,
+  FileText,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import type {
+  ResolvedContentBlock,
+  ResolvedContentPage,
+} from "@/lib/content/contentPages";
+import { contentHref } from "@/lib/content/links";
+import "@/components/public/content-pages.css";
 
 interface ContentPageViewProps {
   page: ResolvedContentPage;
-  /** "faq" agrupa os blocos por categoria e exibe em acordeão. */
   variant?: "blocks" | "faq";
   locale: string;
+  /** Same rendering as the published page, embedded inside the editor. */
+  embedded?: boolean;
 }
 
 function PageButton({
@@ -21,24 +37,201 @@ function PageButton({
   url: string;
   locale: string;
 }) {
-  if (!label || !url) return null;
-  const href = url.startsWith("http") || url.startsWith("mailto:") ? url : `/${locale}${url.startsWith("/") ? "" : "/"}${url}`;
-  const isExternal = href.startsWith("http") || href.startsWith("mailto:");
-
+  const href = contentHref(url, locale);
+  if (!label || !href) return null;
   return (
-    <Button asChild size="lg" className="w-fit">
-      {isExternal ? (
-        <a href={href} target="_blank" rel="noreferrer">
-          {label}
-          <ArrowRight size={18} className="ml-2" />
-        </a>
-      ) : (
-        <Link href={href}>
-          {label}
-          <ArrowRight size={18} className="ml-2" />
-        </Link>
+    <Link
+      className="content-link-button"
+      href={href}
+      {...(/^https?:\/\//i.test(href)
+        ? { target: "_blank", rel: "noopener noreferrer" }
+        : {})}
+    >
+      {label}
+      <ArrowUpRight size={17} />
+    </Link>
+  );
+}
+
+function BlockBody({
+  block,
+  locale,
+}: {
+  block: ResolvedContentBlock;
+  locale: string;
+}) {
+  return (
+    <>
+      {block.imageUrl && (
+        <div className="content-image">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={block.imageUrl} alt={block.title} loading="lazy" />
+        </div>
       )}
-    </Button>
+      <div className="content-prose">
+        {block.text
+          .split(/\n{2,}/)
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .map((p, index) => (
+            <p key={index}>{p}</p>
+          ))}
+      </div>
+      <PageButton
+        label={block.buttonLabel}
+        url={block.buttonUrl}
+        locale={locale}
+      />
+    </>
+  );
+}
+
+function FaqContent({
+  page,
+  locale,
+  prefix,
+}: {
+  page: ResolvedContentPage;
+  locale: string;
+  prefix: string;
+}) {
+  const en = locale === "en-US";
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const categories = Array.from(
+    new Set(page.blocks.map((block) => block.subtitle).filter(Boolean)),
+  );
+  const filtered = page.blocks.filter(
+    (block) =>
+      (!category || block.subtitle === category) &&
+      normalize(`${block.title} ${block.text} ${block.subtitle}`).includes(
+        normalize(query.trim()),
+      ),
+  );
+  const groups = Array.from(new Set(filtered.map((block) => block.subtitle)));
+  return (
+    <>
+      <div className="content-search-wrap">
+        <div className="content-search">
+          <Search size={21} aria-hidden />
+          <label className="sr-only" htmlFor={`${prefix}-search`}>
+            {en ? "Search questions" : "Buscar dúvidas"}
+          </label>
+          <input
+            id={`${prefix}-search`}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={
+              en ? "What would you like to know?" : "Qual é a sua dúvida?"
+            }
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label={en ? "Clear search" : "Limpar busca"}
+            >
+              <X size={17} />
+            </button>
+          )}
+        </div>
+        <p>
+          {en
+            ? "Search by topic, keyword or question."
+            : "Busque por assunto, palavra ou pergunta."}
+        </p>
+      </div>
+      <div className="content-faq-layout">
+        <nav
+          className="content-categories"
+          aria-label={en ? "Question topics" : "Assuntos das dúvidas"}
+        >
+          <span className="content-small-label">
+            {en ? "Explore by topic" : "Explore por assunto"}
+          </span>
+          <button
+            type="button"
+            aria-pressed={!category}
+            onClick={() => setCategory(null)}
+          >
+            {en ? "All questions" : "Todas as dúvidas"}
+            <span>{page.blocks.length}</span>
+          </button>
+          {categories.map((item) => (
+            <button
+              type="button"
+              key={item}
+              aria-pressed={category === item}
+              onClick={() => setCategory(item)}
+            >
+              {item}
+              <span>
+                {page.blocks.filter((block) => block.subtitle === item).length}
+              </span>
+            </button>
+          ))}
+        </nav>
+        <div className="content-faq-results">
+          <div className="content-results-label" role="status">
+            {query || category
+              ? `${filtered.length} ${en ? (filtered.length === 1 ? "question found" : "questions found") : filtered.length === 1 ? "dúvida encontrada" : "dúvidas encontradas"}`
+              : en
+                ? "Everything you need to know"
+                : "Tudo o que você precisa saber"}
+          </div>
+          {filtered.length === 0 ? (
+            <div className="content-no-results">
+              <Search size={28} />
+              <h2>{en ? "No questions found" : "Nenhuma dúvida encontrada"}</h2>
+              <p>
+                {en
+                  ? "Try another word or explore all topics."
+                  : "Tente outra palavra ou explore todos os assuntos."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setCategory(null);
+                }}
+              >
+                {en ? "View all questions" : "Ver todas as dúvidas"}
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            groups.map((group) => (
+              <section key={group || "general"} className="content-faq-group">
+                {group && <h2>{group}</h2>}
+                {filtered
+                  .filter((block) => block.subtitle === group)
+                  .map((block) => (
+                    <details className="content-question" key={block.id}>
+                      <summary>
+                        <span>
+                          {block.title || (en ? "Question" : "Pergunta")}
+                        </span>
+                        <span className="content-question-toggle">
+                          <ChevronDown size={18} />
+                        </span>
+                      </summary>
+                      <div className="content-answer">
+                        <BlockBody block={block} locale={locale} />
+                      </div>
+                    </details>
+                  ))}
+              </section>
+            ))
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -46,121 +239,178 @@ export function ContentPageView({
   page,
   variant = "blocks",
   locale,
+  embedded = false,
 }: ContentPageViewProps) {
-  const paragraphs = (text: string) =>
-    text
-      .split(/\n{2,}/)
-      .map((p) => p.trim())
-      .filter(Boolean);
-
+  const en = locale === "en-US",
+    faq = variant === "faq";
+  const prefix = useId().replace(/:/g, "");
+  const minutes = Math.max(
+    1,
+    Math.ceil(
+      page.blocks
+        .map((block) => block.text)
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean).length / 220,
+    ),
+  );
+  const Wrapper = embedded ? "div" : "main";
   return (
-    <main className="flex-1 w-full">
-      <article className="mx-auto max-w-4xl px-4 py-16 md:px-6 md:py-24">
-        <header className="mb-12 space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-text">
-            {page.title}
-          </h1>
-          {page.subtitle && (
-            <p className="text-lg text-text-secondary max-w-2xl">{page.subtitle}</p>
-          )}
-          {page.imageUrl && (
-            <div className="overflow-hidden rounded-2xl border border-border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={page.imageUrl}
-                alt={page.title}
-                className="h-auto w-full object-cover"
-              />
+    <Wrapper
+      className={`content-page ${embedded ? "content-page-embedded" : ""}`}
+    >
+      <div className="content-page-wrap">
+        {!embedded && (
+          <nav
+            className="content-breadcrumb"
+            aria-label={en ? "Breadcrumb" : "Navegação estrutural"}
+          >
+            <Link href={`/${locale}`}>{en ? "Home" : "Início"}</Link>
+            <span>/</span>
+            <span>
+              {faq
+                ? en
+                  ? "Help center"
+                  : "Central de dúvidas"
+                : en
+                  ? "Information"
+                  : "Informações"}
+            </span>
+          </nav>
+        )}
+        <header className={`content-hero ${faq ? "content-hero-faq" : ""}`}>
+          <div>
+            <div className="content-eyebrow">
+              <span />
+              {faq
+                ? en
+                  ? "Clarity for your next step"
+                  : "Clareza para o seu próximo passo"
+                : en
+                  ? "Transparency at every step"
+                  : "Transparência em cada etapa"}
             </div>
-          )}
-          {page.ctaLabel && page.ctaUrl && (
-            <PageButton label={page.ctaLabel} url={page.ctaUrl} locale={locale} />
-          )}
+            <h1>{page.title}</h1>
+            <p className="content-subtitle">
+              {page.subtitle ||
+                (en
+                  ? "Read at your own pace. Find the information you need, organized in one place."
+                  : "Leia no seu ritmo. Encontre as informações que precisa, organizadas em um só lugar.")}
+            </p>
+            <div className="content-meta">
+              {faq ? (
+                <>
+                  <BookOpen size={14} />
+                  <span>
+                    {page.blocks.length}{" "}
+                    {en
+                      ? "questions, clear answers"
+                      : "dúvidas, respostas diretas"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Clock3 size={14} />
+                  <span>
+                    {minutes} {en ? "min read" : "min de leitura"}
+                  </span>
+                  <span className="content-meta-dot">·</span>
+                  <span>
+                    {page.blocks.length} {en ? "sections" : "seções"}
+                  </span>
+                </>
+              )}
+            </div>
+            <PageButton
+              label={page.ctaLabel}
+              url={page.ctaUrl}
+              locale={locale}
+            />
+          </div>
+          <div className="content-hero-symbol" aria-hidden>
+            {faq ? <BookOpen /> : <ShieldCheck />}
+            <span>NR / {faq ? "HELP" : "INFO"}</span>
+          </div>
         </header>
-
-        {variant === "faq" ? (
-          <FaqBlocks blocks={page.blocks} paragraphs={paragraphs} />
-        ) : (
-          <div className="space-y-12">
-            {page.blocks.map((block) => (
-              <section key={block.id} className="space-y-4">
-                {block.imageUrl && (
-                  <div className="overflow-hidden rounded-2xl border border-border">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={block.imageUrl}
-                      alt={block.title}
-                      className="h-auto w-full object-cover"
-                    />
-                  </div>
-                )}
-                {block.title && (
-                  <h2 className="text-xl font-semibold text-text pb-3 border-b border-border">
-                    {block.title}
-                  </h2>
-                )}
-                {block.subtitle && (
-                  <p className="text-sm font-medium text-primary">{block.subtitle}</p>
-                )}
-                <div className="space-y-3">
-                  {paragraphs(block.text).map((p, i) => (
-                    <p key={i} className="text-text-secondary leading-relaxed">
-                      {p}
-                    </p>
-                  ))}
-                </div>
-                {block.buttonLabel && block.buttonUrl && (
-                  <PageButton
-                    label={block.buttonLabel}
-                    url={block.buttonUrl}
-                    locale={locale}
-                  />
-                )}
-              </section>
-            ))}
+        {page.imageUrl && (
+          <div className="content-cover">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={page.imageUrl} alt={page.title} />
           </div>
         )}
-      </article>
-    </main>
-  );
-}
-
-function FaqBlocks({
-  blocks,
-  paragraphs,
-}: {
-  blocks: ResolvedContentPage["blocks"];
-  paragraphs: (text: string) => string[];
-}) {
-  const groups: { category: string; items: typeof blocks }[] = [];
-  for (const block of blocks) {
-    const category = block.subtitle || "";
-    const existing = groups.find((g) => g.category === category);
-    if (existing) existing.items.push(block);
-    else groups.push({ category, items: [block] });
-  }
-
-  return (
-    <div className="space-y-12">
-      {groups.map((group, groupIndex) => (
-        <div key={`${group.category}-${groupIndex}`}>
-          {group.category && (
-            <div className="flex items-center gap-3 mb-6">
-              <Badge variant="outline">{group.category}</Badge>
-            </div>
-          )}
-          <div className="space-y-3">
-            {group.items.map((block, index) => (
-              <FAQItem
-                key={block.id}
-                question={block.title}
-                answer={paragraphs(block.text).join("\n\n")}
-                defaultOpen={groupIndex === 0 && index === 0}
-              />
-            ))}
+        {faq ? (
+          <FaqContent page={page} locale={locale} prefix={prefix} />
+        ) : (
+          <div className="content-document-layout">
+            <aside className="content-document-index">
+              <nav aria-label={en ? "On this page" : "Nesta página"}>
+                <span className="content-small-label">
+                  <FileText size={14} />
+                  {en ? "On this page" : "Nesta página"}
+                </span>
+                {page.blocks.map((block, index) => (
+                  <a key={block.id} href={`#${prefix}-section-${index}`}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {block.title || `${en ? "Section" : "Seção"} ${index + 1}`}
+                  </a>
+                ))}
+              </nav>
+              <p>
+                {en
+                  ? "Information always within reach."
+                  : "Informação sempre ao seu alcance."}
+              </p>
+            </aside>
+            <article className="content-document">
+              {page.blocks.map((block, index) => (
+                <section
+                  key={block.id}
+                  id={`${prefix}-section-${index}`}
+                  tabIndex={-1}
+                >
+                  <span className="content-section-number">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    {block.title && <h2>{block.title}</h2>}
+                    {block.subtitle && (
+                      <p className="content-section-subtitle">
+                        {block.subtitle}
+                      </p>
+                    )}
+                    <BlockBody block={block} locale={locale} />
+                  </div>
+                </section>
+              ))}
+            </article>
           </div>
+        )}
+        <div className="content-bottom-note">
+          <ShieldCheck size={20} />
+          <div>
+            <strong>
+              {en
+                ? "A clear, informed journey."
+                : "Uma jornada clara e bem informada."}
+            </strong>
+            <p>
+              {en
+                ? "Explore the information about your experience on the platform."
+                : "Conheça as informações sobre sua experiência na plataforma."}
+            </p>
+          </div>
+          <Link href={`/${locale}/${faq ? "privacidade" : "faq"}`}>
+            {faq
+              ? en
+                ? "Privacy"
+                : "Privacidade"
+              : en
+                ? "Questions & answers"
+                : "Tirar dúvidas"}
+            <ArrowUpRight size={16} />
+          </Link>
         </div>
-      ))}
-    </div>
+      </div>
+    </Wrapper>
   );
 }

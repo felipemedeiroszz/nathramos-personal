@@ -170,10 +170,15 @@ export function AdminAlunosClient({
             )}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Link href={`/${locale}/admin/alunos/novo`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-300">
+          <Users size={16} />{t("Novo aluno", "New student")}
+        </Link>
         <Link href={`/${locale}/admin/dashboard`} className={button}>
           <ArrowUpRight size={14} />
           {t("Visão geral", "Overview")}
         </Link>
+        </div>
       </header>
       <section
         className="grid grid-cols-2 gap-3 xl:grid-cols-4"

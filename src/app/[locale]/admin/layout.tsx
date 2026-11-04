@@ -14,13 +14,22 @@ export const metadata: Metadata = {
   title: "Admin",
 };
 
-export default async function AdminLayout({
-  children,
-  params: { locale },
-}: {
-  children: React.ReactNode;
-  params: { locale: string };
-}) {
+export default async function AdminLayout(
+  props: {
+    children: React.ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
+  const {
+    children
+  } = props;
+
   if (!locales.includes(locale as any)) {
     notFound();
   }

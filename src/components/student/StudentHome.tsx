@@ -1,3 +1,4 @@
+import { nextPending } from "@/lib/student/schedule";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -14,7 +15,6 @@ import type {
   RoutineData,
   RoutineItem,
 } from "@/services/StudentRoutineService";
-import { getZonedParts } from "@/lib/notifications/time";
 import { RoutineSummary } from "./RoutineSummary";
 import { TodayWorkoutCard } from "./workout/TodayWorkoutCard";
 export function StudentHome({
@@ -44,12 +44,8 @@ export function StudentHome({
 }) {
   const en = locale === "en-US",
     t = (pt: string, eng: string) => (en ? eng : pt);
-  const clock = getZonedParts(new Date(), data.timezone),
-    time = `${String(clock.hour).padStart(2, "0")}:${String(clock.minute).padStart(2, "0")}`;
-  const nextMeal = data.diet
-    .filter((i) => !i.done && (!i.slot || i.slot >= time))
-    .sort((a, b) => a.slot.localeCompare(b.slot))[0];
-  const nextSupp = data.supplements.find((i) => !i.done);
+  const nextMeal = nextPending(data.diet);
+  const nextSupp = nextPending(data.supplements);
   const date = new Date(`${data.date}T12:00:00Z`).toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",

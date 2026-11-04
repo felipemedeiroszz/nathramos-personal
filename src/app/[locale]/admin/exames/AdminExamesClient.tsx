@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCivilDate } from "@/lib/dates/civil";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -118,15 +119,7 @@ export function AdminExamesClient({
     setTimeout(() => setIsLoading(false), 500);
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString(
-        locale === "pt-BR" ? "pt-BR" : "en-US",
-      );
-    } catch {
-      return dateStr;
-    }
-  };
+  const formatDate = (dateStr: string) => formatCivilDate(dateStr, locale);
 
   const formatFileSize = (bytes: number | null | undefined) => {
     if (!bytes) return "-";
@@ -351,9 +344,10 @@ export function AdminExamesClient({
           categories={categories}
           studentOptions={studentOptions}
           onSubmit={async (data) => {
-            await upsertExamAction(
+            const result = await upsertExamAction(
               data as Parameters<typeof upsertExamAction>[0],
             );
+            if (!result.success) throw new Error(result.message);
           }}
           onSaved={onModalSaved}
         />

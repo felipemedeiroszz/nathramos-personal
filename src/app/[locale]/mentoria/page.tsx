@@ -51,11 +51,17 @@ const premiumItems = [
   "premium6",
 ];
 
-export default async function MentoriaPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function MentoriaPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("mentoringPage");

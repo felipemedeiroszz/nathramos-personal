@@ -284,6 +284,8 @@ const views = [
           categories_pt: ["Bem-estar"],
           categories_en: ["Wellness"],
           is_free: true,
+          accessible: true,
+          has_content: false,
           is_published: true,
           price_cents: 0,
           currency: "BRL",
@@ -486,7 +488,7 @@ await build({
           else if (a.path.includes("supabase"))
             contents = `export const createClientBrowser=()=>({channel:()=>{const c={on:()=>c,subscribe:f=>{f?.('SUBSCRIBED');return c}};return c},removeChannel:()=>{}});`;
           else if (a.path.includes("push/client"))
-            contents = `export const registerServiceWorker=async()=>{};export const syncPushSubscription=async()=>{};export const pushSupported=()=>false;export const notificationPermission=()=> 'unsupported';export const enablePush=async()=>false;export const disablePush=async()=>{};`;
+            contents = `export const registerServiceWorker=async()=>{};export const syncPushSubscription=async()=>{};export const pushAvailability=()=>"unsupported";export const pushSupported=()=>false;export const notificationPermission=()=> 'unsupported';export const enablePush=async()=>false;export const disablePush=async()=>{};`;
           else
             contents = [...(actions.get(a.path) || [])]
               .map(

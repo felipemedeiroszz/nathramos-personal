@@ -6,7 +6,6 @@ import { PublicShell } from "@/components/public/PublicShell";
 import "@/components/payments/checkout.css";
 import { CheckoutClient } from "@/components/payments/CheckoutClient";
 import { ProfileService } from "@/lib/payments/services";
-import { eligibleTrialDays } from "@/lib/payments/validation";
 import { PlanService } from "@/services/PlanService";
 import { createClientSSR } from "@/lib/supabase/server";
 import { canAccessPlatform } from "@/lib/auth/access";
@@ -19,13 +18,19 @@ export const metadata: Metadata = {
   title: "Checkout",
 };
 
-export default async function CheckoutPage({
-  params: { locale },
-  searchParams = {},
-}: {
-  params: { locale: string };
-  searchParams?: { method?: string };
-}) {
+export default async function CheckoutPage(
+  props: {
+    params: Promise<{ locale: string }>;
+    searchParams?: Promise<{ method?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
 
   const t = await getTranslations("payments");
@@ -45,13 +50,7 @@ export default async function CheckoutPage({
     redirect(`/${locale}/treinos`);
   }
 
-  const availablePlan = await PlanService.getPrimary();
-  const plan = availablePlan
-    ? {
-        ...availablePlan,
-        trial_days: await eligibleTrialDays(user.id, availablePlan.trial_days),
-      }
-    : null;
+  const plan = await PlanService.getPrimary();
 
   const profile = await ProfileService.getProfile(user.id);
   const pixNeedsDocument = !profile?.asaas_customer_id && !profile?.cpf;
@@ -73,10 +72,6 @@ export default async function CheckoutPage({
   const priceLabel = plan
     ? formatCurrency(plan.price_cents / 100, plan.currency, locale as Locale)
     : "";
-  const totalTodayLabel =
-    plan && plan.trial_days > 0
-      ? formatCurrency(0, plan.currency, locale as Locale)
-      : priceLabel;
   const cycleLabel = plan ? tp(`cycle_${plan.billing_cycle_days}` as any) : "";
 
   return (
@@ -120,9 +115,9 @@ export default async function CheckoutPage({
                 planId={plan.id}
                 planName={planName}
                 priceLabel={priceLabel}
-                totalTodayLabel={totalTodayLabel}
+
                 cycleLabel={cycleLabel}
-                trialDays={plan.trial_days}
+
                 cardAvailable={cardAvailable}
                 pixAvailable={pixAvailable}
                 pixNeedsDocument={pixNeedsDocument}
@@ -140,7 +135,7 @@ export default async function CheckoutPage({
                   paymentError: t("paymentError"),
                   secureNote: t("secureNote"),
                   totalDueToday: t("totalDueToday"),
-                  trialNote: t("trialNote", { days: plan.trial_days }),
+
                   card: {
                     number: t("cardNumber"),
                     holder: t("cardHolder"),

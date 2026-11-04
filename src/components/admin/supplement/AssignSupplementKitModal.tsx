@@ -239,6 +239,10 @@ export function AssignSupplementKitModal({
             )}
           </div>
 
+          <p className="text-sm text-text-secondary">
+            {locale === "pt-BR" ? "A vigência inclui as datas de início e término. Após vincular, configure os dias, horários e alternativas na aba Rotina do aluno. Sem personalização, a rotina é diária." : "The start and end dates are inclusive. After assigning, configure days, times and alternatives in the student’s Routine tab. Without customization, the routine is daily."}
+          </p>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-text">

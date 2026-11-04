@@ -25,13 +25,19 @@ async function safe(t: any, key: string, fb: string) {
   return fb;
 }
 
-export default async function AdminKitsDietasPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams?: Record<string, string | undefined>;
-}) {
+export default async function AdminKitsDietasPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams?: Promise<Record<string, string | undefined>>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdmin = await getTranslations("admin");

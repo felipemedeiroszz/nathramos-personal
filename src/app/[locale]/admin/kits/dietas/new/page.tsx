@@ -3,11 +3,17 @@ import { locales } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
-export default function NewDietKitPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function NewDietKitPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale as (typeof locales)[number])) notFound();
   redirect(`/${locale}/admin/kits/dietas?new=1`);
 }

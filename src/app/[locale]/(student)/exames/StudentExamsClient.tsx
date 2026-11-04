@@ -1,6 +1,8 @@
 "use client";
+import { notifyDataChanged } from "@/lib/live/events";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -31,8 +33,10 @@ import {
 import {
   deleteMyExamAction,
   getExamFileUrlAction,
-  uploadExamAction,
+  prepareExamUploadAction,
+  completeExamUploadAction,
 } from "@/app/actions/exams";
+import { createClientBrowser } from "@/lib/supabase/client";
 import type { ExamCategoryRow, ExamRow } from "@/types";
 
 interface StudentExamsClientProps {
@@ -47,7 +51,7 @@ export function StudentExamsClient({
   categories,
 }: StudentExamsClientProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useAsyncTransition();
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<{
@@ -103,23 +107,52 @@ export function StudentExamsClient({
       setStatus({ type: "err", msg: "Selecione um arquivo para envio." });
       return;
     }
-    formData.set("file", file);
 
     startTransition(async () => {
-      const res = await uploadExamAction(formData);
-      if (res.success) {
-        setStatus({ type: "ok", msg: "Exame enviado com sucesso!" });
-        setFile(null);
-        formRef.current?.reset();
-        if (inputRef.current) inputRef.current.value = "";
-        router.refresh();
-      } else {
+      try {
+        const prepared = await prepareExamUploadAction({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+        if (!prepared.success) throw new Error(prepared.message);
+        const target = prepared.upload;
+        const { error } = await createClientBrowser()
+          .storage.from(target.bucket)
+          .uploadToSignedUrl(target.path, target.token, file, {
+            contentType: file.type,
+          });
+        if (error)
+          throw new Error(
+            "Falha ao enviar o arquivo. Confira sua conexão e tente novamente.",
+          );
+        const res = await completeExamUploadAction(
+          target.uploadId,
+          Object.fromEntries(formData.entries()),
+        );
+        if (res.success) {
+          setStatus({ type: "ok", msg: "Exame enviado com sucesso!" });
+          setFile(null);
+          formRef.current?.reset();
+          if (inputRef.current) inputRef.current.value = "";
+          router.refresh();
+          notifyDataChanged();
+        } else {
+          setStatus({
+            type: "err",
+            msg:
+              res.message === "validation"
+                ? "Preencha título e data do exame."
+                : res.message,
+          });
+        }
+      } catch (error) {
         setStatus({
           type: "err",
           msg:
-            res.message === "validation"
-              ? "Preencha título e data do exame."
-              : res.message,
+            error instanceof Error
+              ? error.message
+              : "Não foi possível enviar o exame.",
         });
       }
     });
@@ -147,6 +180,7 @@ export function StudentExamsClient({
         setStatus({ type: "err", msg: res.message });
       }
       router.refresh();
+      notifyDataChanged();
     } finally {
       setBusyId(null);
     }
@@ -252,143 +286,145 @@ export function StudentExamsClient({
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
-                    Título do exame
-                  </label>
-                  <Input
-                    name="title"
-                    placeholder="Hemograma completo"
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
-                    Data do exame
-                  </label>
-                  <Input
-                    name="exam_date"
-                    type="date"
-                    defaultValue={new Date().toISOString().slice(0, 10)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
-                    Categoria
-                  </label>
-                  <Select name="category_id" defaultValue="">
-                    <option value="">-- Selecione --</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {locale === "pt-BR" ? c.name_pt : c.name_en}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
-                    Laboratório
-                  </label>
-                  <Input name="lab_name" placeholder="Lab Central" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">
-                  Observações
-                </label>
-                <Textarea
-                  name="description"
-                  rows={3}
-                  placeholder="Alguma observação sobre o exame..."
-                />
-              </div>
-
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  pickFile(e.dataTransfer.files?.[0] ?? null);
-                }}
-                className={`rounded-xl border-2 border-dashed transition-colors ${
-                  dragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-surface-secondary/20"
-                }`}
-              >
-                <label className="flex flex-col items-center justify-center px-6 py-10 cursor-pointer text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    <Cloud size={32} />
+              <fieldset disabled={isPending} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text">
+                      Título do exame
+                    </label>
+                    <Input
+                      name="title"
+                      placeholder="Hemograma completo"
+                      required
+                    />
                   </div>
                   <div className="space-y-1.5">
-                    <p className="text-base md:text-lg font-semibold text-text">
-                      {file
-                        ? file.name
-                        : "Arraste o arquivo ou clique para selecionar"}
-                    </p>
-                    <p className="text-sm text-text-secondary">
-                      {file
-                        ? formatSize(file.size)
-                        : "Aceita PDF ou imagem até 20MB"}
-                    </p>
+                    <label className="text-sm font-medium text-text">
+                      Data do exame
+                    </label>
+                    <Input
+                      name="exam_date"
+                      type="date"
+                      defaultValue={new Date().toISOString().slice(0, 10)}
+                      required
+                    />
                   </div>
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    className="hidden"
-                    accept="application/pdf,image/png,image/jpeg,image/webp"
-                    onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text">
+                      Categoria
+                    </label>
+                    <Select name="category_id" defaultValue="">
+                      <option value="">-- Selecione --</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {locale === "pt-BR" ? c.name_pt : c.name_en}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-text">
+                      Laboratório
+                    </label>
+                    <Input name="lab_name" placeholder="Lab Central" />
+                  </div>
+                </div>
 
-              {status && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-text">
+                    Observações
+                  </label>
+                  <Textarea
+                    name="description"
+                    rows={3}
+                    placeholder="Alguma observação sobre o exame..."
+                  />
+                </div>
+
                 <div
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                    status.type === "ok"
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-text/25 bg-text/[0.08] text-text"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    pickFile(e.dataTransfer.files?.[0] ?? null);
+                  }}
+                  className={`rounded-xl border-2 border-dashed transition-colors ${
+                    dragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-surface-secondary/20"
                   }`}
                 >
-                  {status.type === "ok" ? (
-                    <CheckCircle size={16} />
-                  ) : (
-                    <XCircle size={16} />
-                  )}
-                  {status.msg}
+                  <label className="flex flex-col items-center justify-center px-6 py-10 cursor-pointer text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                      <Cloud size={32} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-base md:text-lg font-semibold text-text">
+                        {file
+                          ? file.name
+                          : "Arraste o arquivo ou clique para selecionar"}
+                      </p>
+                      <p className="text-sm text-text-secondary">
+                        {file
+                          ? formatSize(file.size)
+                          : "Aceita PDF ou imagem até 20MB"}
+                      </p>
+                    </div>
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      className="hidden"
+                      accept="application/pdf,image/png,image/jpeg,image/webp"
+                      onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
                 </div>
-              )}
 
-              <div className="flex items-start gap-2 text-xs text-text-secondary">
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                <p>
-                  Após o envio, seu treinador poderá visualizar o arquivo e
-                  deixar um parecer.
-                </p>
-              </div>
+                {status && (
+                  <div
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                      status.type === "ok"
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-text/25 bg-text/[0.08] text-text"
+                    }`}
+                  >
+                    {status.type === "ok" ? (
+                      <CheckCircle size={16} />
+                    ) : (
+                      <XCircle size={16} />
+                    )}
+                    {status.msg}
+                  </div>
+                )}
 
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isPending || !file}>
-                  {isPending ? (
-                    <>
-                      <Loader2 size={16} className="mr-2 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={16} className="mr-2" />
-                      Enviar exame
-                    </>
-                  )}
-                </Button>
-              </div>
+                <div className="flex items-start gap-2 text-xs text-text-secondary">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <p>
+                    Após o envio, seu treinador poderá visualizar o arquivo e
+                    deixar um parecer.
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={isPending || !file}>
+                    {isPending ? (
+                      <>
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} className="mr-2" />
+                        Enviar exame
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </fieldset>
             </form>
           </CardContent>
         </Card>

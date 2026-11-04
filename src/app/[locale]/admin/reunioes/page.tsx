@@ -14,11 +14,17 @@ export const metadata: Metadata = {
   title: "Admin | Reuniões",
 };
 
-export default async function AdminReunioesPage({
-  params: { locale },
-}: {
-  params: { locale: (typeof locales)[number] };
-}) {
+export default async function AdminReunioesPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");

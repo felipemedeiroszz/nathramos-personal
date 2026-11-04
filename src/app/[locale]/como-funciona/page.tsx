@@ -17,11 +17,17 @@ import {
 } from "lucide-react";
 import "@/components/public/how-it-works.css";
 
-export async function generateMetadata({
-  params: { locale },
-}: {
-  params: { locale: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   const en = locale === "en-US";
   return {
     title: en ? "How coaching works" : "Como funciona o acompanhamento",
@@ -32,11 +38,17 @@ export async function generateMetadata({
   };
 }
 
-export default async function ComoFuncionaPage({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function ComoFuncionaPage(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const t = await getTranslations("howItWorksPage");
   const en = locale === "en-US";

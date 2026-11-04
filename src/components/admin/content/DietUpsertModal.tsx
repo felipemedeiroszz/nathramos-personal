@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { localDateKey } from "@/lib/dates/civil";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -48,7 +49,7 @@ export function DietUpsertModal({
     fiber_g: program?.fiber_g ?? 25,
     sodium_mg: program?.sodium_mg ?? 2300,
     water_liters: program?.water_liters ?? 2.0,
-    start_date: program?.start_date ?? new Date().toISOString().slice(0, 10),
+    start_date: program?.start_date ?? localDateKey(),
     end_date: program?.end_date ?? "",
     is_active: program?.is_active ?? true,
     restrictions_pt: Array.isArray(program?.restrictions_pt) ? program!.restrictions_pt!.join(", ") : "",
@@ -71,7 +72,7 @@ export function DietUpsertModal({
         fiber_g: program.fiber_g ?? 25,
         sodium_mg: program.sodium_mg ?? 2300,
         water_liters: program.water_liters ?? 2.0,
-        start_date: program.start_date ?? new Date().toISOString().slice(0, 10),
+        start_date: program.start_date ?? localDateKey(),
         end_date: program.end_date ?? "",
         is_active: program.is_active ?? true,
         restrictions_pt: Array.isArray(program.restrictions_pt) ? program.restrictions_pt.join(", ") : "",
@@ -91,7 +92,7 @@ export function DietUpsertModal({
         fiber_g: 25,
         sodium_mg: 2300,
         water_liters: 2.0,
-        start_date: new Date().toISOString().slice(0, 10),
+        start_date: localDateKey(),
         end_date: "",
         is_active: true,
         restrictions_pt: "",

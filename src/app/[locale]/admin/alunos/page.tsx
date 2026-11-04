@@ -13,13 +13,19 @@ export const metadata: Metadata = {
   title: "Admin | Alunos",
 };
 
-export default async function AdminAlunosPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams: { page?: string; search?: string; status?: string };
-}) {
+export default async function AdminAlunosPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams: Promise<{ page?: string; search?: string; status?: string }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const actor = await requireRole(["admin", "coach"], "/dashboard");

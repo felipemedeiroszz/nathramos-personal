@@ -6,6 +6,11 @@ import { notFound } from "next/navigation";
 import { locales } from "@/i18n/config";
 import "../globals.css";
 import { cn } from "@/lib/utils";
+import { LiveDataRefresh } from "@/components/shared/LiveDataRefresh";
+
+// Every refresh must read current data, including public pages and direct database changes.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -82,13 +87,18 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-export default async function LocaleLayout({
-  children,
-  params: { locale },
-}: Readonly<{
-  children: React.ReactNode;
-  params: { locale: string };
-}>) {
+export default async function LocaleLayout(
+  props: Readonly<{
+    children: React.ReactNode;
+    params: Promise<{ locale: string }>;
+  }>,
+) {
+  const params = await props.params;
+
+  const { locale } = params;
+
+  const { children } = props;
+
   if (!locales.includes(locale as any)) {
     notFound();
   }
@@ -101,6 +111,7 @@ export default async function LocaleLayout({
     <html lang={locale} className="dark" suppressHydrationWarning>
       <body className={cn("min-h-dvh bg-background", inter.variable)}>
         <NextIntlClientProvider messages={messages}>
+          <LiveDataRefresh />
           {children}
         </NextIntlClientProvider>
       </body>

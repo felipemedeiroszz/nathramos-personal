@@ -147,3 +147,14 @@ test('administrador marcado como removido não pode restaurar privilégios pelo 
  assert.equal((await actor(ADMIN,tx=>tx.query('select id from public.profiles where id=$1',[B]))).rows.length,0)
  await db.query('update public.profiles set is_deleted=false where id=$1',[ADMIN])
 })
+
+test('programa no kit segue calendário interno mesmo com filtro legado conflitante',async()=>{
+ const kit=(await db.query("insert into workout_kits(name_pt,name_en,slug,created_by_id) values('Agenda','Schedule','schedule-regression',$1) returning id",[ADMIN])).rows[0].id
+ await db.query("insert into workout_kit_items(kit_id,program_id,day_of_week) values($1,$2,7)",[kit,programId])
+ await db.query("insert into student_workout_kits(student_id,kit_id,start_date,status) values($1,$2,'2026-01-01','active')",[B,kit])
+ const day=(await db.query('select day_of_week from workout_days where id=$1',[dayId])).rows[0].day_of_week
+ const date=`2026-11-${String(1+day).padStart(2,'0')}`
+ const session=(await db.query('select * from start_student_workout($1,$2,$3,$4::date)',[B,dayId,programId,date])).rows[0]
+ assert.equal(session.day_id,dayId)
+ await assert.rejects(db.query('insert into workout_kit_items(kit_id,exercise_id) values($1,$2)',[kit,exerciseId]),/workout_direct_exercise_requires_day/)
+})

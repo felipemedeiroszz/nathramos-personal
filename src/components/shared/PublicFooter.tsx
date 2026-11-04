@@ -1,29 +1,31 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Mail, MessageCircle, Clock } from "lucide-react";
 import { publicLinks, publicServices } from "@/components/public/navigation";
-export function PublicFooter({ locale }: { locale: string }) {
+import { PUBLIC_SETTINGS_DEFAULTS, localizedBrand, whatsappDigits, type PublicPlatformSettings } from "@/lib/platform/publicSettings";
+export function PublicFooter({ locale, settings = PUBLIC_SETTINGS_DEFAULTS }: { locale: string; settings?: PublicPlatformSettings }) {
   const en = locale === "en-US";
+  const brand = localizedBrand(settings, locale), phone = whatsappDigits(settings.support_whatsapp);
   return (
     <footer className="public-footer mt-auto border-t border-white/[0.07] bg-[#0b0e10] text-zinc-100">
       <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-16">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div className="col-span-2 lg:col-span-1">
-            <Link href={`/${locale}`} className="flex items-center gap-3">
-              <div className="relative h-12 w-12">
+            <Link href={`/${locale}`} className="flex min-w-0 items-center gap-3">
+              <div className="relative h-12 w-12 shrink-0">
                 <Image
                   src="/logo.png"
-                  alt="Nath Ramos"
+                  alt={brand.name}
                   fill
                   className="object-contain"
                 />
               </div>
-              <span>
-                <span className="block text-xs font-semibold tracking-[0.15em]">
-                  NATH RAMOS
+              <span className="min-w-0">
+                <span className="block break-words text-xs font-semibold uppercase tracking-[0.15em]">
+                  {brand.name}
                 </span>
-                <span className="mt-1 block text-[8px] tracking-[0.25em] text-zinc-500">
-                  PERSONAL TRAINER
+                <span className="mt-1 block break-words text-[8px] uppercase tracking-[0.25em] text-zinc-500">
+                  {brand.tagline}
                 </span>
               </span>
             </Link>
@@ -101,9 +103,17 @@ export function PublicFooter({ locale }: { locale: string }) {
             </ul>
           </div>
         </div>
+        {(settings.support_email || phone || brand.hours) && <section aria-label={en ? "Contact and support" : "Contato e suporte"} className="mt-10 border-t border-white/[0.07] pt-7">
+          <h2 className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{en ? "Contact and support" : "Contato e suporte"}</h2>
+          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3 text-xs text-zinc-400">
+            {settings.support_email && <a href={`mailto:${settings.support_email}`} className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 hover:text-yellow-300"><Mail size={15} className="shrink-0" /><span className="min-w-0 break-all">{settings.support_email}</span></a>}
+            {phone && <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 hover:text-yellow-300"><MessageCircle size={15} />WhatsApp <ArrowUpRight size={12} /></a>}
+            {brand.hours && <p className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2"><Clock size={15} className="shrink-0" /><span className="min-w-0 break-words">{brand.hours}</span></p>}
+          </div>
+        </section>}
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-6 text-[10px] text-zinc-600">
-          <p>
-            © {new Date().getFullYear()} Nath Ramos.{" "}
+          <p className="min-w-0 max-w-full break-words">
+            © {new Date().getFullYear()} {brand.name}.{" "}
             {en ? "All rights reserved." : "Todos os direitos reservados."}
           </p>
           <a

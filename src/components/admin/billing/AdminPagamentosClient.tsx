@@ -44,7 +44,7 @@ const PAYMENT_STATUSES = [
   "partially_refunded",
 ];
 
-const PAYMENT_METHODS = ["credit_card", "pix", "boleto", "bank_transfer"];
+const PAYMENT_METHODS = ["credit_card", "pix", "boleto", "bank_transfer", "cash"];
 
 function statusVariant(status: string) {
   switch (status) {
@@ -168,6 +168,7 @@ export function AdminPagamentosClient({ title, payments }: AdminPagamentosClient
               <option value="all">{t("allProviders")}</option>
               <option value="stripe">Stripe</option>
               <option value="asaas">Asaas</option>
+              <option value="manual">Manual</option>
             </Select>
             <Select
               value={methodFilter}
@@ -261,7 +262,7 @@ export function AdminPagamentosClient({ title, payments }: AdminPagamentosClient
             <ModalClose onClick={() => setDetail(null)} />
           </ModalHeader>
           <ModalBody className="space-y-1">
-            <Button disabled={syncing} onClick={async () => {
+            {detail.provider !== "manual" && <Button disabled={syncing} onClick={async () => {
               setSyncing(true);setSyncMessage("");
               try {
                 const result=await reconcilePaymentAction(detail.id);
@@ -269,7 +270,7 @@ export function AdminPagamentosClient({ title, payments }: AdminPagamentosClient
                 else setSyncMessage(result.message);
               } catch {setSyncMessage(locale === "pt-BR" ? "Falha na conciliação." : "Reconciliation failed.");}
               finally {setSyncing(false);}
-            }}>{locale === "pt-BR" ? (syncing ? "Conciliando…" : "Conciliar com provedor") : (syncing ? "Reconciling…" : "Reconcile with provider")}</Button>
+            }}>{locale === "pt-BR" ? (syncing ? "Conciliando…" : "Conciliar com provedor") : (syncing ? "Reconciling…" : "Reconcile with provider")}</Button>}
             {syncMessage && <p role="alert" className="text-sm text-red-400">{syncMessage}</p>}
             <DetailRow label={locale === "pt-BR" ? "Estornado" : "Refunded"} value={formatMoney((detail as any).refunded_amount_cents || 0,detail.currency)} />
             <DetailRow label={t("colStudent")} value={detail.student_name} />

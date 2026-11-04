@@ -8,11 +8,17 @@ import {
 } from "@/services/StudentRoutineService";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };
-export default async function Page({
-  params: { locale },
-}: {
-  params: { locale: string };
-}) {
+export default async function Page(
+  props: {
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const userId = await requireStudentPage();
   const db: any = await createServiceClientSSR();

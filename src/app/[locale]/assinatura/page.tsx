@@ -7,13 +7,19 @@ import { StudentLayoutClient } from "@/components/shared/StudentLayoutClient";
 import { logoutAction } from "@/app/actions/account";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Assinatura e pagamentos" };
-export default async function PaymentCenterPage({
-  params: { locale },
-  searchParams = {},
-}: {
-  params: { locale: string };
-  searchParams?: Record<string, string | undefined>;
-}) {
+export default async function PaymentCenterPage(
+  props: {
+    params: Promise<{ locale: string }>;
+    searchParams?: Promise<Record<string, string | undefined>>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   setRequestLocale(locale);
   const userId = await requireAuthenticated();
   const data = await studentBillingSummary(userId, searchParams);

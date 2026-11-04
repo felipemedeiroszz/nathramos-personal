@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   CalendarDays,
+  CreditCard,
   CheckCircle2,
   Dumbbell,
   History,
@@ -27,6 +28,7 @@ export interface StudentProfileHeaderProps {
   diets: number;
   supplements: number;
   lastSession: string;
+  showFinancialHistory?: boolean;
 }
 
 export function StudentProfileHeader({
@@ -43,6 +45,7 @@ export function StudentProfileHeader({
   diets,
   supplements,
   lastSession,
+  showFinancialHistory = false,
 }: StudentProfileHeaderProps) {
   const t = (pt: string, en: string) => (locale === "en-US" ? en : pt);
   return (
@@ -100,6 +103,10 @@ export function StudentProfileHeader({
               </div>
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+          {showFinancialHistory && <Link href="#historico-financeiro" className="flex items-center gap-2 rounded-lg border border-yellow-400/20 px-4 py-2.5 text-xs text-yellow-400 hover:bg-yellow-400/5">
+            <CreditCard size={14} />{t("Histórico financeiro", "Payment history")}
+          </Link>}
           <Link
             href={`/${locale}/admin/historico?student=${encodeURIComponent(id)}`}
             className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-2.5 text-xs text-zinc-300 transition hover:border-yellow-400/30 hover:text-yellow-400"
@@ -108,6 +115,7 @@ export function StudentProfileHeader({
             {t("Histórico de atribuições", "Assignment history")}
             <ArrowUpRight size={13} />
           </Link>
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-5 py-3 sm:px-7">
           <p className="text-[10px] text-zinc-500">

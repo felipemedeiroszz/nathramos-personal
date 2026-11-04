@@ -1,3 +1,6 @@
+import { checked } from "@/services/StudentRoutineService";
+import { StudentManualBillingPanel } from "@/components/admin/student/StudentManualBillingPanel";
+import { StudentBillingHistoryPanel } from "@/components/admin/student/StudentBillingHistoryPanel";
 import { StudentProfileHeader } from "@/components/admin/student/StudentProfileHeader";
 import { StudentCoachForm } from "@/components/admin/StudentCoachForm";
 import { requireManagedStudent } from "@/lib/auth/platform";
@@ -101,6 +104,7 @@ interface SubscriptionWithPlan {
   current_period_end?: string | null;
   payment_method_pref?: string | null;
   provider?: string | null;
+  source?: string | null;
   started_at?: string | null;
 }
 const MAX_ACTIVE_WORKOUTS = 6;
@@ -182,11 +186,20 @@ function statusLabel(
   };
   return map[status] || status;
 }
-export default async function AdminAlunoDetalhePage({
-  params: { locale, id },
-}: {
-  params: { locale: (typeof locales)[number]; id: string };
-}) {
+export default async function AdminAlunoDetalhePage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number]; id: string }>;
+    searchParams?: Promise<Record<string, string | undefined>>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale,
+    id
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const label = (pt: string, en: string) => (locale === "en-US" ? en : pt);
@@ -218,7 +231,7 @@ export default async function AdminAlunoDetalhePage({
           .in("role", ["admin", "coach"])
           .eq("is_deleted", false)
           .order("full_name")
-      : { data: [] };
+      : { data: [], error: null };
   const responsibility =
     actor.role === "admin"
       ? await supabase
@@ -226,19 +239,21 @@ export default async function AdminAlunoDetalhePage({
           .select("coach_id")
           .eq("user_id", id)
           .maybeSingle()
-      : { data: null };
+      : { data: null, error: null };
+  checked(coaches, "student coaches");
+  checked(responsibility, "student responsibility");
   let profile: ExtendedProfile | null = null;
   try {
-    const { data } = await supabase
+    const result = await supabase
       .from("profiles")
       .select("*")
       .eq("id", id)
       .eq("role", "student")
       .eq("is_deleted", false)
       .maybeSingle();
-    profile = (data as ExtendedProfile | null) ?? null;
-  } catch {
-    profile = null;
+    profile = (checked(result, "student profile") as ExtendedProfile | null) ?? null;
+  } catch (error) {
+    throw error;
   }
   if (!profile) {
     notFound();
@@ -246,21 +261,22 @@ export default async function AdminAlunoDetalhePage({
   let email = (profile as any).email || null;
   if (!email) {
     try {
-      const res = await (supabase.auth.admin as any)?.getUserById?.(id);
-      email = res?.data?.user?.email ?? null;
-    } catch {}
+      const res = await supabase.auth.admin.getUserById(id);
+      if (res.error) throw res.error;
+      email = res.data.user?.email ?? null;
+    } catch (error) { throw error; }
   }
   let subscription: SubscriptionWithPlan | null = null;
   try {
     const sub =
       actor.role === "admin" ? await SubscriptionService.getActive(id) : null;
     if (sub) {
-      const { data: planData } = await supabase
+      const planResult = await supabase
         .from("plans")
         .select("name_pt,name_en,price_cents,currency")
         .eq("id", sub.plan_id)
         .maybeSingle();
-      const plan = planData as
+      const plan = checked(planResult, "student subscription plan") as
         (PlanRow & { name_pt: string; name_en: string }) | null;
       subscription = {
         id: sub.id,
@@ -272,32 +288,32 @@ export default async function AdminAlunoDetalhePage({
         current_period_end: sub.current_period_end,
         payment_method_pref: sub.payment_method_pref ?? null,
         provider: sub.provider ?? null,
+        source: sub.source ?? null,
         started_at: sub.started_at,
       };
     }
-  } catch {
-    subscription = null;
+  } catch (error) {
+    throw error;
   }
   let assignments: StudentWorkoutKitRow[] = [];
   try {
     assignments = await WorkoutKitService.listStudentAssignments(id);
-  } catch {
-    assignments = [];
+  } catch (error) {
+    throw error;
   }
   let history: WorkoutSessionRow[] = [];
   try {
     history = await WorkoutService.userHistory(id, 20);
-  } catch {
-    history = [];
+  } catch (error) {
+    throw error;
   }
   let kits: WorkoutKitRow[] = [];
   let programs: WorkoutProgramRow[] = [];
   try {
     kits = await WorkoutKitService.listKits({ is_published: true });
     programs = await WorkoutService.listPrograms({ status: "active" });
-  } catch {
-    kits = [];
-    programs = [];
+  } catch (error) {
+    throw error;
   }
   let supplementKitOptions: StudentKitOption[] = [];
   let supplementAssignments: StudentKitAssignment[] = [];
@@ -326,9 +342,8 @@ export default async function AdminAlunoDetalhePage({
       notes: r.notes ?? null,
       assignedAt: r.assigned_at,
     }));
-  } catch {
-    supplementKitOptions = [];
-    supplementAssignments = [];
+  } catch (error) {
+    throw error;
   }
   try {
     const allDietKits: DietKitRow[] = await DietService.listKits({
@@ -354,15 +369,15 @@ export default async function AdminAlunoDetalhePage({
       notes: r.notes ?? null,
       assignedAt: r.assigned_at,
     }));
-  } catch {
-    dietKitOptions = [];
-    dietAssignments = [];
+  } catch (error) {
+    throw error;
   }
   const activeCount = assignments.filter((a) => a.status === "active").length;
   const maxReached = activeCount >= MAX_ACTIVE_WORKOUTS;
   return (
     <div className="space-y-6 w-full min-w-0 text-zinc-100">
       <StudentProfileHeader
+        showFinancialHistory={actor.role === "admin"}
         locale={locale}
         id={id}
         name={
@@ -381,6 +396,8 @@ export default async function AdminAlunoDetalhePage({
         supplements={supplementAssignments.length}
         lastSession={history.length ? dateLabel(history[0].completed_at) : "—"}
       />
+      {actor.role === "admin" && <StudentManualBillingPanel studentId={id} locale={locale} />}
+      {actor.role === "admin" && <StudentBillingHistoryPanel studentId={id} locale={locale} params={searchParams} />}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <Card
           className={
@@ -538,7 +555,7 @@ export default async function AdminAlunoDetalhePage({
                   <InfoLine
                     icon={<CreditCard size={14} />}
                     label={label("Método de pagamento", "Payment method")}
-                    value={methodLabel(
+                    value={subscription.source === "admin_manual" ? label("Liberação manual", "Manual access") : methodLabel(
                       subscription.payment_method_pref,
                       subscription.provider,
                     )}

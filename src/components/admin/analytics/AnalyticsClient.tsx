@@ -366,6 +366,7 @@ export function AnalyticsClient({
                   <option value="">{t.all}</option>
                   <option value="stripe">Stripe</option>
                   <option value="asaas">Asaas</option>
+                <option value="manual">Manual</option>
                 </select>
               </label>
             </>

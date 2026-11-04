@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -76,17 +77,45 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
   const t = useTranslations("adminSettings");
   const locale = useLocale();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState<PlatformSettingsForm>(settings);
+  const [isPending, startTransition] = useAsyncTransition();
+  const [form, setForm] = useState<PlatformSettingsForm>({ ...settings, trial_days_default: 0 });
+  const baseline = useRef(settings);
+  const [dirty, setDirty] = useState(false);
+  const [restartMaintenance, setRestartMaintenance] = useState(false);
+  const [now, setNow] = useState(Date.now);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  useEffect(() => {
+    const savedSnapshot = !restartMaintenance && settings.revision === baseline.current.revision && JSON.stringify(form) === JSON.stringify(baseline.current);
+    if (!isPending && (!dirty || savedSnapshot)) {
+      baseline.current = settings;
+      const incoming = { ...settings, trial_days_default: 0 };
+      if (JSON.stringify(form) !== JSON.stringify(incoming)) setForm(incoming);
+      setDirty(false);
+    }
+  }, [settings, dirty, isPending, form, restartMaintenance]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => {
+      if (timer) clearTimeout(timer);
+      const current = Date.now();
+      setNow(current);
+      const remaining = Date.parse(form.maintenance_until || "") - current;
+      if (remaining > 0) timer = setTimeout(update, Math.min(remaining + 50, 2147483647));
+    };
+    update();
+    window.addEventListener("focus", update);
+    return () => { if (timer) clearTimeout(timer); window.removeEventListener("focus", update); };
+  }, [form.maintenance_until]);
+  const maintenanceActive = form.maintenance_mode && (!form.maintenance_until || Date.parse(form.maintenance_until) > now);
+  const deadlineChanged = form.maintenance_mode && (restartMaintenance || !baseline.current.maintenance_mode || form.maintenance_duration !== baseline.current.maintenance_duration || form.maintenance_duration_unit !== baseline.current.maintenance_duration_unit);
 
   const setText =
     (key: keyof PlatformSettingsForm) =>
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((prev) => ({ ...prev, [key]: event.target.value }));
+      { setDirty(true); setForm((prev) => ({ ...prev, [key]: event.target.value })); };
 
   const setBool = (key: keyof PlatformSettingsForm) => (value: boolean) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    { setDirty(true); if (key === "maintenance_mode" && !value) setRestartMaintenance(false); setForm((prev) => ({ ...prev, [key]: value })); };
 
   const formatUntil = (iso: string | null): string | null => {
     if (!iso) return null;
@@ -95,24 +124,34 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
     return new Intl.DateTimeFormat(locale, {
       dateStyle: "short",
       timeStyle: "short",
+      timeZone: "America/Sao_Paulo",
     }).format(date);
   };
 
   const handleSubmit = () => {
     setFeedback(null);
-    startTransition(async () => {
-      const result = await savePlatformSettingsAction(form);
+    void startTransition(async () => {
+      try {
+      const result = await savePlatformSettingsAction({ ...form, restart_maintenance: restartMaintenance });
       if (result.success) {
+        baseline.current = result.settings;
+        setForm(result.settings);
+        setRestartMaintenance(false);
+        // Keep the saved snapshot until refresh delivers its revision to the parent.
+        setDirty(true);
         setFeedback({ type: "success", text: t("saved") });
         router.refresh();
       } else {
         setFeedback({ type: "error", text: result.message ?? t("error") });
       }
+      } catch {
+        setFeedback({ type: "error", text: t("error") });
+      }
     });
   };
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled={isPending} aria-busy={isPending} data-panel-editing={dirty} className="min-w-0 space-y-6">
       <nav
         aria-label={
           locale === "en-US" ? "Settings sections" : "Seções das configurações"
@@ -155,6 +194,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
               </label>
               <Input
                 id="admin-settings-brandNamePt"
+                maxLength={120}
                 value={form.brand_name_pt}
                 onChange={setText("brand_name_pt")}
               />
@@ -168,6 +208,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
               </label>
               <Input
                 id="admin-settings-brandNameEn"
+                maxLength={120}
                 value={form.brand_name_en}
                 onChange={setText("brand_name_en")}
               />
@@ -181,6 +222,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
               </label>
               <Input
                 id="admin-settings-brandTaglinePt"
+                maxLength={200}
                 value={form.brand_tagline_pt}
                 onChange={setText("brand_tagline_pt")}
               />
@@ -194,6 +236,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
               </label>
               <Input
                 id="admin-settings-brandTaglineEn"
+                maxLength={200}
                 value={form.brand_tagline_en}
                 onChange={setText("brand_tagline_en")}
               />
@@ -217,6 +260,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 </label>
                 <Input
                   id="admin-settings-supportEmail"
+                maxLength={160}
                   type="email"
                   value={form.support_email}
                   onChange={setText("support_email")}
@@ -232,10 +276,14 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 </label>
                 <Input
                   id="admin-settings-supportWhatsapp"
+                maxLength={40}
+                  type="tel"
+                  aria-describedby="admin-settings-whatsapp-help"
                   value={form.support_whatsapp}
                   onChange={setText("support_whatsapp")}
                   placeholder="+55 11 99999-0000"
                 />
+                <p id="admin-settings-whatsapp-help" className="text-xs text-text-secondary">{t("whatsappHelp")}</p>
               </div>
               <div className="space-y-1.5">
                 <label
@@ -246,6 +294,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 </label>
                 <Input
                   id="admin-settings-supportHoursPt"
+                maxLength={160}
                   value={form.support_hours_pt}
                   onChange={setText("support_hours_pt")}
                 />
@@ -259,6 +308,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 </label>
                 <Input
                   id="admin-settings-supportHoursEn"
+                maxLength={160}
                   value={form.support_hours_en}
                   onChange={setText("support_hours_en")}
                 />
@@ -318,30 +368,31 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                     min={1}
                     max={8760}
                     value={form.maintenance_duration}
-                    onChange={(e) =>
+                    onChange={(e) => { setDirty(true);
                       setForm((prev) => ({
                         ...prev,
                         maintenance_duration: Number(e.target.value) || 1,
-                      }))
-                    }
+                      }));
+                    }}
                   />
                   <p className="text-xs text-text-secondary">
                     {t("maintenanceDurationDesc")}
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text">
+                  <label htmlFor="admin-settings-maintenanceUnit" className="text-sm font-medium text-text">
                     {t("maintenanceDurationUnit")}
                   </label>
                   <Select
+                    id="admin-settings-maintenanceUnit"
                     value={form.maintenance_duration_unit}
-                    onChange={(e) =>
+                    onChange={(e) => { setDirty(true);
                       setForm((prev) => ({
                         ...prev,
                         maintenance_duration_unit: e.target
                           .value as MaintenanceUnit,
-                      }))
-                    }
+                      }));
+                    }}
                   >
                     <option value="hours">{t("maintenanceUnitHours")}</option>
                     <option value="days">{t("maintenanceUnitDays")}</option>
@@ -349,54 +400,31 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
                 </div>
               </div>
               <div className="rounded-lg bg-surface-secondary/40 border border-border/60 p-3 text-xs text-text-secondary">
-                {formatUntil(form.maintenance_until) ? (
+                {deadlineChanged ? <span>{t("maintenanceAfterSave")}</span> : formatUntil(form.maintenance_until) ? (
                   <>
                     <span
                       className={
-                        form.maintenance_active
+                        maintenanceActive
                           ? "text-primary font-medium"
                           : "text-text font-medium"
                       }
                     >
-                      {form.maintenance_active
+                      {maintenanceActive
                         ? t("maintenanceActiveNow")
                         : t("maintenanceExpired")}
                     </span>{" "}
                     {t("maintenanceUntil", {
-                      date: formatUntil(form.maintenance_until) as string,
+                      date: `${formatUntil(form.maintenance_until)} (São Paulo)`,
                     })}
                   </>
                 ) : (
                   <span>{t("maintenanceNoDeadline")}</span>
                 )}
               </div>
+              {(!maintenanceActive || !form.maintenance_until) && !deadlineChanged && <Button type="button" variant="outline" onClick={() => { setRestartMaintenance(true); setDirty(true); }}>{t("restartMaintenance")}</Button>}
             </div>
           )}
 
-          <div className="max-w-xs space-y-1.5">
-            <label
-              htmlFor="admin-settings-trialDaysDefault"
-              className="text-xs font-medium text-text-secondary"
-            >
-              {t("trialDaysDefault")}
-            </label>
-            <Input
-              id="admin-settings-trialDaysDefault"
-              type="number"
-              min={0}
-              max={365}
-              value={form.trial_days_default}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  trial_days_default: Number(e.target.value) || 0,
-                }))
-              }
-            />
-            <p className="text-xs text-text-secondary">
-              {t("trialDaysDefaultDesc")}
-            </p>
-          </div>
         </CardContent>
       </Card>
 
@@ -409,9 +437,11 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
           )}
           {isPending ? t("saving") : t("save")}
         </Button>
+        <Button type="button" variant="outline" onClick={() => { setDirty(false); setRestartMaintenance(false); setFeedback(null); router.refresh(); }} disabled={isPending}>{t("reload")}</Button>
 
         {feedback && (
           <span
+            role={feedback.type === "error" ? "alert" : "status"}
             className={`inline-flex items-center gap-2 text-sm ${
               feedback.type === "success" ? "text-green-400" : "text-red-400"
             }`}
@@ -425,7 +455,7 @@ export function AdminSettingsClient({ settings }: AdminSettingsClientProps) {
           </span>
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }
 

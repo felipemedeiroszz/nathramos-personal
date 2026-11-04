@@ -12,7 +12,7 @@ import {
 } from "@/schemas/settings";
 
 function revalidate() {
-  revalidatePath("/[locale]/admin/configuracoes", "page");
+  revalidatePath("/[locale]", "layout");
 }
 
 /** Contato público de suporte (usado no fluxo de "esqueci minha senha"). */
@@ -25,15 +25,9 @@ export async function savePlatformSettingsAction(input: PlatformSettingsInput) {
   const { userId } = await requireRole(["admin"], "/dashboard");
   try {
     const parsed = platformSettingsSchema.parse(input);
-    const ok = await PlatformSettingsService.save(parsed, userId);
-    if (!ok) {
-      return {
-        success: false as const,
-        message: "Falha ao salvar as configurações.",
-      };
-    }
+    const settings = await PlatformSettingsService.save(parsed, userId);
     revalidate();
-    return { success: true as const };
+    return { success: true as const, settings };
   } catch (e: any) {
     return {
       success: false as const,

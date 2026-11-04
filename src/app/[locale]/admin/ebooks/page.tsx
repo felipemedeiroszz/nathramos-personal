@@ -23,19 +23,25 @@ async function safe(t: any, key: string, fb: string) {
   return fb;
 }
 
-export default async function AdminEbooksPage({
-  params: { locale },
-  searchParams,
-}: {
-  params: { locale: (typeof locales)[number] };
-  searchParams?: {
-    page?: string;
-    q?: string;
-    published?: string;
-    free?: string;
-    language?: string;
-  };
-}) {
+export default async function AdminEbooksPage(
+  props: {
+    params: Promise<{ locale: (typeof locales)[number] }>;
+    searchParams?: Promise<{
+      page?: string;
+      q?: string;
+      published?: string;
+      free?: string;
+      language?: string;
+    }>;
+  }
+) {
+  const searchParams = (await props.searchParams) ?? {};
+  const params = await props.params;
+
+  const {
+    locale
+  } = params;
+
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdmin = await getTranslations("admin");

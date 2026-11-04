@@ -7,14 +7,12 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  experimental: {
-    serverComponentsExternalPackages: ["pdfkit", "exceljs", "sharp"],
-    outputFileTracingIncludes: {
-      "/api/admin/analytics/export": [
-        "./public/report-fonts/**",
-        "./node_modules/pdfkit/js/data/**",
-      ],
-    },
+  serverExternalPackages: ["pdfkit", "exceljs", "sharp"],
+  outputFileTracingIncludes: {
+    "/api/admin/analytics/export": [
+      "./public/report-fonts/**",
+      "./node_modules/pdfkit/js/data/**",
+    ],
   },
   images: {
     remotePatterns: [

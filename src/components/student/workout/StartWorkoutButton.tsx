@@ -1,4 +1,5 @@
 "use client";
+import { notifyDataChanged } from "@/lib/live/events";
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -29,8 +30,10 @@ export function StartWorkoutButton({
               dayId,
               programId,
             });
-            if (result.success) router.refresh();
-            else setError(result.message);
+            if (result.success) {
+              router.refresh();
+              notifyDataChanged();
+            } else setError(result.message);
           } catch {
             setError(
               en

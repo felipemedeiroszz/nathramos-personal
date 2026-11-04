@@ -1,4 +1,6 @@
 "use client";
+import { useLiveDraft } from "@/hooks/useLiveDraft";
+import { notifyDataChanged } from "@/lib/live/events";
 
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -66,28 +68,58 @@ export function NotificationPreferencesPanel({
   const [availability, setAvailability] =
     useState<ReturnType<typeof pushAvailability>>(null);
 
-  const [pushEnabled, setPushEnabled] = useState(settings.push_enabled);
-  const [quietEnabled, setQuietEnabled] = useState(
-    Boolean(settings.quiet_hours_start && settings.quiet_hours_end),
-  );
-  const [quietStart, setQuietStart] = useState(
-    toInputTime(settings.quiet_hours_start) || "22:00",
-  );
-  const [quietEnd, setQuietEnd] = useState(
-    toInputTime(settings.quiet_hours_end) || "08:00",
-  );
-  const [email, setEmail] = useState<Record<string, boolean>>({
-    ...preferences.email,
-  } as Record<string, boolean>);
-  const [push, setPush] = useState<Record<string, boolean>>({
-    ...preferences.push,
-  } as Record<string, boolean>);
+  const {
+    draft: values,
+    setDraft: setValues,
+    markSaved,
+  } = useLiveDraft({
+    pushEnabled: settings.push_enabled,
+    quietEnabled: Boolean(
+      settings.quiet_hours_start && settings.quiet_hours_end,
+    ),
+    quietStart: toInputTime(settings.quiet_hours_start) || "22:00",
+    quietEnd: toInputTime(settings.quiet_hours_end) || "08:00",
+    email: { ...preferences.email } as Record<string, boolean>,
+    push: { ...preferences.push } as Record<string, boolean>,
+  });
+  const { pushEnabled, quietEnabled, quietStart, quietEnd, email, push } =
+    values;
+  const setPushEnabled = (pushEnabled: boolean) =>
+    setValues((v) => ({ ...v, pushEnabled }));
+  const setQuietEnabled = (quietEnabled: boolean) =>
+    setValues((v) => ({ ...v, quietEnabled }));
+  const setQuietStart = (quietStart: string) =>
+    setValues((v) => ({ ...v, quietStart }));
+  const setQuietEnd = (quietEnd: string) =>
+    setValues((v) => ({ ...v, quietEnd }));
+  const setEmail = (
+    value:
+      | Record<string, boolean>
+      | ((previous: Record<string, boolean>) => Record<string, boolean>),
+  ) =>
+    setValues((v) => ({
+      ...v,
+      email: typeof value === "function" ? value(v.email) : value,
+    }));
+  const setPush = (
+    value:
+      | Record<string, boolean>
+      | ((previous: Record<string, boolean>) => Record<string, boolean>),
+  ) =>
+    setValues((v) => ({
+      ...v,
+      push: typeof value === "function" ? value(v.push) : value,
+    }));
   const [permission, setPermission] = useState<
     NotificationPermission | "unsupported"
   >("default");
   const [devicesCount, setDevicesCount] = useState(devices);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+
+  useEffect(() => {
+    setDevicesCount(devices);
+  }, [devices]);
 
   useEffect(() => {
     let active = true;
@@ -124,6 +156,7 @@ export function NotificationPreferencesPanel({
         if (!result.success) throw new Error();
         setPushEnabled(true);
         setRegistered(true);
+        notifyDataChanged();
         const current = await getNotificationPreferencesAction();
         setDevicesCount(current.devices);
         setFeedback({ type: "success", text: t("pushEnabled") });
@@ -142,6 +175,7 @@ export function NotificationPreferencesPanel({
     try {
       if (!(await disablePush())) throw new Error();
       setRegistered(false);
+      notifyDataChanged();
       const current = await getNotificationPreferencesAction();
       setDevicesCount(current.devices);
       setFeedback({ type: "success", text: t("pushDisabled") });
@@ -166,6 +200,8 @@ export function NotificationPreferencesPanel({
         push,
       });
       if (settingsResult.success && prefsResult.success) {
+        markSaved(values);
+        notifyDataChanged();
         setFeedback({ type: "success", text: t("saved") });
       } else {
         setFeedback({
