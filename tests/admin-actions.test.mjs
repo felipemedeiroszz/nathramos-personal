@@ -12,7 +12,8 @@ function resetEnvironment(role = "student") {
         select() {
           return q;
         },
-        eq() {
+        eq(field, value) {
+          if (field === "role" && role !== value) q.maybeSingle = async () => ({ data: null, error: null });
           return q;
         },
         maybeSingle: async () => ({
@@ -87,6 +88,27 @@ test("senha exclusiva de aluno é alterada e auditada sem incluir o segredo", as
     JSON.stringify(env.audits).includes("unique-test-password"),
     false,
   );
+});
+test("suspensão e reativação usam o Auth somente para alunos e registram auditoria", async () => {
+  const adminTarget = resetEnvironment("admin");
+  const denied = adminTarget.form();
+  denied.set("operation", "suspend");
+  assert.equal((await adminTarget.module.setStudentSuspensionAction(null, denied)).success, false);
+  assert.deepEqual(adminTarget.calls, []);
+
+  const env = resetEnvironment();
+  const form = env.form();
+  form.set("operation", "suspend");
+  assert.equal((await env.module.setStudentSuspensionAction(null, form)).success, true);
+  form.set("operation", "reactivate");
+  assert.equal((await env.module.setStudentSuspensionAction(null, form)).success, true);
+  assert.deepEqual(env.calls, [
+    { id: student, input: { ban_duration: "876000h" } },
+    { id: student, input: { ban_duration: "none" } },
+  ]);
+  assert.deepEqual(env.audits.map(entry => entry.action), [
+    "student.account_suspended", "student.account_reactivated",
+  ]);
 });
 function billingEnvironment(provider = "stripe") {
   const calls = [];

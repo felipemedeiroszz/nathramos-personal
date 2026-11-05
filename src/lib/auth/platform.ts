@@ -3,6 +3,7 @@ import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server";
 import { canAccessPlatform } from "./access";
 import { getMaintenanceStatus } from "@/services/PlatformSettingsService";
 import { redirect } from "next/navigation";
+import { isAccountSuspended } from "./suspension";
 
 export class AccessError extends Error {
   constructor(
@@ -20,6 +21,7 @@ export async function requirePlatformUser() {
   } = await client.auth.getUser();
   if (error || !user)
     throw new AccessError("Entre na sua conta para continuar.", 401);
+  if (isAccountSuspended(user)) throw new AccessError("Conta suspensa.", 401);
   const db = await createServiceClientSSR();
   const result = await db
     .from("profiles")

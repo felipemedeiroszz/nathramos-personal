@@ -5,6 +5,7 @@ import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server"
 import type { UserRole, SubscriptionStatus } from "@/types"
 import { headers } from "next/headers";
 import { defaultLocale, locales } from "@/i18n/config"
+import { isAccountSuspended } from "./suspension"
 
 export interface CanAccessResult {
   allowed: boolean
@@ -53,7 +54,7 @@ export async function getCurrentUserId(): Promise<string | null> {
   try {
     const supabase = await createClientSSR()
     const { data: { user } } = await supabase.auth.getUser()
-    return user?.id ?? null
+    return user && !isAccountSuspended(user) ? user.id : null
   } catch {
     return null
   }

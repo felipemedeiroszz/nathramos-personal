@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import type { DatabaseSchema } from "./server"
+import { isAccountSuspended } from "@/lib/auth/suspension"
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -33,9 +34,9 @@ export async function updateSession(request: NextRequest) {
       },
     },
   })
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
-  if (!user) {
-    response = NextResponse.next({ request })
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if ((user && isAccountSuspended(user)) || error?.code === "user_banned") {
+    await supabase.auth.signOut({ scope: "local" })
   }
   return response
 }

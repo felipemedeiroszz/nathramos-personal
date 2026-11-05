@@ -4,7 +4,9 @@
 
 Execute `npm ci` e `npm test`. Não são necessárias credenciais ou rede para executar os testes depois de instalar as dependências.
 
-- `security-database.test.mjs` aplica as migrações em um PostgreSQL PGlite novo e testa políticas RLS, operações transacionais e persistência. O bootstrap cria fixtures mínimas de Auth/Storage e uma publicação; fornece também a identidade exigida pela migração histórica 000005. Nenhum banco remoto é utilizado.
+- `security-database.test.mjs` aplica as migrações em um PostgreSQL PGlite novo e testa políticas RLS, operações transacionais e persistência. O bootstrap prepara os esquemas de Auth/Storage e uma publicação. A conta administrativa de teste é criada depois das migrações. Nenhum banco remoto é utilizado.
+
+Para homologar a migração 000054, abra a conta de um aluno de teste em dois dispositivos. Suspenda a conta no admin e confirme que novas tentativas de login e requisições de sessões abertas são recusadas. Reative a conta e confirme que o acesso segue o estado da assinatura. Teste a troca de e-mail com `NEXT_PUBLIC_APP_URL`, o callback permitido no Supabase e a opção Secure Email Change habilitada. Confira se o perfil acompanha a alteração após as confirmações. Os testes locais usam Auth simulado e não enviam e-mails.
 - `access-api.test.mjs` executa os handlers e verificadores reais com dependências de autenticação controladas.
 - `routine.test.mjs` verifica vigência, porções, doses e calendário.
 - `reminders-auth.test.mjs` verifica lembretes de kits, preferências, deduplicação e callbacks.

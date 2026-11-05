@@ -6,7 +6,8 @@ import { z } from "zod";
 import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server";
 import { requireAuthenticated } from "@/lib/auth/access";
 import { headers } from "next/headers";
-import { defaultLocale, locales } from "@/i18n/config";
+import { defaultLocale } from "@/i18n/config";
+import { accountProfileSchema, normalizeAccountProfile } from "@/schemas/account";
 
 async function detectLocale(): Promise<string> {
   const h = await headers();
@@ -24,35 +25,9 @@ export async function logoutAction() {
   redirect(`/${locale}/login`);
 }
 
-const updateProfileSchema = z
-  .object({
-    first_name: z.string().min(1).max(100),
-    last_name: z.string().min(1).max(100),
-    phone: z.string().max(50).optional().or(z.literal("")),
-    birth_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional()
-      .or(z.literal("")),
-    gender: z.enum(["male", "female", "other", ""]).optional(),
-    height_cm: z.coerce
-      .number()
-      .int()
-      .min(50)
-      .max(260)
-      .optional()
-      .or(z.literal("")),
-    weight_kg: z.coerce.number().min(20).max(400).optional().or(z.literal("")),
-    country: z.string().max(100).optional().or(z.literal("")),
-    language: z.string().optional(),
-  })
-  .partial();
-
 export async function updateProfileAction(_prev: any, formData: FormData) {
   const userId = await requireAuthenticated();
-  const raw = Object.fromEntries(formData.entries());
-
-  const parsed = updateProfileSchema.safeParse(raw);
+  const parsed = accountProfileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return {
       success: false as const,
@@ -61,82 +36,18 @@ export async function updateProfileAction(_prev: any, formData: FormData) {
     };
   }
 
-  const data: Record<string, any> = {};
-  if (parsed.data.first_name) data.first_name = parsed.data.first_name;
-  if (parsed.data.last_name) data.last_name = parsed.data.last_name;
-  if (parsed.data.first_name || parsed.data.last_name) {
-    const fn = data.first_name ?? "";
-    const ln = data.last_name ?? "";
-    data.full_name = `${fn} ${ln}`.trim();
-  }
-  if (parsed.data.phone !== undefined) data.phone = parsed.data.phone || null;
-  if (parsed.data.birth_date !== undefined)
-    data.birth_date = parsed.data.birth_date || null;
-  if (parsed.data.gender !== undefined)
-    data.gender = parsed.data.gender || null;
-  if (parsed.data.height_cm !== undefined)
-    data.height_cm = (parsed.data.height_cm || null) as any;
-  if (parsed.data.weight_kg !== undefined)
-    data.weight_kg = (parsed.data.weight_kg || null) as any;
-  if (parsed.data.country !== undefined)
-    data.country = parsed.data.country || null;
-  if (parsed.data.language) {
-    data.language = parsed.data.language;
-    const locale = parsed.data.language;
-    const origin = (await headers()).get("origin") ?? "";
-    if (origin) revalidatePath(`${origin}/${locale}/account`);
-  }
-
-  const supabase = await createClientSSR();
-  const previous = await supabase
-    .from("profiles")
-    .select("weight_kg, first_name, last_name, timezone")
-    .eq("id", userId)
-    .single();
-  if (previous.error)
-    return {
-      success: false as const,
-      errors: {},
-      message: "Não foi possível carregar seu perfil.",
-    };
-  if (data.first_name || data.last_name) {
-    data.full_name =
-      `${data.first_name ?? (previous.data as any).first_name ?? ""} ${data.last_name ?? (previous.data as any).last_name ?? ""}`.trim();
-  }
-  const { error } = await (supabase.from("profiles") as any)
-    .update(data)
-    .eq("id", userId);
+  const db = await createServiceClientSSR();
+  const { error } = await (db.rpc as any)("update_account_profile", {
+    p_actor: userId,
+    p_target: userId,
+    p_changes: normalizeAccountProfile(parsed.data),
+  });
   if (error) {
     return {
       success: false as const,
       errors: {},
-      message: error.message || "update_failed",
+      message: "Não foi possível salvar seu perfil.",
     };
-  }
-
-  if (
-    typeof data.weight_kg === "number" &&
-    Number((previous.data as any)?.weight_kg) !== data.weight_kg
-  ) {
-    const db = await createServiceClientSSR();
-    const { getZonedParts } = await import("@/lib/notifications/time");
-    const date = getZonedParts(
-      new Date(),
-      (previous.data as any)?.timezone || "America/Sao_Paulo",
-    ).dateKey;
-    const result = await (db.rpc as any)("record_student_health", {
-      p_user_id: userId,
-      p_date: date,
-      p_weight: data.weight_kg,
-      p_sleep: null,
-    });
-    if (result.error)
-      return {
-        success: false as const,
-        errors: {},
-        message:
-          "Perfil salvo, mas não foi possível atualizar o histórico de peso.",
-      };
   }
   revalidatePath("/[locale]/admin/alunos/[id]", "page");
   revalidatePath("/[locale]/(student)/progresso", "page");
@@ -172,7 +83,7 @@ export async function changePasswordAction(_prev: any, formData: FormData) {
   const supabase = await createClientSSR();
 
   const { data: emailData, error: emailErr } = await supabase.auth.getUser();
-  if (emailErr || !emailData.user?.email) {
+  if (emailErr || emailData.user?.id !== userId || !emailData.user.email) {
     return { success: false as const, errors: {}, message: "unexpected" };
   }
 
@@ -190,6 +101,7 @@ export async function changePasswordAction(_prev: any, formData: FormData) {
 
   const { error: updateErr } = await supabase.auth.updateUser({
     password: parsed.data.new_password,
+    current_password: parsed.data.current_password,
   });
   if (updateErr) {
     return {
@@ -200,6 +112,50 @@ export async function changePasswordAction(_prev: any, formData: FormData) {
   }
 
   return { success: true as const };
+}
+
+export async function changeEmailAction(_prev: unknown, formData: FormData) {
+  const userId = await requireAuthenticated();
+  const en = formData.get("locale") === "en-US";
+  const locale = en ? "en-US" : "pt-BR";
+  const label = (pt: string, english: string) => en ? english : pt;
+  const fail = (message: string) => ({ success: false, message });
+  const email = z.email().max(254).safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const password = formData.get("current_password");
+  if (!email.success || typeof password !== "string" || password.length < 6)
+    return fail(label("Informe o novo e-mail e a senha atual.", "Enter your new email and current password."));
+
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "");
+  const appUrl = URL.canParse(configuredUrl) ? new URL(configuredUrl) : null;
+  if (!appUrl || (appUrl.protocol !== "https:" &&
+      !(process.env.NODE_ENV === "development" && appUrl.origin === "http://localhost:3000"))) {
+    return fail(label("A troca de e-mail está indisponível.", "Email changes are unavailable."));
+  }
+
+  const supabase = await createClientSSR();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || user?.id !== userId || !user.email)
+    return fail(label("Entre novamente na sua conta.", "Sign in to your account again."));
+  if (user.email.toLowerCase() === email.data)
+    return fail(label("Informe um e-mail diferente do atual.", "Enter a different email address."));
+
+  const verified = await supabase.auth.signInWithPassword({ email: user.email, password });
+  if (verified.error || verified.data.user?.id !== userId)
+    return fail(label("Não foi possível verificar a senha atual.", "Could not verify your current password."));
+
+  const callback = new URL(`/${locale}/auth/callback`, appUrl);
+  callback.searchParams.set("next", `/${locale}/account`);
+  const { error } = await supabase.auth.updateUser({ email: email.data }, {
+    emailRedirectTo: callback.toString(),
+  });
+  if (error)
+    return fail(label("Não foi possível solicitar a alteração de e-mail.", "Could not request the email change."));
+
+  return {
+    success: true,
+    message: label("Confira as caixas de entrada e siga as instruções de confirmação.", "Check your inboxes and follow the confirmation instructions."),
+  };
 }
 
 const deleteAccountSchema = z.object({
@@ -306,9 +262,15 @@ export async function uploadPhotoAction(_prev: any, formData: FormData) {
     .getPublicUrl(key);
   const photoUrl = urlData?.publicUrl ?? null;
 
-  await (supabase.from("profiles") as any)
+  const { data: updated, error: profileError } = await (supabase.from("profiles") as any)
     .update({ avatar_url: photoUrl })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("id")
+    .single();
+  if (profileError || !updated) {
+    await supabase.storage.from(bucket).remove([key]);
+    return { success: false as const, errors: {}, message: "upload_failed" };
+  }
 
   revalidatePath("/[locale]/(student)/account", "layout");
   return { success: true as const, photoUrl };

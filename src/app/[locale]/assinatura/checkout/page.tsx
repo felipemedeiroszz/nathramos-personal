@@ -9,6 +9,7 @@ import { ProfileService } from "@/lib/payments/services";
 import { PlanService } from "@/services/PlanService";
 import { createClientSSR } from "@/lib/supabase/server";
 import { canAccessPlatform } from "@/lib/auth/access";
+import { isAccountSuspended } from "@/lib/auth/suspension";
 import { formatCurrency } from "@/lib/i18n/format";
 import type { Locale } from "@/i18n/config";
 
@@ -41,7 +42,7 @@ export default async function CheckoutPage(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || isAccountSuspended(user)) {
     redirect(`/${locale}/login`);
   }
 

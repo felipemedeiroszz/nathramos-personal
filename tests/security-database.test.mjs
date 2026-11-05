@@ -158,3 +158,41 @@ test('programa no kit segue calendário interno mesmo com filtro legado conflita
  assert.equal(session.day_id,dayId)
  await assert.rejects(db.query('insert into workout_kit_items(kit_id,exercise_id) values($1,$2)',[kit,exerciseId]),/workout_direct_exercise_requires_day/)
 })
+
+test('suspensão bloqueia o acesso direto de uma sessão existente sem alterar a assinatura',async()=>{
+ const ownProfile = () => actor(A, tx => tx.query('select id from public.profiles where id=$1', [A]))
+ assert.equal((await ownProfile()).rows.length, 1)
+ await db.query("update auth.users set banned_until=now()+interval '1 day' where id=$1", [A])
+ try {
+   assert.equal((await ownProfile()).rows.length, 0)
+   const edit = await actor(A, tx => tx.query("update public.profiles set first_name='Blocked' where id=$1 returning id", [A]))
+   assert.equal(edit.rows.length, 0)
+   assert.equal((await db.query("select status from public.subscriptions where user_id=$1", [A])).rows[0].status, 'active')
+ } finally {
+   await db.query('update auth.users set banned_until=null where id=$1', [A])
+ }
+ assert.equal((await ownProfile()).rows.length, 1)
+})
+
+test('edição cadastral mantém peso e histórico na mesma transação e limita o alvo',async()=>{
+ const edit = (who, target, changes) => db.query('select public.update_account_profile($1,$2,$3)', [who,target,JSON.stringify(changes)])
+ await assert.rejects(edit(A, B, { first_name:'Intruso' }), /Account edit denied/)
+ await assert.rejects(actor(A, tx => tx.query("select public.update_account_profile($1,$1,'{}')", [A])), /permission denied/)
+ await assert.rejects(edit(ADMIN, ADMIN, { weight_kg: 75, language:'invalid' }), /invalid input value/)
+ await edit(ADMIN, B, { first_name:'Novo', last_name:'Nome', weight_kg:71.25, role:'admin' })
+ await assert.rejects(edit(ADMIN, B, { first_name:'Falha', weight_kg:10 }), /check constraint/)
+ const { rows: [profile] } = await db.query('select full_name,role,weight_kg from public.profiles where id=$1', [B])
+ assert.equal(profile.full_name, 'Novo Nome')
+ assert.equal(profile.role, 'student')
+ assert.equal(Number(profile.weight_kg), 71.25)
+ const weights = await db.query('select weight_kg from public.weight_logs where user_id=$1', [B])
+ assert.deepEqual(weights.rows.map(row => Number(row.weight_kg)), [71.25])
+ const audit = await db.query("select admin_id from public.audit_logs where user_id=$1 and action='student.profile_updated'", [B])
+ assert.deepEqual(audit.rows, [{admin_id:ADMIN}])
+})
+
+test('e-mail cadastral acompanha a alteração confirmada no Auth',async()=>{
+ await db.query("update auth.users set email='confirmed@example.test' where id=$1", [B])
+ const { rows } = await db.query('select email from public.profiles where id=$1', [B])
+ assert.deepEqual(rows, [{email:'confirmed@example.test'}])
+})

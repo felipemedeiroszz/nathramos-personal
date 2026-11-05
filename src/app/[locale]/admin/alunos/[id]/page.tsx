@@ -68,6 +68,8 @@ import type {
 import { UnassignWorkoutButton } from "@/components/admin/workout/UnassignWorkoutButton";
 import { AssignWorkoutKitModalClient } from "@/components/admin/workout/AssignWorkoutKitModalClient";
 import { StudentPasswordResetForm } from "@/components/admin/StudentPasswordResetForm";
+import { StudentAccountForms } from "@/components/admin/student/StudentAccountForms";
+import { isAccountSuspended } from "@/lib/auth/suspension";
 import {
   StudentKitsPanel,
   type StudentKitOption,
@@ -259,12 +261,13 @@ export default async function AdminAlunoDetalhePage(
     notFound();
   }
   let email = (profile as any).email || null;
-  if (!email) {
-    try {
-      const res = await supabase.auth.admin.getUserById(id);
-      if (res.error) throw res.error;
-      email = res.data.user?.email ?? null;
-    } catch (error) { throw error; }
+  let suspended: boolean | null = null;
+  if (actor.role === "admin" || !email) {
+    const result = await supabase.auth.admin.getUserById(id);
+    if (!result.error && result.data.user) {
+      email = result.data.user.email ?? email;
+      suspended = isAccountSuspended(result.data.user);
+    }
   }
   let subscription: SubscriptionWithPlan | null = null;
   try {
@@ -607,6 +610,7 @@ export default async function AdminAlunoDetalhePage(
         {actor.role === "admin" && (
           <TabsContent value="management">
             <div className="grid items-start gap-5 lg:grid-cols-2">
+              <StudentAccountForms studentId={id} locale={locale} profile={profile} suspended={suspended} />
               {actor.role === "admin" && (
                 <StudentCoachForm
                   studentId={id}

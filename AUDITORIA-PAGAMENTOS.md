@@ -57,14 +57,19 @@ Não executar o código novo contra esquema antigo: as funções e colunas novas
 
 ## Homologação externa ainda necessária
 
+Execute `npm run check:release -- staging` para conferir a configuração de homologação e `npm run check:release -- production` para conferir as variáveis de produção. O comando lê as variáveis do processo e usa `.env.local` para completar valores ausentes. Ele reporta nomes de variáveis, sem imprimir segredos. A checagem não contata os provedores nem atesta a configuração da Vercel.
+
+Antes do deploy, rotacione a chave administrativa do Supabase, o segredo do cron e o par VAPID que foram versionados. Atualize a hospedagem e o agendador, revogue as credenciais antigas e valide uma nova inscrição push após a troca do par VAPID. A remoção de `.env.txt` da árvore atual não apaga as versões anteriores do Git. Trate a remoção do histórico remoto separadamente, após coordenar os clones e branches afetados.
+
 1. Configurar as variáveis de `.env.example` no ambiente correto, com chaves correspondentes ao mesmo ambiente de sandbox ou produção. Não enviar segredos por chat.
-2. Aplicar o histórico completo de migrações e publicar o código correspondente.
+2. Criar um projeto Supabase separado para homologação, aplicar o histórico completo de migrações e publicar o código correspondente. Em um banco novo, crie a conta administrativa em Auth e promova o perfil pelo UUID verificado usando o acesso administrativo do banco. A migração 000005 corrige apenas o perfil histórico quando a conta correspondente existe. Confira também a URL do site e os callbacks de cadastro e recuperação do Supabase Auth.
 3. Configurar Stripe no endpoint `/api/webhooks/stripe`, com payload snapshot compatível com a API fixada `2025-02-24.acacia`. Assinar eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, eventos de assinatura e fatura usados pelo fluxo, `charge.refunded`, eventos de estorno e disputa.
 4. Configurar Asaas no endpoint `/api/webhooks/asaas`, com `asaas-access-token` igual a `ASAAS_WEBHOOK_TOKEN`. Token em query string não é aceito. Habilitar os eventos de pagamento, estorno e disputa relevantes.
-5. Homologar cartão aprovado, recusado, 3DS, período de teste, renovação, inadimplência, cancelamento e reativação. Conferir preço/moeda/período, um lançamento por fatura e acesso do aluno.
+5. Homologar cartão aprovado, recusado, 3DS, cobrança imediata sem teste gratuito, renovação, inadimplência, cancelamento e reativação. Conferir preço/moeda/período, um lançamento por fatura e acesso do aluno.
 6. Homologar PIX criado, pagamento confirmado/recebido, expiração e reenvio do mesmo evento. Comparar QR, identificação da cobrança, período de acesso e financeiro.
 7. Homologar compras de e-book, estorno parcial/integral e disputa; comparar valores e permissões de download.
 8. Conciliar registros históricos, comparar receita e estornos com os extratos dos provedores e testar exportações autenticadas com os dados reais.
+9. Depois de aprovar a homologação, conferir as migrações aplicadas no banco de produção, as variáveis do deployment de produção, os preços Stripe em modo live, os webhooks de cada provedor e a primeira execução do agendador.
 
 Os estornos Asaas usam a data disponibilizada no objeto de estorno; se o provedor informar somente a data de criação da solicitação, ela não comprova o instante de liquidação bancária. As taxas só são apresentadas como conhecidas quando retornadas em moeda compatível.
 

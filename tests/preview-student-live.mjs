@@ -131,7 +131,7 @@ await build({
           else if (a.path.endsWith("/routine"))
             contents = `export async function recordHealthAction(){return {success:true}}export async function saveHydrationAction(){return {success:true}}export async function setRoutineItemAction(){return {success:true}}export async function setShoppingAction(){return {success:true}}export async function waterAction(){return {success:true}}`;
           else
-            contents = `export async function updateProfileAction(){return {success:true}}export async function changePasswordAction(){return {success:true}}export async function uploadPhotoAction(){return {success:true}}export async function removePhotoAction(){return {success:true}}export async function logoutAction(){}`;
+            contents = `export async function updateProfileAction(){return {success:true}}export async function changePasswordAction(){return {success:true}}export async function changeEmailAction(){return {success:true}}export async function uploadPhotoAction(){return {success:true}}export async function removePhotoAction(){return {success:true}}export async function logoutAction(){}`;
           return { contents, loader: "tsx", resolveDir: process.cwd() };
         });
       },

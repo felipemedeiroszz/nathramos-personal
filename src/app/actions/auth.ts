@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { defaultLocale } from "@/i18n/config";
 import { isSignupOpen } from "@/services/PlatformSettingsService";
 import type { UserRole } from "@/types";
+import { isAccountSuspended } from "@/lib/auth/suspension";
 
 async function detectLocale(preferred?: FormDataEntryValue | null): Promise<string> {
   if (preferred === "pt-BR" || preferred === "en-US") return preferred;
@@ -46,6 +47,12 @@ export async function loginAction(formData: FormData) {
   const locale = await detectLocale(formData.get("locale"));
 
   if (error) {
+    if (error.code === "user_banned")
+      return {
+        success: false as const,
+        errors: {},
+        message: locale === "en-US" ? "This account is suspended." : "Esta conta está suspensa.",
+      };
     const isInvalidCredentials = /invalid login credentials/i.test(
       error.message ?? "",
     );
@@ -269,7 +276,7 @@ export async function resetPasswordAction(formData: FormData) {
     data: { user },
     error: authError,
   } = await db.auth.getUser();
-  if (!user || authError)
+  if (!user || authError || isAccountSuspended(user))
     return {
       success: false,
       message: "O link expirou. Solicite uma nova recuperação de senha.",

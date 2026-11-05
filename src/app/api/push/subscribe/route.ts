@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClientSSR } from "@/lib/supabase/server"
 import { PushService } from "@/services/PushService"
+import { isAccountSuspended } from "@/lib/auth/suspension"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || isAccountSuspended(user)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 

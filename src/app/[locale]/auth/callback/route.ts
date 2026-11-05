@@ -8,9 +8,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ local
  const token = request.nextUrl.searchParams.get("token_hash")
  const type = request.nextUrl.searchParams.get("type")
  const next = request.nextUrl.searchParams.get("next")
- const target = next === `/${locale}/reset-password` || type === "recovery" ? `/${locale}/reset-password` : `/${locale}/dashboard`
+ const target = next === `/${locale}/reset-password` || type === "recovery"
+  ? `/${locale}/reset-password`
+  : next === `/${locale}/account` || type === "email_change" ? `/${locale}/account` : `/${locale}/dashboard`
  const db = await createClientSSR()
- const result = code ? await db.auth.exchangeCodeForSession(code) : token && (type === "recovery" || type === "email" || type === "signup") ? await db.auth.verifyOtp({ token_hash: token, type }) : null
+ const result = code ? await db.auth.exchangeCodeForSession(code) : token && (type === "recovery" || type === "email" || type === "signup" || type === "email_change") ? await db.auth.verifyOtp({ token_hash: token, type }) : null
  if (result && !result.error) return NextResponse.redirect(new URL(target, request.url))
  return NextResponse.redirect(new URL(`/${locale}/login?auth_error=invalid_link`, request.url))
 }

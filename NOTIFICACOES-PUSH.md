@@ -26,6 +26,8 @@ Confirmar o plano Vercel: Hobby aceita cron apenas diário, portanto não suport
 3. Entrar como aluno, abrir Notificações → preferências e tocar em Ativar notificações. Aceitar a permissão do sistema. A ativação agora salva a preferência no servidor imediatamente.
 4. Confirmar que o aparelho aparece como ativo; permitir as categorias desejadas e salvar suas preferências. Conferir a janela de silêncio.
 5. Na hospedagem, conferir o mesmo par VAPID e CRON_SECRET e os registros do agendador. A chave NEXT_PUBLIC_VAPID_PUBLIC_KEY precisa estar definida na compilação, não apenas no processo de execução.
+
+O agendamento em `vercel.json` chama `/api/cron/notifications?task=all` a cada 15 minutos. Para manter essa frequência no agendador nativo, use Vercel Pro ou Enterprise. Em um projeto Hobby, configure um agendador externo com essa frequência e o cabeçalho `Authorization: Bearer <CRON_SECRET>`, e retire a entrada nativa antes de publicar. Confira nos logs se as etapas de lembretes, entrega e limpeza de uploads são executadas. [Limites do cron da Vercel](https://vercel.com/docs/cron-jobs/usage-and-pricing)
 6. Com autorização para um teste real, enviar um aviso apenas à conta de teste pelo painel, fechar o PWA, conferir recebimento e tocar na notificação. O clique deve abrir a rota correta. Não usar disparo geral para homologar.
 
 ## Correções realizadas

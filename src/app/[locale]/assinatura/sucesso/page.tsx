@@ -6,6 +6,7 @@ import { PublicHeader } from "@/components/shared/PublicHeader";
 import { PublicFooter } from "@/components/shared/PublicFooter";
 import { createClientSSR } from "@/lib/supabase/server";
 import { canAccessPlatform } from "@/lib/auth/access";
+import { isAccountSuspended } from "@/lib/auth/suspension";
 import { AssinaturaStatusCard } from "@/components/payments/AssinaturaStatusCard";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function AssinaturaSucessoPage(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || isAccountSuspended(user)) {
     redirect(`/${locale}/login`);
   }
 

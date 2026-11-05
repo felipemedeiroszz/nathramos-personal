@@ -4,7 +4,7 @@
 -- Este script cria o profile para o usuário admin que foi criado manualmente
 -- no Supabase sem passar pelo trigger de criação automática.
 
--- Inserir profile para o usuário admin
+-- Instalações novas não possuem esse usuário histórico.
 insert into public.profiles (
   id,
   full_name,
@@ -23,7 +23,7 @@ insert into public.profiles (
   signup_completed_at,
   onboarding_step
 )
-values (
+select
   '81ab4bb4-4bdb-4f9c-be3c-7977e2efe58e',
   'Admin',
   'Admin',
@@ -40,6 +40,8 @@ values (
   now(),
   now(),
   0
+where exists (
+  select 1 from auth.users where id = '81ab4bb4-4bdb-4f9c-be3c-7977e2efe58e'
 )
 on conflict (id) do update set
   role = 'admin',

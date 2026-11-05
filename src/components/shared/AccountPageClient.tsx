@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/Input";
 import {
   updateProfileAction,
   changePasswordAction,
+  changeEmailAction,
   uploadPhotoAction,
   removePhotoAction,
   logoutAction,
@@ -236,6 +237,7 @@ export function AccountPageClient({
     changePasswordAction,
     null,
   );
+  const [emailState, emailAction] = useFormState(changeEmailAction, null);
   const [uploadState, uploadAction] = useFormState(uploadPhotoAction, null);
 
   const handleFilePick = () => fileInputRef.current?.click();
@@ -687,6 +689,24 @@ export function AccountPageClient({
                     )}
                   </Button>
                 </div>
+              </form>
+              <form action={emailAction} className="mt-6 space-y-4 border-t border-border pt-5">
+                <input type="hidden" name="locale" value={locale} />
+                <h3 className="font-medium">{locale === "en-US" ? "Change login email" : "Alterar e-mail de login"}</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block text-sm">
+                    {locale === "en-US" ? "New email" : "Novo e-mail"}
+                    <Input name="email" type="email" maxLength={254} required autoComplete="email" />
+                  </label>
+                  <label className="block text-sm">
+                    {t("currentPassword")}
+                    <Input name="current_password" type="password" minLength={6} required autoComplete="current-password" />
+                  </label>
+                </div>
+                <Button type="submit" variant="secondary">
+                  {locale === "en-US" ? "Request email change" : "Solicitar alteração"}
+                </Button>
+                <p role="status" className="text-sm">{emailState?.message}</p>
               </form>
             </CardContent>
           </Card>

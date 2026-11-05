@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClientSSR } from "@/lib/supabase/server"
+import { isAccountSuspended } from "@/lib/auth/suspension"
 
 export interface ApiError {
   error: string
@@ -21,7 +22,7 @@ export function errorResponse(message: string, status = 400, code?: string, deta
 export async function requireApiUser(): Promise<{ userId: string; supabase: Awaited<ReturnType<typeof createClientSSR>> }> {
   const supabase = await createClientSSR()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  if (!user || isAccountSuspended(user)) {
     throw new ApiAuthError("Usuário não autenticado.")
   }
   return { userId: user.id, supabase }
