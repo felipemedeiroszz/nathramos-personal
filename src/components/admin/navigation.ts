@@ -66,6 +66,13 @@ export const adminNavigation: AdminNavGroup[] = [
     en: "Students & content",
     items: [
       {
+        key: "community",
+        path: "comunidade",
+        pt: "Gerenciamento da Comunidade",
+        en: "Community management",
+        icon: MessageSquare,
+      },
+      {
         key: "students",
         path: "alunos",
         pt: "Alunos",

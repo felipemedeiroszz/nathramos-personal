@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { NotificationDispatcher } from "@/services/NotificationDispatcher";
 import { ExamUploadService } from "@/services/ExamUploadService";
+import { cleanCommunityUploads } from "@/services/CommunityService";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 export async function GET(request: Request) {
@@ -35,6 +36,8 @@ export async function GET(request: Request) {
     );
   if (task === "all" || task === "uploads")
     await run("uploads", () => ExamUploadService.cleanExpired());
+  if (task === "all" || task === "uploads")
+    await run("communityUploads", cleanCommunityUploads);
   return NextResponse.json(
     { success: !failed, ...result },
     { status: failed ? 500 : 200 },

@@ -8,6 +8,7 @@ import {
   FileText,
   House,
   MessageCircle,
+  Users,
   Pill,
   ShoppingBasket,
   TrendingUp,
@@ -116,6 +117,14 @@ export const studentNavigation: {
     pt: "Para você",
     en: "For you",
     items: [
+      {
+        path: "comunidade",
+        pt: "Comunidade",
+        en: "Community",
+        icon: Users,
+        description: "Conquistas e conversas entre alunos",
+        descriptionEn: "Student wins and conversations",
+      },
       {
         path: "ebooks",
         pt: "Minha biblioteca",
