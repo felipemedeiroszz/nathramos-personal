@@ -5,6 +5,7 @@ import {
   readCommunity,
   uploadCommunityImage,
 } from "@/services/CommunityService";
+import { getDeezerTrack } from "@/services/DeezerService";
 import { communityActionSchema } from "@/lib/community";
 import { AccessError } from "@/lib/auth/platform";
 import { createServiceClientSSR } from "@/lib/supabase/server";
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
     const thread = searchParams.get("thread");
     if (thread) {
       const { z } = await import("zod");
-      const post = z.uuid().parse(thread);
+      const post = z.guid().parse(thread);
       const mode = z
         .enum(["comments", "reactions"])
         .parse(searchParams.get("mode") || "comments");
@@ -110,6 +111,14 @@ export async function POST(req: NextRequest) {
     );
     if (input.action === "restrict" && actor.role !== "admin")
       throw new AccessError("Acesso negado.", 403);
+    if (
+      (input.action === "post" || input.action === "edit") &&
+      input.music_track_id
+    ) {
+      const music = await getDeezerTrack(input.music_track_id);
+      if (!music.preview)
+        throw new AccessError("Esta música não possui prévia disponível.", 400);
+    }
     const db = await createServiceClientSSR();
     const result = await (db.rpc as any)("community_mutate", {
       p_actor: actor.userId,

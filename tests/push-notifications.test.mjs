@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFileSync } from "node:fs";
 import { loadTs } from "./load-ts.mjs";
-function worker() {
+function worker(origin = "https://example.com") {
   const handlers = {},
     shown = [],
     opened = [],
     messages = [],
     deleted = [];
   const self = {
-    location: { origin: "https://example.com" },
+    location: { origin },
     addEventListener: (name, fn) => (handlers[name] = fn),
     skipWaiting: async () => {},
     registration: {
@@ -28,8 +28,13 @@ function worker() {
     URL,
     console,
     caches: {
-      keys: async () => ["nathramos-static-v1", "other-app"],
+      keys: async () => [
+        "nathramos-static-v1",
+        "nathramos-static-v2",
+        "other-app",
+      ],
       delete: async (key) => deleted.push(key),
+      open: async () => ({ match: async () => ({ ok: true }) }),
     },
   });
   async function event(name, data = {}) {
@@ -84,7 +89,50 @@ test("worker does not cache private pages or APIs; old caches are removed only f
     assert.equal(intercepted, false);
   }
   await w.event("activate");
-  assert.deepEqual(w.deleted, ["nathramos-static-v1"]);
+  assert.deepEqual(w.deleted, ["nathramos-static-v1", "nathramos-static-v2"]);
+});
+test("worker leaves mutable development chunks on the network, including LAN and localhost", () => {
+  for (const origin of [
+    "https://example.com",
+    "http://localhost:3000",
+    "http://10.0.0.2:3000",
+  ]) {
+    const w = worker(origin);
+    for (const path of [
+      "/_next/static/chunks/app/pt-BR/comunidade/page.js",
+      "/_next/static/chunks/webpack.js",
+      "/_next/static/development/_buildManifest.js",
+    ]) {
+      let intercepted = false;
+      w.handlers.fetch({
+        request: { method: "GET", url: origin + path },
+        respondWith() {
+          intercepted = true;
+        },
+      });
+      assert.equal(intercepted, false);
+    }
+  }
+});
+test("worker caches fingerprinted production chunks but bypasses localhost even with a hash", async () => {
+  for (const [origin, expected] of [
+    ["https://example.com", true],
+    ["http://localhost:3000", false],
+  ]) {
+    const w = worker(origin);
+    let intercepted = false;
+    w.handlers.fetch({
+      request: {
+        method: "GET",
+        url: origin + "/_next/static/chunks/page-a123456789abcdef.js",
+      },
+      respondWith(pending) {
+        intercepted = true;
+        pending.catch(() => {});
+      },
+    });
+    assert.equal(intercepted, expected);
+  }
 });
 function browserEnvironment() {
   const prior = {};

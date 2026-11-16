@@ -37,3 +37,7 @@ artifacts/student-design-system/
 artifacts/public-site/
 artifacts/community-ui/
 artifacts/challenges-ui/
+
+artifacts/monthly-progress-ui/
+supabase/seeds/student_demo_account.sql
+supabase/seeds/reset_student_demo_password.sql

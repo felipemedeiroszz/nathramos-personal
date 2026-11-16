@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { NotificationDispatcher } from "@/services/NotificationDispatcher";
 import { ExamUploadService } from "@/services/ExamUploadService";
 import { cleanCommunityUploads } from "@/services/CommunityService";
-import { processChallenges,cleanChallengeUploads } from "@/services/ChallengeService";
+import {
+  processChallenges,
+  cleanChallengeUploads,
+} from "@/services/ChallengeService";
+import {
+  processMonthlyProgress,
+  cleanMonthlyProgressUploads,
+} from "@/services/MonthlyProgressService";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 export async function GET(request: Request) {
@@ -31,6 +38,8 @@ export async function GET(request: Request) {
     await run("reminders", () =>
       NotificationDispatcher.generateRoutineReminders(),
     );
+  if (task === "all" || task === "reminders")
+    await run("monthlyProgress", processMonthlyProgress);
   if (task === "all" || task === "deliver")
     await run("deliveries", () =>
       NotificationDispatcher.processDueNotifications(),
@@ -43,6 +52,8 @@ export async function GET(request: Request) {
     await run("challenges", processChallenges);
   if (task === "all" || task === "uploads")
     await run("challengeUploads", cleanChallengeUploads);
+  if (task === "all" || task === "uploads")
+    await run("monthlyProgressUploads", cleanMonthlyProgressUploads);
   return NextResponse.json(
     { success: !failed, ...result },
     { status: failed ? 500 : 200 },

@@ -14,19 +14,16 @@ import { StudentRoutineService } from "@/services/StudentRoutineService";
 import { WorkoutMetricsService } from "@/services/WorkoutMetricsService";
 import { RoutineSummary } from "@/components/student/RoutineSummary";
 import { HealthLogClient } from "@/components/student/RoutineClients";
+import { MonthlyProgress } from "@/components/student/MonthlyProgress";
 import { WorkoutHistory } from "@/components/student/workout/WorkoutHistory";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Minha evolução" };
-export default async function Page(
-  props: {
-    params: Promise<{ locale: string }>;
-  }
-) {
+export default async function Page(props: {
+  params: Promise<{ locale: string }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   setRequestLocale(locale);
   const userId = await requireStudentPage();
@@ -78,6 +75,7 @@ export default async function Page(
         )}
         icon={<TrendingUp size={22} />}
       />
+      <MonthlyProgress locale={locale} />
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {values.map(({ label, value, icon: Icon, note }) => (
           <article

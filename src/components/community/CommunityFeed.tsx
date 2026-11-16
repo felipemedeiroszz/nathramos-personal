@@ -22,6 +22,8 @@ import {
   type Reaction,
 } from "@/lib/community";
 import "./community.css";
+import { CommunityMusicPicker, CommunityMusicPlayer } from "./CommunityMusic";
+import { CommunityStories } from "./CommunityStories";
 
 const imageUrl = (path: string) =>
   `/api/community/image?path=${encodeURIComponent(path)}`;
@@ -86,6 +88,9 @@ function Composer({
   onClose?: () => void;
 }) {
   const en = locale === "en-US";
+  const [music, setMusic] = useState<number | null>(
+    post?.music_track_id ?? null,
+  );
   const [body, setBody] = useState(post?.body || "");
   const [images, setImages] = useState(post?.images || []);
   const [busy, setBusy] = useState(false);
@@ -124,10 +129,24 @@ function Composer({
     try {
       await mutate(
         post
-          ? { action: "edit", id: post.id, version: post.version, body, images }
-          : { action: "post", request_id: requestId.current, body, images },
+          ? {
+              action: "edit",
+              id: post.id,
+              version: post.version,
+              body,
+              images,
+              music_track_id: music,
+            }
+          : {
+              action: "post",
+              request_id: requestId.current,
+              body,
+              images,
+              music_track_id: music,
+            },
       );
       setBody("");
+      setMusic(null);
       setImages([]);
       setPreview(false);
       requestId.current = crypto.randomUUID();
@@ -141,7 +160,7 @@ function Composer({
   return (
     <section
       className="community-card community-composer"
-      data-panel-editing={body || images.length ? "true" : undefined}
+      data-panel-editing={body || images.length || music ? "true" : undefined}
     >
       <div className="community-card-heading">
         <h2>
@@ -201,6 +220,12 @@ function Composer({
           </div>
         ))}
       </div>
+      <CommunityMusicPicker
+        value={music}
+        onChange={setMusic}
+        locale={locale}
+        disabled={busy}
+      />
       <p className="community-hint">
         {en
           ? "Visible to active community members. JPG, PNG or WebP, up to 4 MB each. Only share photos you have permission to publish."
@@ -620,6 +645,9 @@ function PostCard({
           ))}
         </div>
       )}
+      {post.music_track_id && (
+        <CommunityMusicPlayer trackId={post.music_track_id} locale={locale} />
+      )}
       <div className="community-counts">
         <button type="button" onClick={() => void loadPeople()}>
           <Heart size={14} /> {post.reaction_count}{" "}
@@ -887,6 +915,7 @@ export function CommunityFeed({
       </header>
       <div className="community-columns">
         <div className="community-main">
+          <CommunityStories userId={userId} admin={admin} locale={locale} />
           {admin && (
             <section className="community-card">
               <form

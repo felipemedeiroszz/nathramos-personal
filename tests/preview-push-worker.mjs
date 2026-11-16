@@ -10,6 +10,11 @@ try {
   const result = await page.evaluate(async () => {
     const old = await caches.open("nathramos-static-v1");
     await old.put("/old-private", new Response("old"));
+    const stale = await caches.open("nathramos-static-v2");
+    await stale.put(
+      "/_next/static/chunks/webpack.js",
+      new Response("stale-development-code"),
+    );
     await navigator.serviceWorker.register("/sw.js", {
       updateViaCache: "none",
     });
@@ -21,6 +26,9 @@ try {
           once: true,
         });
     });
+    const chunk = await fetch("/_next/static/chunks/webpack.js");
+    if (!chunk.ok || (await chunk.text()) === "stale-development-code")
+      throw Error("Stale development chunk");
     await fetch("/pt-BR/login");
     await fetch("/api/push/subscribe", {
       method: "POST",
@@ -43,7 +51,9 @@ try {
     }
     return {
       active: ready.active?.state,
-      removedOldCache: !keys.includes("nathramos-static-v1"),
+      removedOldCache:
+        !keys.includes("nathramos-static-v1") &&
+        !keys.includes("nathramos-static-v2"),
       privateCached: privateCached.length,
       startUrl: manifest.start_url,
     };

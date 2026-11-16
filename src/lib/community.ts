@@ -8,41 +8,55 @@ export const reactionKinds = [
   "motivation",
 ] as const;
 export type Reaction = (typeof reactionKinds)[number];
+// PostgreSQL UUID columns also accept identifiers without RFC version/variant bits.
+export const communityRecordIdSchema = z.guid();
 const reason = z.string().trim().min(1).max(500);
 export const communityActionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("post"),
     body: z.string().trim().max(5000),
     images: z.array(z.string()).max(3),
+    music_track_id: z
+      .number()
+      .int()
+      .positive()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullish(),
     request_id: z.uuid(),
   }),
   z.object({
     action: z.literal("edit"),
-    id: z.uuid(),
+    id: communityRecordIdSchema,
     version: z.number().int().positive(),
     body: z.string().trim().max(5000),
     images: z.array(z.string()).max(3),
+    music_track_id: z
+      .number()
+      .int()
+      .positive()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullish(),
   }),
   z.object({
     action: z.literal("comment"),
-    post_id: z.uuid(),
-    parent_id: z.uuid().nullable(),
+    post_id: communityRecordIdSchema,
+    parent_id: communityRecordIdSchema.nullable(),
     body: z.string().trim().min(1).max(2000),
     request_id: z.uuid(),
   }),
   z.object({
     action: z.literal("react"),
-    post_id: z.uuid(),
+    post_id: communityRecordIdSchema,
     kind: z.enum(reactionKinds).nullable(),
   }),
   z.object({
     action: z.literal("delete_post"),
-    post_id: z.uuid(),
+    post_id: communityRecordIdSchema,
     reason: reason.optional(),
   }),
   z.object({
     action: z.literal("delete_comment"),
-    id: z.uuid(),
+    id: communityRecordIdSchema,
     reason: reason.optional(),
   }),
   z.object({
@@ -61,17 +75,18 @@ export const communityFilterSchema = z
       .enum(["true", "false"])
       .optional()
       .transform((v) => v === "true"),
-    post: z.uuid().optional(),
+    post: communityRecordIdSchema.optional(),
     author: z.uuid().optional(),
     q: z.string().trim().max(100).optional(),
     from: z.iso.datetime({ offset: true }).optional(),
     to: z.iso.datetime({ offset: true }).optional(),
     cursor: z.iso.datetime({ offset: true }).optional(),
-    cursor_id: z.uuid().optional(),
+    cursor_id: communityRecordIdSchema.optional(),
   })
   .refine((v) => Boolean(v.cursor) === Boolean(v.cursor_id), "Invalid cursor");
 
 export type CommunityPost = {
+  music_track_id?: number | null;
   id: string;
   body: string;
   images: string[];

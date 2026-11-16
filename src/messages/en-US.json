@@ -1,5 +1,7 @@
 {
   "common": {
+    "last30Days": "Last 30 days",
+    "tryAgain": "Try again",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",

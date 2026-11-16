@@ -15,7 +15,7 @@ export default async function CommunityAdminPage(props: {
   setRequestLocale(locale);
   const { userId } = await requireRole(["admin"], "/dashboard");
   const { post } = await props.searchParams;
-  if (post && !z.uuid().safeParse(post).success) notFound();
+  if (post && !z.guid().safeParse(post).success) notFound();
   const initial = await readCommunity(userId, { post, admin: "true" });
   return (
     <CommunityFeed

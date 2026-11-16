@@ -16,7 +16,7 @@ export default async function CommunityPage(props: {
   await requireStudentPage();
   const { userId } = await communityActor();
   const { post } = await props.searchParams;
-  if (post && !z.uuid().safeParse(post).success) notFound();
+  if (post && !z.guid().safeParse(post).success) notFound();
   const initial = await readCommunity(userId, { post });
   return (
     <CommunityFeed

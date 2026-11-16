@@ -25,13 +25,65 @@ export async function checkAdminDatabase(db: any, actorId: string) {
     run: () => any;
   }> = [
     {
+      id: "monthly_progress",
+      label: "Evolução mensal: peso e quatro fotos",
+      migration: "000063_monthly_progress.sql",
+      run: () =>
+        db
+          .from("student_monthly_progress")
+          .select("user_id,month,weight_kg,photos,version")
+          .limit(0),
+    },
+    {
+      id: "music_favorites",
+      label: "Favoritas de músicas",
+      migration: "000062_community_music_favorites.sql",
+      run: () =>
+        db.rpc("community_music_favorite", {
+          p_actor: actorId,
+          p_action: "read",
+          p_track: {},
+        }),
+    },
+    {
+      id: "post_music",
+      label: "Música nas publicações",
+      migration: "000061_community_music.sql",
+      run: () => db.from("community_posts").select("music_track_id").limit(0),
+    },
+    {
+      id: "story_music",
+      label: "Música nos stories",
+      migration: "000061_community_music.sql",
+      run: () => db.from("community_stories").select("music_track_id").limit(0),
+    },
+    {
+      id: "story_text_size",
+      label: "Tamanho do texto e emojis nos stories",
+      migration: "000060_story_text_size.sql",
+      run: () => db.from("community_stories").select("text_scale").limit(0),
+    },
+    {
+      id: "story_text_drag",
+      label: "Posição livre do texto nos stories",
+      migration: "000059_story_text_drag.sql",
+      run: () => db.from("community_stories").select("text_x,text_y").limit(0),
+    },
+    {
+      id: "community_stories",
+      label: "Stories de 24 horas",
+      migration: "000058_community_stories.sql",
+      run: () => db.rpc("community_story_read", { p_actor: actorId }),
+    },
+    {
       id: "community",
       label: "Comunidade interna",
       migration: "000055_community.sql",
-      run: () => db.rpc("community_read", {
-        p_actor: actorId,
-        p_filter: { admin: true, limit: 1 },
-      }),
+      run: () =>
+        db.rpc("community_read", {
+          p_actor: actorId,
+          p_filter: { admin: true, limit: 1 },
+        }),
     },
     {
       id: "daily_prescriptions",

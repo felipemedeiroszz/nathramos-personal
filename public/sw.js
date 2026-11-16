@@ -1,5 +1,5 @@
 /* Service Worker - notifications and public static assets only. */
-const CACHE_NAME = "nathramos-static-v2";
+const CACHE_NAME = "nathramos-static-v3";
 const DEFAULT_URL = "/pt-BR/notificacoes";
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -21,6 +21,8 @@ self.addEventListener("activate", (event) => {
       .then(() => self.clients.claim()),
   );
 });
+// Only fingerprinted production assets are immutable. Development chunks reuse
+// URLs (e.g. app/[locale]/page.js), so caching them mixes old JS with new SSR HTML.
 // Never cache authenticated HTML, API responses or RSC payloads.
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -28,7 +30,12 @@ self.addEventListener("fetch", (event) => {
   if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    !url.pathname.startsWith("/_next/static/")
+    !url.pathname.startsWith("/_next/static/") ||
+    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
+    !/(?:^|[-.])[a-f0-9]{8,}(?:[-.]|$)/i.test(
+      url.pathname.split("/").pop() || "",
+    ) ||
+    !/\.(?:js|css|woff2?)$/i.test(url.pathname)
   )
     return;
   event.respondWith(
