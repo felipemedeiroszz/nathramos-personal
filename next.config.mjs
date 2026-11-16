@@ -7,6 +7,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  experimental: {
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   serverExternalPackages: ["pdfkit", "exceljs", "sharp"],
   outputFileTracingIncludes: {
     "/api/admin/analytics/export": [

@@ -88,6 +88,7 @@ test("troca de e-mail exige a senha atual e solicita confirmação ao Auth", asy
     updateUser: async (...args) => { requests.push(args); return {}; },
   };
   const { changeEmailAction } = loadTs("src/app/actions/account.ts", {
+    "server-only": {},
     "@/lib/auth/access": { requireAuthenticated: async () => user.id },
     "@/lib/supabase/server": { createClientSSR: async () => ({ auth }) },
     "next/cache": {},

@@ -6,11 +6,23 @@ import { resolve } from "node:path";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
+import sharp from "sharp";
+import { randomBytes } from "node:crypto";
 const require = createRequire(import.meta.url),
   { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const out = resolve("artifacts/student-live-ui");
 await mkdir(out, { recursive: true });
 const nutrition = { calories_kcal: 200, protein_g: 10, carbs_g: 20, fats_g: 5 };
+const avatarFixture = await sharp(randomBytes(1024 * 1024 * 3), {
+  raw: { width: 1024, height: 1024, channels: 3 },
+})
+  .png()
+  .toBuffer();
+assert.ok(avatarFixture.length > 1024 * 1024);
+const avatarDisplay = await sharp(avatarFixture)
+  .resize(64, 64)
+  .webp()
+  .toBuffer();
 let stage = 0;
 function fixture() {
   return {
@@ -93,6 +105,10 @@ const entry = `import React,{useState,useEffect} from 'react';import{createRoot}
 function App(){const[s,set]=useState(null);window.__refresh=async()=>{const r=await fetch('/state');set(await r.json())};useEffect(()=>{window.__refresh()},[]);if(!s)return null;return <NextIntlClientProvider locale="pt-BR" messages={pt} timeZone="America/Sao_Paulo"><LiveDataRefresh/><main className="mx-auto max-w-5xl space-y-6 p-4"><h1>Versão {s.stage}</h1><NotificationBell locale="pt-BR" namespace="studentNotifications"/><TodayWorkoutCard locale="pt-BR" userId="fixture"/><section id="history"><WorkoutHistory locale="pt-BR" userId="fixture"/></section><section id="water"><HydrationClient data={s.data}/></section><section id="inbox"><NotificationsCenterClient locale="pt-BR" userId="fixture" initialItems={s.notices}/></section><section id="account"><AccountPageClient locale="pt-BR" profile={s.profile} subscription={null} payments={[]} access={{allowed:true,status:'active',reason:''}} notificationPreferences={{email:{},push:{}}} notificationSettings={{push_enabled:false,quiet_hours_start:null,quiet_hours_end:null}} notificationDevices={0}/></section><dialog id="test-dialog" open style={{position:'static'}}>Diálogo aberto</dialog></main></NextIntlClientProvider>}
 if(new URLSearchParams(location.search).has('admin')){document.body.innerHTML='<button id="change">Atualizar prescrição</button>';document.querySelector('button').onclick=async()=>{await fetch('/mutate',{method:'POST'});notifyDataChanged()}}else createRoot(document.getElementById('root')).render(<App/>);`;
 await build({
+  alias: {
+    react: resolve("node_modules/next/dist/compiled/react"),
+    "react-dom": resolve("node_modules/next/dist/compiled/react-dom"),
+  },
   stdin: { contents: entry, resolveDir: process.cwd(), loader: "tsx" },
   bundle: true,
   jsx: "automatic",
@@ -131,7 +147,7 @@ await build({
           else if (a.path.endsWith("/routine"))
             contents = `export async function recordHealthAction(){return {success:true}}export async function saveHydrationAction(){return {success:true}}export async function setRoutineItemAction(){return {success:true}}export async function setShoppingAction(){return {success:true}}export async function waterAction(){return {success:true}}`;
           else
-            contents = `export async function updateProfileAction(){return {success:true}}export async function changePasswordAction(){return {success:true}}export async function changeEmailAction(){return {success:true}}export async function uploadPhotoAction(){return {success:true}}export async function removePhotoAction(){return {success:true}}export async function logoutAction(){}`;
+            contents = `export async function updateProfileAction(previous,form){window.__profileSaved=Object.fromEntries(form);return {success:true}}export async function changePasswordAction(){return {success:true}}export async function changeEmailAction(){return {success:true}}export async function uploadPhotoAction(previous,form){window.__photoUploaded=form.get("file") instanceof File;window.__photoMeta={size:form.get("file").size,type:form.get("file").type};return {success:true,photoUrl:"/avatar-fixture.webp"}}export async function removePhotoAction(){return {success:true}}export async function logoutAction(){}`;
           return { contents, loader: "tsx", resolveDir: process.cwd() };
         });
       },
@@ -155,6 +171,10 @@ await writeFile(
   '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/base.css"></head><body style="font-family:Arial"><div id="root"></div><script src="/app.js"></script></body></html>',
 );
 const server = createServer(async (req, res) => {
+  if (req.url === "/avatar-fixture.webp") {
+    res.writeHead(200, { "Content-Type": "image/webp" }).end(avatarDisplay);
+    return;
+  }
   if (req.url === "/mutate") {
     stage++;
     res.setHeader("content-type", "application/json");
@@ -272,6 +292,46 @@ try {
       .waitFor({ timeout: 22000 });
     assert.equal(await goal.inputValue(), "2800");
     assert.equal(navigations, 1);
+    await student.locator('#account button[type="submit"]').first().click();
+    await student.waitForFunction(
+      () => window.__profileSaved?.first_name === "Rascunho do aluno",
+    );
+    await student.locator('#account input[type="file"]').setInputFiles({
+      name: "avatar.png",
+      mimeType: "image/png",
+      buffer: avatarFixture,
+    });
+    await student
+      .getByText("Foto enviada com sucesso", { exact: true })
+      .waitFor();
+    assert.equal(await student.evaluate(() => window.__photoUploaded), true);
+    const meta = await student.evaluate(() => window.__photoMeta);
+    assert.ok(meta.size < 750000);
+    assert.equal(meta.type, "image/webp");
+    await student.waitForFunction(
+      () =>
+        document.querySelectorAll('#account img[src="/avatar-fixture.webp"]')
+          .length === 2 &&
+        [
+          ...document.querySelectorAll(
+            '#account img[src="/avatar-fixture.webp"]',
+          ),
+        ].every((image) => image.complete && image.naturalWidth > 0),
+    );
+    await student.evaluate(() => window.__refresh());
+    assert.equal(
+      await student.locator('#account img[src="/avatar-fixture.webp"]').count(),
+      2,
+    );
+    await student
+      .getByRole("button", { name: "Remover foto", exact: true })
+      .click();
+    await student.waitForFunction(
+      () =>
+        document.querySelectorAll('#account img[src="/avatar-fixture.webp"]')
+          .length === 0,
+    );
+
     assert.deepEqual(errors, []);
     await student.screenshot({
       path: resolve(out, `student-live-${width}.png`),

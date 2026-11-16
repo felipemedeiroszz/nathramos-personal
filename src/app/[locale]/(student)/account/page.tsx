@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import {
-  setRequestLocale,
-  getTranslations,
-} from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { notFound } from "next/navigation";
-import { createClientSSR } from "@/lib/supabase/server";
+import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server";
 import { requireAuthenticated, canAccessPlatform } from "@/lib/auth/access";
 import { SubscriptionService, PaymentService } from "@/lib/payments/services";
 import { NotificationService } from "@/services/NotificationService";
@@ -20,16 +17,12 @@ export const metadata: Metadata = {
   title: "Conta",
 };
 
-export default async function AccountPage(
-  props: {
-    params: Promise<{ locale: LocaleKey }>;
-  }
-) {
+export default async function AccountPage(props: {
+  params: Promise<{ locale: LocaleKey }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -38,12 +31,14 @@ export default async function AccountPage(
   const userId = await requireAuthenticated();
   const supabase = await createClientSSR();
 
-  const { data: profileData } = await supabase
+  const profileDb = await createServiceClientSSR();
+  const { data: profileData } = await profileDb
     .from("profiles")
     .select<string, any>(
       "id, first_name, last_name, phone, birth_date, gender, height_cm, weight_kg, country, language, avatar_url",
     )
     .eq("id", userId)
+    .eq("is_deleted", false)
     .limit(1)
     .maybeSingle();
 

@@ -1,9 +1,9 @@
 "use client";
+import { prepareAvatar } from "@/lib/media/avatar-client";
 import { useLiveDraft } from "@/hooks/useLiveDraft";
 import { notifyDataChanged } from "@/lib/live/events";
 
-import { useRef, useState, useTransition } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
@@ -110,11 +110,7 @@ function AlertLine({
 }
 
 type TabType =
-  | "profile"
-  | "security"
-  | "notifications"
-  | "subscription"
-  | "settings";
+  "profile" | "security" | "notifications" | "subscription" | "settings";
 
 const TAB_IDS: TabType[] = [
   "profile",
@@ -183,6 +179,9 @@ export function AccountPageClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { draft: avatarUrl, accept: acceptAvatarUrl } = useLiveDraft(
+    profile.avatar_url,
+  );
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{
     type: "success" | "error" | "info";
@@ -216,7 +215,7 @@ export function AccountPageClient({
     country: String(profile.country ?? ""),
     language: String(profile.language ?? ""),
   });
-  const [profileState, profileAction] = useFormState(
+  const [profileState, profileAction, profilePending] = useActionState(
     async (previous: any, form: FormData) => {
       const submitted = Object.fromEntries(
         Object.keys(profileDraft).map((key) => [
@@ -233,33 +232,56 @@ export function AccountPageClient({
     },
     null,
   );
-  const [passwordState, passwordAction] = useFormState(
+  const [passwordState, passwordAction, passwordPending] = useActionState(
     changePasswordAction,
     null,
   );
-  const [emailState, emailAction] = useFormState(changeEmailAction, null);
-  const [uploadState, uploadAction] = useFormState(uploadPhotoAction, null);
+  const [emailState, emailAction, emailPending] = useActionState(
+    changeEmailAction,
+    null,
+  );
 
   const handleFilePick = () => fileInputRef.current?.click();
 
   const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
     setUploadBusy(true);
     setUploadMsg(null);
     startTransition(async () => {
-      const res: any = await uploadAction(fd);
-      setUploadBusy(false);
-      if (res?.success) {
-        setUploadMsg({ type: "success", text: t("photoUploaded") });
-        router.refresh();
-        notifyDataChanged();
-      } else {
-        setUploadMsg({ type: "error", text: res?.message || common("error") });
+      try {
+        const fd = new FormData();
+        fd.append("file", await prepareAvatar(file));
+        const res = await uploadPhotoAction(null, fd);
+        if (res?.success) {
+          acceptAvatarUrl(res.photoUrl);
+          setUploadMsg({ type: "success", text: t("photoUploaded") });
+          router.refresh();
+          notifyDataChanged();
+        } else
+          setUploadMsg({
+            type: "error",
+            text: res?.message || common("error"),
+          });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        setUploadMsg({
+          type: "error",
+          text:
+            code === "file_too_large"
+              ? locale === "en-US"
+                ? "Choose a photo up to 5 MB."
+                : "Escolha uma foto de até 5 MB."
+              : code === "invalid_file_type" || error instanceof DOMException
+                ? locale === "en-US"
+                  ? "Choose a valid JPG, PNG or WebP image."
+                  : "Escolha uma imagem JPG, PNG ou WebP válida."
+                : common("tryAgain"),
+        });
+      } finally {
+        setUploadBusy(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
     });
   };
 
@@ -270,6 +292,7 @@ export function AccountPageClient({
       const res: any = await removePhotoAction();
       setUploadBusy(false);
       if (res?.success) {
+        acceptAvatarUrl(null);
         setUploadMsg({ type: "success", text: t("photoRemoved") });
         router.refresh();
         notifyDataChanged();
@@ -295,7 +318,7 @@ export function AccountPageClient({
         <div className="flex items-center gap-4">
           <Avatar
             size="xl"
-            src={profile.avatar_url ?? undefined}
+            src={avatarUrl ?? undefined}
             fallback={initials}
             alt={initials}
             className="h-16 w-16 shrink-0 text-xl ring-4 ring-primary/10"
@@ -359,7 +382,7 @@ export function AccountPageClient({
               <div className="flex items-center gap-4 mb-6 p-4 rounded-xl bg-surface-secondary/50 border border-border">
                 <Avatar
                   size="lg"
-                  src={profile.avatar_url ?? undefined}
+                  src={avatarUrl ?? undefined}
                   fallback={initials}
                   alt={initials}
                   className="h-16 w-16 text-lg ring-2 ring-border"
@@ -378,9 +401,9 @@ export function AccountPageClient({
                     ) : (
                       <Upload size={16} className="mr-2" />
                     )}
-                    {profile.avatar_url ? t("changePhoto") : t("uploadPhoto")}
+                    {avatarUrl ? t("changePhoto") : t("uploadPhoto")}
                   </Button>
-                  {profile.avatar_url && (
+                  {avatarUrl && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -582,7 +605,13 @@ export function AccountPageClient({
                   </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-border">
-                  <Button type="submit" size="lg" className="min-w-[120px]">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="min-w-[120px]"
+                    disabled={profilePending}
+                    aria-busy={profilePending}
+                  >
                     {profileState?.success ? (
                       <>
                         <CheckCircle2 size={18} className="mr-2" />
@@ -675,6 +704,8 @@ export function AccountPageClient({
                     variant="secondary"
                     size="lg"
                     className="min-w-[140px]"
+                    disabled={passwordPending}
+                    aria-busy={passwordPending}
                   >
                     {passwordState?.success ? (
                       <>
@@ -690,23 +721,51 @@ export function AccountPageClient({
                   </Button>
                 </div>
               </form>
-              <form action={emailAction} className="mt-6 space-y-4 border-t border-border pt-5">
+              <form
+                action={emailAction}
+                className="mt-6 space-y-4 border-t border-border pt-5"
+              >
                 <input type="hidden" name="locale" value={locale} />
-                <h3 className="font-medium">{locale === "en-US" ? "Change login email" : "Alterar e-mail de login"}</h3>
+                <h3 className="font-medium">
+                  {locale === "en-US"
+                    ? "Change login email"
+                    : "Alterar e-mail de login"}
+                </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="block text-sm">
                     {locale === "en-US" ? "New email" : "Novo e-mail"}
-                    <Input name="email" type="email" maxLength={254} required autoComplete="email" />
+                    <Input
+                      name="email"
+                      type="email"
+                      maxLength={254}
+                      required
+                      autoComplete="email"
+                    />
                   </label>
                   <label className="block text-sm">
                     {t("currentPassword")}
-                    <Input name="current_password" type="password" minLength={6} required autoComplete="current-password" />
+                    <Input
+                      name="current_password"
+                      type="password"
+                      minLength={6}
+                      required
+                      autoComplete="current-password"
+                    />
                   </label>
                 </div>
-                <Button type="submit" variant="secondary">
-                  {locale === "en-US" ? "Request email change" : "Solicitar alteração"}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={emailPending}
+                  aria-busy={emailPending}
+                >
+                  {locale === "en-US"
+                    ? "Request email change"
+                    : "Solicitar alteração"}
                 </Button>
-                <p role="status" className="text-sm">{emailState?.message}</p>
+                <p role="status" className="text-sm">
+                  {emailState?.message}
+                </p>
               </form>
             </CardContent>
           </Card>

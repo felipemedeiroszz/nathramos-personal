@@ -9,7 +9,7 @@ import {
   canAccessPlatform,
 } from "@/lib/auth/access";
 import { getMaintenanceStatus } from "@/services/PlatformSettingsService";
-import { createClientSSR } from "@/lib/supabase/server";
+import { createServiceClientSSR } from "@/lib/supabase/server";
 import { StudentLayoutClient } from "@/components/shared/StudentLayoutClient";
 import { SubscriptionService } from "@/lib/payments/services";
 import { logoutAction } from "@/app/actions/account";
@@ -20,21 +20,15 @@ export const metadata: Metadata = {
   title: "App",
 };
 
-export default async function StudentLayout(
-  props: {
-    children: React.ReactNode;
-    params: Promise<{ locale: string }>;
-  }
-) {
+export default async function StudentLayout(props: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   if (!locales.includes(locale as any)) {
     notFound();
@@ -62,9 +56,10 @@ export default async function StudentLayout(
       ? await SubscriptionService.getActive(userId)
       : null;
   const prepaidExpiresAt =
-    (subscription?.source === "admin_manual" || (subscription?.provider === "asaas" &&
-    (subscription.source === "asaas_pix" ||
-      subscription.external_id?.startsWith("pay_"))))
+    subscription?.source === "admin_manual" ||
+    (subscription?.provider === "asaas" &&
+      (subscription.source === "asaas_pix" ||
+        subscription.external_id?.startsWith("pay_")))
       ? subscription.current_period_end
       : null;
 
@@ -80,7 +75,7 @@ export default async function StudentLayout(
   let photoUrl: string | null = null;
 
   try {
-    const supabase = await createClientSSR();
+    const supabase = await createServiceClientSSR();
     const { data } = await supabase
       .from("profiles")
       .select<
@@ -92,6 +87,7 @@ export default async function StudentLayout(
         }
       >("first_name, last_name, avatar_url")
       .eq("id", userId)
+      .eq("is_deleted", false)
       .limit(1)
       .maybeSingle();
     firstName = data?.first_name ?? null;

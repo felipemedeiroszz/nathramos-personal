@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { locales } from "@/i18n/config";
 import { requireRole } from "@/lib/auth/access";
-import { createClientSSR } from "@/lib/supabase/server";
+import { createServiceClientSSR } from "@/lib/supabase/server";
 import { AdminLayoutClient } from "@/components/shared/AdminLayoutClient";
 import { logoutAction } from "@/app/actions/account";
 
@@ -14,21 +14,15 @@ export const metadata: Metadata = {
   title: "Admin",
 };
 
-export default async function AdminLayout(
-  props: {
-    children: React.ReactNode;
-    params: Promise<{ locale: string }>;
-  }
-) {
+export default async function AdminLayout(props: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   if (!locales.includes(locale as any)) {
     notFound();
@@ -43,7 +37,7 @@ export default async function AdminLayout(
   let photoUrl: string | null = null;
 
   try {
-    const supabase = await createClientSSR();
+    const supabase = await createServiceClientSSR();
     const { data } = await supabase
       .from("profiles")
       .select<
@@ -56,6 +50,7 @@ export default async function AdminLayout(
         }
       >("first_name, last_name, avatar_url, role")
       .eq("id", userId)
+      .eq("is_deleted", false)
       .limit(1)
       .maybeSingle();
     firstName = data?.first_name ?? null;

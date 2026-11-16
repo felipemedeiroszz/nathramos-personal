@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { optimizeAvatar } from "@/lib/media/avatar-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -7,7 +9,10 @@ import { createClientSSR, createServiceClientSSR } from "@/lib/supabase/server";
 import { requireAuthenticated } from "@/lib/auth/access";
 import { headers } from "next/headers";
 import { defaultLocale } from "@/i18n/config";
-import { accountProfileSchema, normalizeAccountProfile } from "@/schemas/account";
+import {
+  accountProfileSchema,
+  normalizeAccountProfile,
+} from "@/schemas/account";
 
 async function detectLocale(): Promise<string> {
   const h = await headers();
@@ -118,43 +123,96 @@ export async function changeEmailAction(_prev: unknown, formData: FormData) {
   const userId = await requireAuthenticated();
   const en = formData.get("locale") === "en-US";
   const locale = en ? "en-US" : "pt-BR";
-  const label = (pt: string, english: string) => en ? english : pt;
+  const label = (pt: string, english: string) => (en ? english : pt);
   const fail = (message: string) => ({ success: false, message });
-  const email = z.email().max(254).safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  const email = z
+    .email()
+    .max(254)
+    .safeParse(
+      String(formData.get("email") ?? "")
+        .trim()
+        .toLowerCase(),
+    );
   const password = formData.get("current_password");
   if (!email.success || typeof password !== "string" || password.length < 6)
-    return fail(label("Informe o novo e-mail e a senha atual.", "Enter your new email and current password."));
+    return fail(
+      label(
+        "Informe o novo e-mail e a senha atual.",
+        "Enter your new email and current password.",
+      ),
+    );
 
-  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ??
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
     (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "");
   const appUrl = URL.canParse(configuredUrl) ? new URL(configuredUrl) : null;
-  if (!appUrl || (appUrl.protocol !== "https:" &&
-      !(process.env.NODE_ENV === "development" && appUrl.origin === "http://localhost:3000"))) {
-    return fail(label("A troca de e-mail está indisponível.", "Email changes are unavailable."));
+  if (
+    !appUrl ||
+    (appUrl.protocol !== "https:" &&
+      !(
+        process.env.NODE_ENV === "development" &&
+        appUrl.origin === "http://localhost:3000"
+      ))
+  ) {
+    return fail(
+      label(
+        "A troca de e-mail está indisponível.",
+        "Email changes are unavailable.",
+      ),
+    );
   }
 
   const supabase = await createClientSSR();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || user?.id !== userId || !user.email)
-    return fail(label("Entre novamente na sua conta.", "Sign in to your account again."));
+    return fail(
+      label("Entre novamente na sua conta.", "Sign in to your account again."),
+    );
   if (user.email.toLowerCase() === email.data)
-    return fail(label("Informe um e-mail diferente do atual.", "Enter a different email address."));
+    return fail(
+      label(
+        "Informe um e-mail diferente do atual.",
+        "Enter a different email address.",
+      ),
+    );
 
-  const verified = await supabase.auth.signInWithPassword({ email: user.email, password });
+  const verified = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password,
+  });
   if (verified.error || verified.data.user?.id !== userId)
-    return fail(label("Não foi possível verificar a senha atual.", "Could not verify your current password."));
+    return fail(
+      label(
+        "Não foi possível verificar a senha atual.",
+        "Could not verify your current password.",
+      ),
+    );
 
   const callback = new URL(`/${locale}/auth/callback`, appUrl);
   callback.searchParams.set("next", `/${locale}/account`);
-  const { error } = await supabase.auth.updateUser({ email: email.data }, {
-    emailRedirectTo: callback.toString(),
-  });
+  const { error } = await supabase.auth.updateUser(
+    { email: email.data },
+    {
+      emailRedirectTo: callback.toString(),
+    },
+  );
   if (error)
-    return fail(label("Não foi possível solicitar a alteração de e-mail.", "Could not request the email change."));
+    return fail(
+      label(
+        "Não foi possível solicitar a alteração de e-mail.",
+        "Could not request the email change.",
+      ),
+    );
 
   return {
     success: true,
-    message: label("Confira as caixas de entrada e siga as instruções de confirmação.", "Check your inboxes and follow the confirmation instructions."),
+    message: label(
+      "Confira as caixas de entrada e siga as instruções de confirmação.",
+      "Check your inboxes and follow the confirmation instructions.",
+    ),
   };
 }
 
@@ -215,8 +273,8 @@ export async function deleteAccountAction(_prev: any, formData: FormData) {
 
 export async function uploadPhotoAction(_prev: any, formData: FormData) {
   const userId = await requireAuthenticated();
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
     return {
       success: false as const,
       errors: { file: ["required"] } as any,
@@ -230,30 +288,50 @@ export async function uploadPhotoAction(_prev: any, formData: FormData) {
       message: "file_too_large",
     };
   }
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-  if (!["jpg", "jpeg", "png", "webp"].includes(ext)) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     return {
       success: false as const,
-      errors: { file: ["invalid_type"] } as any,
-      message: "invalid_file_type",
+      errors: {},
+      message: "Escolha uma imagem JPG, PNG ou WebP válida.",
     };
   }
-
-  const supabase = await createClientSSR();
+  const supabase = await createServiceClientSSR();
+  const activeProfile = await (supabase.from("profiles") as any)
+    .select("id")
+    .eq("id", userId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (activeProfile.error || !activeProfile.data)
+    return {
+      success: false as const,
+      errors: {},
+      message: "Não foi possível verificar seu perfil.",
+    };
+  let bytes: Buffer;
+  try {
+    bytes = await optimizeAvatar(file);
+  } catch {
+    return {
+      success: false as const,
+      errors: {},
+      message: "A imagem está inválida. Escolha outra foto.",
+    };
+  }
   const bucket = process.env.NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET || "avatars";
-  const key = `${userId}/${Date.now()}.${ext}`;
+  const key = `${userId}/${randomUUID()}.webp`;
 
   const { error: uploadErr } = await supabase.storage
     .from(bucket)
-    .upload(key, file, {
+    .upload(key, bytes, {
+      contentType: "image/webp",
       cacheControl: "3600",
-      upsert: true,
+      upsert: false,
     });
   if (uploadErr) {
     return {
       success: false as const,
       errors: {},
-      message: uploadErr.message || "upload_failed",
+      message: "Não foi possível enviar a foto. Tente novamente.",
     };
   }
 
@@ -261,10 +339,21 @@ export async function uploadPhotoAction(_prev: any, formData: FormData) {
     .from(bucket)
     .getPublicUrl(key);
   const photoUrl = urlData?.publicUrl ?? null;
+  if (!photoUrl) {
+    await supabase.storage.from(bucket).remove([key]);
+    return {
+      success: false as const,
+      errors: {},
+      message: "Não foi possível obter o endereço da foto.",
+    };
+  }
 
-  const { data: updated, error: profileError } = await (supabase.from("profiles") as any)
+  const { data: updated, error: profileError } = await (
+    supabase.from("profiles") as any
+  )
     .update({ avatar_url: photoUrl })
     .eq("id", userId)
+    .eq("is_deleted", false)
     .select("id")
     .single();
   if (profileError || !updated) {
@@ -272,16 +361,31 @@ export async function uploadPhotoAction(_prev: any, formData: FormData) {
     return { success: false as const, errors: {}, message: "upload_failed" };
   }
 
-  revalidatePath("/[locale]/(student)/account", "layout");
+  revalidatePath("/[locale]/(student)", "layout");
+  revalidatePath("/[locale]/admin", "layout");
   return { success: true as const, photoUrl };
 }
 
 export async function removePhotoAction() {
   const userId = await requireAuthenticated();
-  const supabase = await createClientSSR();
+  const supabase = await createServiceClientSSR();
+  const activeProfile = await (supabase.from("profiles") as any)
+    .select("id")
+    .eq("id", userId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (activeProfile.error || !activeProfile.data)
+    return {
+      success: false as const,
+      errors: {},
+      message: "Não foi possível verificar seu perfil.",
+    };
   const { error } = await (supabase.from("profiles") as any)
     .update({ avatar_url: null })
-    .eq("id", userId);
+    .eq("id", userId)
+    .eq("is_deleted", false)
+    .select("id")
+    .single();
   if (error) {
     return {
       success: false as const,
@@ -289,6 +393,7 @@ export async function removePhotoAction() {
       message: error.message || "remove_failed",
     };
   }
-  revalidatePath("/[locale]/(student)/account", "layout");
+  revalidatePath("/[locale]/(student)", "layout");
+  revalidatePath("/[locale]/admin", "layout");
   return { success: true as const };
 }

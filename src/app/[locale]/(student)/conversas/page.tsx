@@ -57,7 +57,7 @@ export default async function ConversationsPage(
     createdAt: m.created_at,
   }));
 
-  const coachName = room?.coach_name ?? "Nath Ramos";
+  const coachName = "Nath Ramos";
 
   return (
     <div className="space-y-6 w-full">
