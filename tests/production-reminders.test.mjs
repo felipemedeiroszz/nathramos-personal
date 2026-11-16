@@ -60,6 +60,16 @@ test("cron entrega notificações e limpa uploads mesmo quando a geração falha
   const stages = [];
   try {
     const { GET } = loadTs("src/app/api/cron/notifications/route.ts", {
+      "@/services/ChallengeService": {
+        processChallenges: async () => {
+          stages.push("challenges");
+          return { processed: 0, failed: 0 };
+        },
+        cleanChallengeUploads: async () => {
+          stages.push("challengeUploads");
+          return { processed: 0, failed: 0 };
+        },
+      },
       "@/services/CommunityService": {
         cleanCommunityUploads: async () => {
           stages.push("community");
@@ -102,7 +112,14 @@ test("cron entrega notificações e limpa uploads mesmo quando a geração falha
         headers: { authorization: "Bearer local-fixture" },
       }),
     );
-    assert.deepEqual(stages, ["generate", "deliver", "clean", "community"]);
+    assert.deepEqual(stages, [
+      "generate",
+      "deliver",
+      "clean",
+      "community",
+      "challenges",
+      "challengeUploads",
+    ]);
     assert.equal(result.status, 500);
     assert.equal(result.body.deliveries.processed, 1);
     assert.equal(

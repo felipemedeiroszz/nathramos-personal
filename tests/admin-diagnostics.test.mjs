@@ -43,3 +43,25 @@ test('SQL de diagnóstico reconhece funções reais e aponta função removida',
   const missing=report.filter(r=>!r.present);assert.equal(missing.length,1);assert.ok(missing[0].resource.includes('admin_data_page'));
  }finally{await db.close();}
 });
+
+test('falhas de transporte preservam status e geram diagnóstico legível sem dados privados',()=>{
+ const logs=[];const original=console.error;console.error=(...args)=>logs.push(args);
+ try {
+  const {checked}=loadTs('src/services/StudentRoutineService.ts',{'server-only':{}});
+  for(const [status,kind] of [[0,'connection'],[502,'connection'],[503,'connection'],[504,'connection'],[401,'credentials'],[403,'permission']]){
+   assert.throws(()=>checked({data:null,error:{message:'private SQL token secret',details:'student data'},status},'admin refunds'),error=>error.kind===kind);
+   const log=logs.at(-1);assert.equal(log.length,1);
+   const context=JSON.parse(log[0].slice('[database] operation_failed '.length));
+   assert.equal(context.operation,'admin refunds');assert.equal(context.status,status);assert.equal(context.kind,kind);
+   assert.equal(log[0].includes('secret'),false);assert.equal(log[0].includes('student data'),false);
+  }
+ }finally{console.error=original;}
+});
+
+test('diagnóstico identifica migração da comunidade ausente',async()=>{
+ const {checkAdminDatabase}=loadTs('src/lib/admin/diagnostics.ts',{'server-only':{}});
+ const db={from(){const q={select:()=>q,eq:()=>q,limit:async()=>({data:[{id:'admin'}]})};return q},rpc:async(name)=>name==='community_read'?{status:404,error:{code:'PGRST202'}}:{data:{}}};
+ const report=await checkAdminDatabase(db,'admin');
+ const failed=report.checks.filter(c=>!c.ok);
+ assert.equal(failed.length,1);assert.equal(failed[0].id,'community');assert.equal(failed[0].kind,'schema');assert.equal(failed[0].migration,'000055_community.sql');
+});

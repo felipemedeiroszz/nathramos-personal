@@ -14,7 +14,7 @@ export function notifyDataChanged() {
 }
 export function isStudentPanelPath(pathname: string) {
   return (
-    /^\/(?:pt-BR|en-US)\/(?:dashboard|treino|dieta|suplementos|hidratacao|progresso|lista-compras|conversas|reunioes|exames|ebooks|mais|account|comunidade)(?:\/|$)/.test(
+    /^\/(?:pt-BR|en-US)\/(?:dashboard|treino|dieta|suplementos|hidratacao|progresso|lista-compras|conversas|reunioes|exames|ebooks|mais|account|comunidade|desafios)(?:\/|$)/.test(
       pathname,
     ) || /^\/(?:pt-BR|en-US)\/assinatura\/?$/.test(pathname)
   );

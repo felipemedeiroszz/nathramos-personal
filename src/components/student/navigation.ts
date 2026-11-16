@@ -9,6 +9,7 @@ import {
   House,
   MessageCircle,
   Users,
+  Trophy,
   Pill,
   ShoppingBasket,
   TrendingUp,
@@ -117,6 +118,14 @@ export const studentNavigation: {
     pt: "Para você",
     en: "For you",
     items: [
+      {
+        path: "desafios",
+        pt: "Desafios",
+        en: "Challenges",
+        icon: Trophy,
+        description: "Metas, conquistas e premiações",
+        descriptionEn: "Goals, achievements and prizes",
+      },
       {
         path: "comunidade",
         pt: "Comunidade",

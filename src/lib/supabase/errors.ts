@@ -38,6 +38,8 @@ export function databaseFailureKind(
       "08006",
       "57014",
     ].includes(code) ||
+    error?.status === 0 ||
+    error?.status === 502 ||
     error?.status === 503 ||
     error?.status === 504
   )
@@ -58,10 +60,11 @@ export class DatabaseOperationError extends Error {
     this.code = error?.code;
     this.kind = databaseFailureKind(error);
     // Keep only safe context. Keys, tokens, query payloads and student data are not logged.
-    console.error("[database] operation_failed", {
+    console.error("[database] operation_failed " + JSON.stringify({
       operation,
       code: this.code,
       kind: this.kind,
-    });
+      status: error?.status,
+    }));
   }
 }

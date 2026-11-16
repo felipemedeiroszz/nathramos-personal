@@ -25,6 +25,15 @@ export async function checkAdminDatabase(db: any, actorId: string) {
     run: () => any;
   }> = [
     {
+      id: "community",
+      label: "Comunidade interna",
+      migration: "000055_community.sql",
+      run: () => db.rpc("community_read", {
+        p_actor: actorId,
+        p_filter: { admin: true, limit: 1 },
+      }),
+    },
+    {
       id: "daily_prescriptions",
       label: "Prescrição e histórico diário",
       migration: "000050_daily_prescription.sql",

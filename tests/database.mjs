@@ -1,7 +1,7 @@
 import { PGlite } from '@electric-sql/pglite'
 import { readFile, readdir } from 'node:fs/promises'
 
-export async function testDatabase() {
+export async function testDatabase({ through } = {}) {
  const extensions = {}
  for (const name of ['uuid_ossp','pgcrypto','pg_trgm','btree_gin','btree_gist']) {
    const module = await import(`@electric-sql/pglite/contrib/${name}`)
@@ -25,6 +25,7 @@ export async function testDatabase() {
  alter default privileges in schema public grant usage,select on sequences to authenticated,service_role;
  `)
  for (const file of (await readdir('supabase/migrations')).filter(f => f.endsWith('.sql')).sort()) {
+   if (through && file > through) break
    try { await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8')) }
    catch(error) { await db.close(); throw new Error(`Migration ${file}: ${error.message}`, { cause:error }) }
  }

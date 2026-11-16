@@ -86,13 +86,16 @@ export interface RoutineData {
   }[];
 }
 export function checked<T>(
-  result: { data: T | null; error: unknown },
+  result: { data: T | null; error: unknown; status?: number },
   operation: string,
 ): T {
   if (result.error) {
     throw new DatabaseOperationError(
       operation,
-      result.error as { code?: string; status?: number },
+      {
+        ...(result.error as { code?: string; status?: number }),
+        status: result.status ?? (result.error as { status?: number }).status,
+      },
     );
   }
   return result.data as T;

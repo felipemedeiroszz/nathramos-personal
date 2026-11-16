@@ -18,6 +18,7 @@ import {
   Share2,
   ShieldCheck,
   Users,
+  Trophy,
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
@@ -65,6 +66,13 @@ export const adminNavigation: AdminNavGroup[] = [
     pt: "Alunos e conteúdo",
     en: "Students & content",
     items: [
+      {
+        key: "challenges",
+        path: "desafios",
+        pt: "Desafios",
+        en: "Challenges",
+        icon: Trophy,
+      },
       {
         key: "community",
         path: "comunidade",

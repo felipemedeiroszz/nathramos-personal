@@ -1,9 +1,10 @@
 import "server-only";
-import sharp from "sharp";
+import { optimizeFitnessImage } from "@/lib/media/fitness-image";
 import { randomUUID } from "node:crypto";
 import { createServiceClientSSR } from "@/lib/supabase/server";
 import { AccessError, requirePlatformUser } from "@/lib/auth/platform";
 import { communityFilterSchema } from "@/lib/community";
+import { DatabaseOperationError } from "@/lib/supabase/errors";
 
 export async function communityActor() {
   const actor = await requirePlatformUser();
@@ -15,14 +16,14 @@ export async function communityActor() {
 export async function readCommunity(userId: string, filter: unknown) {
   const parsed = communityFilterSchema.parse(filter);
   const db = await createServiceClientSSR();
-  const { data, error } = await (db.rpc as any)("community_read", {
+  const { data, error, status } = await (db.rpc as any)("community_read", {
     p_actor: userId,
     p_filter: parsed,
   });
   if (error) {
     if (error.code === "P0001")
       throw new AccessError("Consulta indisponível para esta conta.", 403);
-    throw new Error("Não foi possível carregar a comunidade.");
+    throw new DatabaseOperationError("community_read", { ...error, status });
   }
   return data;
 }
@@ -57,21 +58,7 @@ export async function uploadCommunityImage(userId: string, file: File) {
   // Decoding validates file contents. Re-encoding removes EXIF and active metadata.
   let bytes: Buffer;
   try {
-    const input = sharp(Buffer.from(await file.arrayBuffer()), {
-      limitInputPixels: 25000000,
-      animated: false,
-    });
-    const metadata = await input.metadata();
-    if (
-      !["jpeg", "png", "webp"].includes(metadata.format || "") ||
-      (metadata.pages ?? 1) > 1
-    )
-      throw new Error("Invalid format");
-    bytes = await input
-      .rotate()
-      .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
+    bytes = await optimizeFitnessImage(file);
   } catch {
     throw new AccessError(
       "A imagem está inválida ou excede o tamanho permitido.",
