@@ -1,4 +1,5 @@
 "use client";
+import { KitCoverImageField } from "./KitCoverImageField";
 import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
 import { useEffect, useState } from "react";
@@ -64,6 +65,7 @@ export function KitUpsertModal({
   const t = useTranslations("common");
   const locale = useLocale();
   const [isPending, startTransition] = useAsyncTransition();
+  const [coverUploading, setCoverUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const label = (pt: string, en: string) => (locale === "pt-BR" ? pt : en);
@@ -159,6 +161,7 @@ export function KitUpsertModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (coverUploading) return;
     setSaveError(null);
     startTransition(async () => {
       try {
@@ -190,13 +193,13 @@ export function KitUpsertModal({
     <Modal
       isOpen={isOpen}
       onClose={() => {
-        if (!isPending) onClose();
+        if (!isPending && !coverUploading) onClose();
       }}
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
       <ModalHeader>
         <ModalTitle>{kit ? titleEdit : titleCreate}</ModalTitle>
-        <ModalClose disabled={isPending} onClick={onClose} />
+        <ModalClose disabled={isPending || coverUploading} onClick={onClose} />
       </ModalHeader>
       {kit && (
         <a
@@ -420,17 +423,13 @@ export function KitUpsertModal({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">
-              {label("Capa URL", "Cover URL")}
-            </label>
-            <Input
-              type="url"
-              value={form.cover_image_url}
-              onChange={(e) => update("cover_image_url", e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
+          <KitCoverImageField
+            value={form.cover_image_url}
+            onChange={(url) => update("cover_image_url", url)}
+            onUploadingChange={setCoverUploading}
+            locale={locale}
+            disabled={isPending}
+          />
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-text">
@@ -476,11 +475,11 @@ export function KitUpsertModal({
             type="button"
             variant="secondary"
             onClick={onClose}
-            disabled={isPending}
+            disabled={isPending || coverUploading}
           >
             {t("cancel")}
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || coverUploading}>
             {isPending ? t("loading") : t("save")}
           </Button>
         </ModalFooter>

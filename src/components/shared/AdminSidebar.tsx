@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { MentorshipUnreadBadge } from "./MentorshipUnreadBadge";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ChevronDown, LogOut, Search, UserRound, X } from "lucide-react";
@@ -138,7 +139,10 @@ export function AdminSidebar({
                         }
                       />
                       <span>{en ? item.en : item.pt}</span>
-                      {active(item.path) && (
+                      {item.path === "mentoria" && (
+                        <MentorshipUnreadBadge side="admin" locale={locale} />
+                      )}
+                      {active(item.path) && item.path !== "mentoria" && (
                         <span className="ml-auto h-1 w-1 rounded-full bg-yellow-400" />
                       )}
                     </Link>

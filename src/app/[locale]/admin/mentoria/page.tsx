@@ -14,27 +14,25 @@ export const metadata: Metadata = {
   title: "Admin | Mentoria",
 };
 
-export default async function AdminMentoriaPage(
-  props: {
-    params: Promise<{ locale: (typeof locales)[number] }>;
-  }
-) {
+export default async function AdminMentoriaPage(props: {
+  params: Promise<{ locale: (typeof locales)[number] }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
   const tAdminNav = await getTranslations("adminNav");
   const tAdminMentoring = await getTranslations("adminMentoring");
-  const { userId } = await requireRole(["admin", "coach"], "/dashboard");
+  const { userId, role } = await requireRole(["admin", "coach"], "/dashboard");
 
-  const rooms = await MentorshipService.listRooms();
+  const rooms = await MentorshipService.listRooms({ includeInactive: true });
 
   const initialRoom =
-    rooms.find((r) => r.unread_count_coach > 0) ?? rooms[0] ?? null;
+    rooms.find((r) => r.is_active && r.unread_count_coach > 0) ??
+    rooms.find((r) => r.is_active) ??
+    null;
   const initialMessages: ChatMessageItem[] = initialRoom
     ? (await MentorshipService.listMessages(initialRoom.id)).map((m) => ({
         id: m.id,
@@ -63,6 +61,7 @@ export default async function AdminMentoriaPage(
       </AdminPageHeader>
 
       <AdminMentoriaClient
+        canDelete={role === "admin"}
         currentUserId={userId}
         rooms={rooms}
         initialRoomId={initialRoom?.id ?? null}

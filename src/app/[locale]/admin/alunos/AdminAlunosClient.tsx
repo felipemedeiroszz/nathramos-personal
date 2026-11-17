@@ -5,7 +5,6 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowDownUp,
-  ArrowRight,
   ArrowUpRight,
   Check,
   ChevronLeft,
@@ -15,6 +14,10 @@ import {
   List,
   Search,
   ShieldCheck,
+  Settings2,
+  CalendarDays,
+  UserRound,
+  Plus,
   Users,
   X,
 } from "lucide-react";
@@ -23,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { StudentWithSubscription } from "@/services/StudentService";
 
 interface AdminAlunosClientProps {
+  role?: string;
   locale: string;
   students: StudentWithSubscription[];
   total: number;
@@ -37,6 +41,7 @@ const button =
   "inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-yellow-400 disabled:cursor-not-allowed disabled:opacity-30";
 
 export function AdminAlunosClient({
+  role = "admin",
   locale,
   students,
   total,
@@ -47,6 +52,7 @@ export function AdminAlunosClient({
   limit,
 }: AdminAlunosClientProps) {
   const t = (pt: string, en: string) => (locale === "en-US" ? en : pt);
+  const admin = role === "admin";
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(search);
@@ -83,7 +89,10 @@ export function AdminAlunosClient({
       ? a.full_name.localeCompare(b.full_name, locale)
       : sort === "recent"
         ? Date.parse(b.created_at) - Date.parse(a.created_at)
-        : 0,
+        : sort === "expiry"
+          ? (Date.parse(a.subscription?.current_period_end || "") || Infinity) -
+            (Date.parse(b.subscription?.current_period_end || "") || Infinity)
+          : 0,
   );
   const active = students.filter((s) =>
     ["active", "trialing"].includes(s.subscription?.status || ""),
@@ -151,6 +160,56 @@ export function AdminAlunosClient({
     </div>
   );
 
+  const actions = (student: StudentWithSubscription, compact = false) => (
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        !compact && "mt-4 border-t border-white/[0.06] pt-3",
+      )}
+    >
+      <Link
+        href={`/${locale}/admin/alunos/${student.id}`}
+        aria-label={`${t("Ver ficha de", "View profile of")} ${student.full_name}`}
+        className={cn(
+          button,
+          "min-h-10 bg-white/[0.04] text-zinc-200",
+          !compact && "flex-1",
+        )}
+      >
+        <UserRound size={14} />
+        {t("Ver ficha", "Profile")}
+      </Link>
+      {admin && (
+        <>
+          <Link
+            href={`/${locale}/admin/alunos/${student.id}?tab=billing`}
+            aria-label={`${t("Financeiro de", "Finances for")} ${student.full_name}`}
+            title={t("Financeiro", "Finances")}
+            className={cn(
+              button,
+              "min-h-10 min-w-10 px-2 hover:border-yellow-400/30 hover:text-yellow-300",
+            )}
+          >
+            <CreditCard size={15} />
+            <span className="sr-only">{t("Financeiro", "Finances")}</span>
+          </Link>
+          <Link
+            href={`/${locale}/admin/alunos/${student.id}?tab=management`}
+            aria-label={`${t("Administrar", "Manage")} ${student.full_name}`}
+            title={t("Administrar conta", "Manage account")}
+            className={cn(
+              button,
+              "min-h-10 min-w-10 px-2 hover:border-yellow-400/30 hover:text-yellow-300",
+            )}
+          >
+            <Settings2 size={15} />
+            <span>{t("Administrar", "Manage")}</span>
+          </Link>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 text-zinc-100">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -160,24 +219,30 @@ export function AdminAlunosClient({
             {t("Gestão de alunos", "Student management")}
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">
-            {t("Alunos", "Students")}
+            {admin ? t("Alunos", "Students") : t("Meus alunos", "My students")}
             <span className="text-yellow-400">.</span>
           </h1>
           <p className="mt-2 text-sm text-zinc-400">
             {t(
-              "Pessoas no centro. Acompanhamento em cada etapa.",
-              "People at the center. Support at every stage.",
+              "Encontre um aluno e acesse sua ficha, pagamentos e configurações.",
+              "Find a student and open their profile, payments and settings.",
             )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-        <Link href={`/${locale}/admin/alunos/novo`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-300">
-          <Users size={16} />{t("Novo aluno", "New student")}
-        </Link>
-        <Link href={`/${locale}/admin/dashboard`} className={button}>
-          <ArrowUpRight size={14} />
-          {t("Visão geral", "Overview")}
-        </Link>
+          {admin && (
+            <Link
+              href={`/${locale}/admin/alunos/novo`}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
+            >
+              <Plus size={16} />
+              {t("Novo aluno", "New student")}
+            </Link>
+          )}
+          <Link href={`/${locale}/admin/dashboard`} className={button}>
+            <ArrowUpRight size={14} />
+            {t("Visão geral", "Overview")}
+          </Link>
         </div>
       </header>
       <section
@@ -198,6 +263,7 @@ export function AdminAlunosClient({
           {
             label: t("Ativos nesta página", "Active on this page"),
             value: active,
+            desktopOnly: true,
             note: t(
               "Assinaturas ativas e em teste",
               "Active and trialing subscriptions",
@@ -219,18 +285,20 @@ export function AdminAlunosClient({
               "No subscription on this page",
             ),
             value: noPlan,
+            desktopOnly: true,
             note: t(
               "Alunos sem assinatura vinculada",
               "Students without a subscription",
             ),
             icon: CreditCard,
           },
-        ].map(({ label, value, note, icon: Icon, accent }) => (
+        ].map(({ label, value, note, icon: Icon, accent, desktopOnly }) => (
           <div
             key={label}
             className={cn(
               surface,
               "p-4 sm:p-5",
+              desktopOnly && "hidden sm:block",
               accent &&
                 "border-yellow-400/20 bg-gradient-to-br from-yellow-400/[0.07] to-[#101113]",
             )}
@@ -252,6 +320,14 @@ export function AdminAlunosClient({
         ))}
       </section>
       <section className={cn(surface, "overflow-hidden")} aria-busy={pending}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-5 py-4">
+          <h2 className="text-sm font-semibold">
+            {t("Diretório de alunos", "Student directory")}
+          </h2>
+          <p className="text-xs text-zinc-500">
+            {total.toLocaleString(locale)} {t("resultados", "results")}
+          </p>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-5 pt-2">
           <nav
             className="flex max-w-full gap-5 overflow-x-auto"
@@ -264,10 +340,14 @@ export function AdminAlunosClient({
               { key: "", label: t("Todos os alunos", "All students") },
               { key: "active", label: labels.active },
               { key: "past_due", label: labels.past_due },
+              { key: "blocked", label: labels.blocked },
+              { key: "expired", label: labels.expired },
               { key: "no_subscription", label: labels.no_subscription },
             ].map((item) => (
               <button
                 key={item.key}
+                disabled={pending}
+                aria-pressed={status === item.key}
                 onClick={() => navigate(query, item.key)}
                 className={cn(
                   "whitespace-nowrap border-b-2 py-4 text-xs transition",
@@ -280,7 +360,7 @@ export function AdminAlunosClient({
               </button>
             ))}
           </nav>
-          <div className="mb-2 flex rounded-lg border border-white/10 p-0.5">
+          <div className="mb-2 hidden rounded-lg border border-white/10 p-0.5 lg:flex">
             {[
               {
                 key: "list",
@@ -299,7 +379,7 @@ export function AdminAlunosClient({
                 aria-pressed={view === key}
                 onClick={() => setView(key)}
                 className={cn(
-                  "rounded-md p-1.5",
+                  "min-h-10 min-w-10 rounded-md p-2",
                   view === key
                     ? "bg-white/10 text-zinc-100"
                     : "text-zinc-600 hover:text-white",
@@ -317,7 +397,7 @@ export function AdminAlunosClient({
           }}
           className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] p-4 sm:px-5"
         >
-          <label className="flex min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/10 px-3 py-2.5 focus-within:border-yellow-400/50">
+          <label className="flex min-w-0 basis-full sm:basis-auto flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/10 px-3 py-2.5 focus-within:border-yellow-400/50">
             <Search size={15} className="shrink-0 text-zinc-500" />
             <input
               aria-label={t(
@@ -332,6 +412,16 @@ export function AdminAlunosClient({
               )}
               className="w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-zinc-600"
             />
+            {query && (
+              <button
+                type="button"
+                aria-label={t("Limpar busca", "Clear search")}
+                onClick={() => setQuery("")}
+                className="shrink-0 rounded p-1 text-zinc-400 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            )}
           </label>
           <select
             aria-label={t(
@@ -339,6 +429,7 @@ export function AdminAlunosClient({
               "Filter students by status",
             )}
             value={status}
+            disabled={pending}
             onChange={(e) => navigate(query, e.target.value)}
             className={cn(button, "max-w-full bg-[#101113]")}
           >
@@ -374,6 +465,9 @@ export function AdminAlunosClient({
               <option value="name">
                 {t("Nome A–Z (página)", "Name A–Z (page)")}
               </option>
+              <option value="expiry">
+                {t("Vencimento (página)", "Due date (page)")}
+              </option>
               <option value="recent">
                 {t("Mais recentes (página)", "Newest (page)")}
               </option>
@@ -384,14 +478,33 @@ export function AdminAlunosClient({
           <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-5 py-3 text-[10px] text-zinc-500">
             <span>{t("Filtros aplicados", "Applied filters")}</span>
             {search && (
-              <span className="rounded-md bg-white/5 px-2 py-1 text-zinc-300">
+              <button
+                onClick={() => {
+                  setQuery("");
+                  navigate("", status);
+                }}
+                aria-label={t(
+                  "Remover filtro de busca",
+                  "Remove search filter",
+                )}
+                className="flex items-center gap-2 rounded-md bg-white/5 px-2 py-1 text-zinc-300"
+              >
                 {search}
-              </span>
+                <X size={11} />
+              </button>
             )}
             {status && (
-              <span className="rounded-md bg-yellow-400/10 px-2 py-1 text-yellow-400">
+              <button
+                onClick={() => navigate(search, "")}
+                aria-label={t(
+                  "Remover filtro de status",
+                  "Remove status filter",
+                )}
+                className="flex items-center gap-2 rounded-md bg-yellow-400/10 px-2 py-1 text-yellow-400"
+              >
                 {labels[status]}
-              </span>
+                <X size={11} />
+              </button>
             )}
             <button
               onClick={() => {
@@ -417,6 +530,12 @@ export function AdminAlunosClient({
                 "Try another name or email, or clear filters to broaden your search.",
               )}
             </p>
+            {!search && !status && admin && (
+              <Link href={`/${locale}/admin/alunos/novo`} className={button}>
+                <Plus size={14} />
+                {t("Cadastrar primeiro aluno", "Add first student")}
+              </Link>
+            )}
             {(search || status) && (
               <button
                 className={button}
@@ -445,8 +564,7 @@ export function AdminAlunosClient({
                       t("Plano e assinatura", "Plan and subscription"),
                       "Status",
                       t("Vencimento", "Due date"),
-                      t("Cadastro", "Registered"),
-                      "",
+                      t("Ações", "Actions"),
                     ].map((label, i) => (
                       <th key={i} className="px-5 py-3 font-medium">
                         {label}
@@ -478,18 +596,8 @@ export function AdminAlunosClient({
                       <td className="whitespace-nowrap px-5 py-4 text-zinc-400">
                         {date(student.subscription?.current_period_end)}
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-zinc-500">
-                        {date(student.created_at)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <Link
-                          href={`/${locale}/admin/alunos/${student.id}`}
-                          aria-label={`${t("Ver perfil de", "View profile of")} ${student.full_name}`}
-                          className="inline-flex rounded-lg border border-white/10 p-2 text-zinc-500 transition hover:border-yellow-400/30 hover:text-yellow-400"
-                        >
-                          <ArrowUpRight size={15} />
-                        </Link>
-                      </td>
+
+                      <td className="px-5 py-4">{actions(student, true)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -515,18 +623,15 @@ export function AdminAlunosClient({
                     {badge(student)}
                   </div>
                   <div className="flex justify-between border-t border-white/[0.06] pt-3 text-[10px] text-zinc-500">
-                    <span>{t("Vencimento", "Due date")}</span>
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDays size={12} />
+                      {t("Acesso até", "Access through")}
+                    </span>
                     <span>
                       {date(student.subscription?.current_period_end)}
                     </span>
                   </div>
-                  <Link
-                    href={`/${locale}/admin/alunos/${student.id}`}
-                    className={cn(button, "mt-4 w-full")}
-                  >
-                    {t("Ver aluno", "View student")}
-                    <ArrowRight size={13} />
-                  </Link>
+                  {actions(student)}
                 </article>
               ))}
             </div>

@@ -1,5 +1,6 @@
 "use client";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { inspectBillingRecordAction } from "@/app/actions/reconciliation";
 function Submit({ en }: { en: boolean }) {
   const { pending } = useFormStatus();
@@ -21,7 +22,7 @@ function Submit({ en }: { en: boolean }) {
 }
 export function BillingInspectionForm({ locale }: { locale: string }) {
   const en = locale === "en-US";
-  const [state, action] = useFormState(inspectBillingRecordAction, null);
+  const [state, action] = useActionState(inspectBillingRecordAction, null);
   return (
     <form action={action} className="space-y-3">
       <p className="text-sm text-text-secondary">

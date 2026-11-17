@@ -23,16 +23,12 @@ export const metadata: Metadata = {
   title: "Mentoria",
 };
 
-export default async function ConversationsPage(
-  props: {
-    params: Promise<{ locale: (typeof locales)[number] }>;
-  }
-) {
+export default async function ConversationsPage(props: {
+  params: Promise<{ locale: (typeof locales)[number] }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -73,6 +69,8 @@ export default async function ConversationsPage(
           {room ? (
             <div className="flex flex-col h-[min(620px,65dvh)] min-h-[360px]">
               <MentorChat
+                key={`${room.id}:${room.is_active ? "active" : (room.last_message_at ?? "empty")}`}
+                readOnly={!room.is_active}
                 className="flex-1 min-h-0"
                 roomId={room.id}
                 viewer="user"

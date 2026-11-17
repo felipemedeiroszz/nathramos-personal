@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Plus, AlertCircle } from "lucide-react";
-import { AssignWorkoutKitModal } from "./AssignWorkoutKitModal";
-import type { WorkoutKitRow, WorkoutProgramRow } from "@/types";
+import { WorkoutScheduleModal } from "./WorkoutScheduleModal";
+import type { WorkoutKitRow } from "@/types";
 import { Tooltip } from "@/components/ui/Tooltip";
 
 export interface AssignWorkoutKitModalClientProps {
+  today?: string;
+  nextStart?: string;
+  capacity?: number;
   studentId: string;
   kits: WorkoutKitRow[];
-  programs: WorkoutProgramRow[];
   locale?: string;
   disabled?: boolean;
   disabledReason?: string;
@@ -19,13 +21,15 @@ export interface AssignWorkoutKitModalClientProps {
 export function AssignWorkoutKitModalClient({
   studentId,
   kits,
-  programs,
+  today = new Date().toISOString().slice(0, 10),
+  nextStart = today,
+  capacity = 6,
   locale = "pt-BR",
   disabled = false,
   disabledReason,
 }: AssignWorkoutKitModalClientProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const label = locale === "pt-BR" ? "Atribuir novo" : "Assign new";
+  const label = locale === "pt-BR" ? "Programar kits" : "Schedule kits";
 
   const btn = (
     <Button
@@ -42,9 +46,7 @@ export function AssignWorkoutKitModalClient({
 
   const wrapped =
     disabled && disabledReason ? (
-      <Tooltip content={disabledReason}>
-        {btn}
-      </Tooltip>
+      <Tooltip content={disabledReason}>{btn}</Tooltip>
     ) : (
       btn
     );
@@ -52,13 +54,17 @@ export function AssignWorkoutKitModalClient({
   return (
     <>
       {wrapped}
-      <AssignWorkoutKitModal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        student_id={studentId}
-        kits={kits}
-        programs={programs}
-      />
+      {isOpen && (
+        <WorkoutScheduleModal
+          studentId={studentId}
+          kits={kits}
+          locale={locale}
+          today={today}
+          nextStart={nextStart}
+          capacity={capacity}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
     </>
   );
 }

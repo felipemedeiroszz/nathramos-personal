@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { MentorshipUnreadBadge } from "./MentorshipUnreadBadge";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
@@ -63,7 +64,10 @@ export function Sidebar({ locale }: { locale: string }) {
                     >
                       <item.icon size={17} strokeWidth={1.7} />
                       {en ? item.en : item.pt}
-                      {active && (
+                      {item.path === "conversas" && (
+                        <MentorshipUnreadBadge side="student" locale={locale} />
+                      )}
+                      {active && item.path !== "conversas" && (
                         <span className="ml-auto h-1 w-1 rounded-full bg-yellow-400" />
                       )}
                     </Link>

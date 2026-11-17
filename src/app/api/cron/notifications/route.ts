@@ -1,3 +1,4 @@
+import { processWorkoutCycleReminders } from "@/services/WorkoutCycleNotificationService";
 import { NextResponse } from "next/server";
 import { NotificationDispatcher } from "@/services/NotificationDispatcher";
 import { ExamUploadService } from "@/services/ExamUploadService";
@@ -40,6 +41,8 @@ export async function GET(request: Request) {
     );
   if (task === "all" || task === "reminders")
     await run("monthlyProgress", processMonthlyProgress);
+  if (task === "all" || task === "reminders" || task === "deliver")
+    await run("workoutCycles", processWorkoutCycleReminders);
   if (task === "all" || task === "deliver")
     await run("deliveries", () =>
       NotificationDispatcher.processDueNotifications(),

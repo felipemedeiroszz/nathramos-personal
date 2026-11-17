@@ -153,6 +153,46 @@ export async function setMentorshipRoomActiveAction(
   }
 }
 
+export async function manageMentorshipConversationAction(
+  roomId: string,
+  operation: "archive" | "reopen" | "delete",
+) {
+  try {
+    if (
+      !["archive", "reopen", "delete"].includes(operation) ||
+      !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(roomId)
+    )
+      return { success: false as const, message: "Conversa ou ação inválida." };
+    const actor = await requireRoomAccess(roomId);
+    if (!actor.staff || (operation === "delete" && actor.role !== "admin"))
+      return { success: false as const, message: "Acesso negado." };
+    const db = await (
+      await import("@/lib/supabase/server")
+    ).createServiceClientSSR();
+    const { error } = await (db.rpc as any)("manage_mentorship_conversation", {
+      p_actor: actor.userId,
+      p_room: roomId,
+      p_action: operation,
+    });
+    if (error)
+      return {
+        success: false as const,
+        message: ["42883", "PGRST202"].includes(error.code)
+          ? "Execute a migração 000064_mentorship_conversation_management.sql no Supabase para habilitar esta ação."
+          : "Não foi possível atualizar a conversa. Tente novamente.",
+      };
+    revalidatePath("/[locale]/admin/mentoria", "page");
+    revalidatePath("/[locale]/conversas", "page");
+    return { success: true as const };
+  } catch {
+    return {
+      success: false as const,
+      message:
+        "Não foi possível atualizar a conversa. Verifique seu acesso e tente novamente.",
+    };
+  }
+}
+
 // ---------------------------------------------------------------------
 // REUNIÕES
 // ---------------------------------------------------------------------

@@ -16,6 +16,7 @@ interface MaintenanceInfo {
 }
 
 interface StudentLayoutClientProps {
+  preview?: boolean;
   locale: string;
   firstName?: string | null;
   lastName?: string | null;
@@ -28,6 +29,7 @@ interface StudentLayoutClientProps {
 }
 
 export function StudentLayoutClient({
+  preview = false,
   locale,
   firstName,
   lastName,
@@ -98,7 +100,13 @@ export function StudentLayoutClient({
             </p>
           )}
           <button
-            onClick={onLogout}
+            onClick={
+              preview
+                ? () => {
+                    window.location.href = "/api/admin/student-preview/exit";
+                  }
+                : onLogout
+            }
             className="mt-2 w-full h-11 rounded-xl border border-border text-text-secondary hover:text-primary hover:border-primary transition-colors flex items-center justify-center gap-2"
           >
             <LogOut size={16} />
@@ -133,7 +141,13 @@ export function StudentLayoutClient({
             {locale === "en-US" ? "View my account" : "Consultar minha conta"}
           </Link>
           <button
-            onClick={onLogout}
+            onClick={
+              preview
+                ? () => {
+                    window.location.href = "/api/admin/student-preview/exit";
+                  }
+                : onLogout
+            }
             className="mt-4 w-full h-11 rounded-xl border border-border text-text-secondary hover:text-text hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
           >
             <LogOut size={16} />
@@ -152,7 +166,7 @@ export function StudentLayoutClient({
       >
         {locale === "en-US" ? "Skip to content" : "Ir para o conteúdo"}
       </a>
-      <PushNotificationManager />
+      {!preview && <PushNotificationManager />}
       <div className="flex items-start">
         <Sidebar locale={locale} />
         <div className="min-w-0 flex-1">

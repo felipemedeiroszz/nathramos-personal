@@ -168,7 +168,7 @@ export class WorkoutKitService {
         program_id: parsed.program_id ?? null,
         exercise_id: parsed.exercise_id ?? null,
         category_label: parsed.category_label ?? null,
-        day_of_week: parsed.program_id ? null : parsed.day_of_week ?? null,
+        day_of_week: parsed.program_id ? null : (parsed.day_of_week ?? null),
         order_index: parsed.order_index,
         notes_pt: parsed.notes_pt ?? null,
         notes_en: parsed.notes_en ?? null,
@@ -230,6 +230,10 @@ export class WorkoutKitService {
     assignedById: string,
   ): Promise<StudentWorkoutKitRow> {
     const parsed = assignStudentWorkoutSchema.parse(input);
+    if (!parsed.kit_id || parsed.program_id)
+      throw new Error(
+        "Vincule um kit de treino. Programas isolados não estão disponíveis para atribuição direta.",
+      );
     const supabase = await this.getSupabase();
 
     const rpc = await supabase

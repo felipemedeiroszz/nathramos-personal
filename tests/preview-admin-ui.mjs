@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const mocks = {
+  react: { ...React, useActionState: () => [null, "#", false] },
   "next/navigation": {
     useRouter: () => ({ push() {}, refresh() {} }),
     useSearchParams: () => new URLSearchParams(),
@@ -16,7 +17,6 @@ const mocks = {
   "next/link": (props) => React.createElement("a", props, props.children),
   "@/app/actions/admin": {},
   "react-dom": {
-    useFormState: () => [null, "#"],
     useFormStatus: () => ({ pending: false }),
   },
 };

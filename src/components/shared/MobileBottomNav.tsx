@@ -7,6 +7,7 @@ import {
   studentNavigation,
   studentPrimaryPaths,
 } from "@/components/student/navigation";
+import { MentorshipUnreadBadge } from "./MentorshipUnreadBadge";
 import { MaisDrawer } from "./MaisDrawer";
 import { cn } from "@/lib/utils";
 export function MobileBottomNav({ locale }: { locale: string }) {
@@ -78,7 +79,12 @@ export function MobileBottomNav({ locale }: { locale: string }) {
                 : "text-zinc-500",
             )}
           >
-            <Grid2X2 size={20} strokeWidth={1.7} />
+            <span className="relative">
+              <Grid2X2 size={20} strokeWidth={1.7} />
+              <span className="absolute -right-5 -top-2">
+                <MentorshipUnreadBadge side="student" locale={locale} />
+              </span>
+            </span>
             {en ? "More" : "Mais"}
           </button>
         </div>

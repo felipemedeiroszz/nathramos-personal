@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const out = path.resolve("artifacts/public-site/chat-fixture");
@@ -18,7 +19,7 @@ await writeFile(
 );
 await writeFile(
   path.join(out, "entry.jsx"),
-  `import React from 'react';import{createRoot}from'react-dom/client';import{NextIntlClientProvider}from'next-intl';import pt from '${path.resolve("src/messages/pt-BR.json").replaceAll("\\", "/")}';import{MentorChat}from'${path.resolve("src/components/mentoring/MentorChat.tsx").replaceAll("\\", "/")}';window.__user=new URLSearchParams(location.search).get('user')||'a';createRoot(document.getElementById('app')).render(<NextIntlClientProvider locale="pt-BR" messages={pt} timeZone="America/Sao_Paulo"><MentorChat roomId="room-a" viewer={window.__user==='a'?'user':'coach'} currentUserId={window.__user} counterpartName="Nath Ramos" initialMessages={[]}/></NextIntlClientProvider>);`,
+  `import React from 'react';import{createRoot}from'react-dom/client';import{NextIntlClientProvider}from'next-intl';import pt from '${path.resolve("src/messages/pt-BR.json").replaceAll("\\", "/")}';import{MentorChat}from'${path.resolve("src/components/mentoring/MentorChat.tsx").replaceAll("\\", "/")}';window.__user=new URLSearchParams(location.search).get('user')||'a';createRoot(document.getElementById('app')).render(<NextIntlClientProvider locale="pt-BR" messages={pt} timeZone="America/Sao_Paulo"><MentorChat roomId="room-a" viewer={window.__user==='a'?'user':'coach'} currentUserId={window.__user} counterpartName="Nath Ramos" readOnly={new URLSearchParams(location.search).has("archived")} initialMessages={[]}/></NextIntlClientProvider>);`,
 );
 await build({
   entryPoints: [path.join(out, "entry.jsx")],
@@ -35,9 +36,8 @@ await build({
   },
   logLevel: "silent",
 });
-const cssFiles = (await readdir(".next/static/css")).filter((n) =>
-  n.endsWith(".css"),
-);
+execFileSync(process.execPath, ["node_modules/tailwindcss/lib/cli.js", "-i", "src/app/globals.css", "-o", path.join(out, "base.css"), "--minify"], {stdio:"pipe"});
+const cssFiles = [];
 let rows = [];
 const server = createServer(async (req, res) => {
   try {
@@ -64,6 +64,7 @@ const server = createServer(async (req, res) => {
     if (
       u.pathname === "/bundle.js" ||
       u.pathname === "/bundle.css" ||
+      u.pathname === "/base.css" ||
       u.pathname.startsWith("/_next/static/css/")
     ) {
       const file = u.pathname.startsWith("/_next")
@@ -84,7 +85,7 @@ const server = createServer(async (req, res) => {
             (n) => '<link rel="stylesheet" href="/_next/static/css/' + n + '">',
           )
           .join("") +
-        '<link rel="stylesheet" href="/bundle.css"></head><body style="--font-inter:Arial,sans-serif;font-family:Arial,sans-serif;background:#0d1215;margin:0"><div id="app" style="height:85dvh;max-width:850px;margin:auto"></div><script src="/bundle.js"></script></body></html>',
+        '<link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/bundle.css"></head><body style="--font-inter:Arial,sans-serif;font-family:Arial,sans-serif;background:#0d1215;margin:0"><div id="app" style="height:85dvh;max-width:850px;margin:auto"></div><script src="/bundle.js"></script></body></html>',
     );
   } catch (e) {
     res.statusCode = 500;
@@ -144,8 +145,16 @@ try {
     path: path.join(out, "chat-desktop.png"),
     fullPage: true,
   });
+  await a.goto(base + "?user=a&archived=1");
+  await a.getByText("Conversa arquivada.", { exact: false }).waitFor();
+  assert.equal(await a.getByRole("textbox").isDisabled(), true);
+  assert.equal(
+    await a.getByRole("button", { name: "Escolher emoji" }).isDisabled(),
+    true,
+  );
+  assert.equal(rows.length, 3);
   console.log(
-    "PASS two sessions: emoji, realtime receipt, deduplication, reconnect recovery, failed send preserves draft, mobile overflow",
+    "PASS archived composer disabled; two sessions: emoji, realtime receipt, deduplication, reconnect recovery, failed send preserves draft, mobile overflow",
   );
 } finally {
   await browser.close();

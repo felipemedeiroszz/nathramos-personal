@@ -1,5 +1,6 @@
 "use client";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -35,7 +36,7 @@ export function StudentPasswordResetForm({
   locale?: string;
 }) {
   const en = locale === "en-US";
-  const [state, action] = useFormState(resetStudentPasswordAction, null);
+  const [state, action] = useActionState(resetStudentPasswordAction, null);
   return (
     <Card>
       <CardHeader>

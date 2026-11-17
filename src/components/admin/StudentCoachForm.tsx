@@ -1,5 +1,6 @@
 "use client";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { assignStudentCoachAction } from "@/app/actions/admin";
 function Submit({ en }: { en: boolean }) {
   const { pending } = useFormStatus();
@@ -30,7 +31,7 @@ export function StudentCoachForm({
   current: string;
   locale: string;
 }) {
-  const [state, action] = useFormState(assignStudentCoachAction, null);
+  const [state, action] = useActionState(assignStudentCoachAction, null);
   const en = locale === "en-US";
   return (
     <form

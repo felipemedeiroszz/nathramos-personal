@@ -1,4 +1,7 @@
 import "./student.css";
+import { SupportPreviewBanner } from "@/components/shared/SupportPreviewBanner";
+import { headers } from "next/headers";
+import { verifiedPreview } from "@/lib/auth/student-preview";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -95,18 +98,32 @@ export default async function StudentLayout(props: {
     photoUrl = data?.avatar_url ?? null;
   } catch {}
 
+  const preview =
+    (await headers()).get("x-student-preview") === "1"
+      ? await verifiedPreview()
+      : null;
   return (
-    <StudentLayoutClient
-      locale={locale}
-      firstName={firstName}
-      lastName={lastName}
-      photoUrl={photoUrl}
-      subscriptionAllowed={subscriptionAllowed}
-      accessExpiresAt={prepaidExpiresAt}
-      maintenance={maintenance}
-      onLogout={logoutAction}
-    >
-      {children}
-    </StudentLayoutClient>
+    <>
+      {preview && (
+        <SupportPreviewBanner
+          locale={locale}
+          name={`${firstName ?? ""} ${lastName ?? ""}`}
+          expires={preview.expires}
+        />
+      )}
+      <StudentLayoutClient
+        preview={Boolean(preview)}
+        locale={locale}
+        firstName={firstName}
+        lastName={lastName}
+        photoUrl={photoUrl}
+        subscriptionAllowed={subscriptionAllowed}
+        accessExpiresAt={prepaidExpiresAt}
+        maintenance={maintenance}
+        onLogout={logoutAction}
+      >
+        {children}
+      </StudentLayoutClient>
+    </>
   );
 }

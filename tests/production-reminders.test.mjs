@@ -60,6 +60,12 @@ test("cron entrega notificações e limpa uploads mesmo quando a geração falha
   const stages = [];
   try {
     const { GET } = loadTs("src/app/api/cron/notifications/route.ts", {
+      "@/services/WorkoutCycleNotificationService": {
+        processWorkoutCycleReminders: async () => {
+          stages.push("workoutCycles");
+          return { created: 1, failed: 0 };
+        },
+      },
       "@/services/MonthlyProgressService": {
         processMonthlyProgress: async () => {
           stages.push("monthlyProgress");
@@ -125,6 +131,7 @@ test("cron entrega notificações e limpa uploads mesmo quando a geração falha
     assert.deepEqual(stages, [
       "generate",
       "monthlyProgress",
+      "workoutCycles",
       "deliver",
       "clean",
       "community",

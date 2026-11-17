@@ -50,9 +50,8 @@ export async function startWorkoutSessionAction(params: {
     };
   }
 
-  const { NotificationService } = await import(
-    "@/services/NotificationService"
-  );
+  const { NotificationService } =
+    await import("@/services/NotificationService");
   void NotificationService.sendInApp(userId, {
     type: "workout",
     title_pt: "Treino iniciado",
@@ -119,9 +118,8 @@ export async function completeWorkoutSessionAction(params: {
     return { success: false as const, message: "Falha ao finalizar sessão." };
   }
 
-  const { NotificationService } = await import(
-    "@/services/NotificationService"
-  );
+  const { NotificationService } =
+    await import("@/services/NotificationService");
   void NotificationService.sendInApp(userId, {
     type: "workout",
     title_pt: "Treino concluído!",
@@ -245,15 +243,17 @@ export async function addWorkoutKitItemAction(input: {
   try {
     await requireOwnedPrescription("workout_kits", input.kit_id);
     if (!input.program_id && !input.day_of_week) {
-      return { success: false as const, message: "Selecione o dia da semana do exercício." };
+      return {
+        success: false as const,
+        message: "Selecione o dia da semana do exercício.",
+      };
     }
     let exerciseId = input.exercise_id ?? null;
 
     // Treino vindo do catálogo da API: garante o exercício no banco antes de vincular.
     if (!exerciseId && !input.program_id && input.api_exercise) {
-      const { ExerciseDBService } = await import(
-        "@/services/ExerciseDBService"
-      );
+      const { ExerciseDBService } =
+        await import("@/services/ExerciseDBService");
       const exercise = await ExerciseDBService.ensureFromApiExercise(
         input.api_exercise,
       );
@@ -591,6 +591,47 @@ export async function deleteExerciseAction(exerciseId: string) {
     return {
       success: false as const,
       message: e?.message ?? "Falha ao excluir exercício.",
+    };
+  }
+}
+
+export async function scheduleWorkoutKitsAction(input: unknown) {
+  try {
+    const { workoutScheduleSchema } = await import("@/lib/workout-schedule");
+    const parsed = workoutScheduleSchema.safeParse(input);
+    if (!parsed.success)
+      return {
+        success: false as const,
+        message: parsed.error.issues[0]?.message || "Confira a sequência.",
+      };
+    const actor = await requireManagedStudent(parsed.data.student_id);
+    const db = await (
+      await import("@/lib/supabase/server")
+    ).createServiceClientSSR();
+    const { error } = await (db.rpc as any)("schedule_student_workout_kits", {
+      p_actor: actor.userId,
+      p_student: parsed.data.student_id,
+      p_entries: parsed.data.entries,
+      p_edit: parsed.data.assignment_id ?? null,
+    });
+    if (error)
+      return {
+        success: false as const,
+        message: ["42883", "PGRST202"].includes(error.code)
+          ? "Execute a migração 000065_sequential_workout_schedule.sql no Supabase."
+          : error.code === "P0001"
+            ? error.message
+            : "Não foi possível salvar a sequência. Confira os dados e tente novamente.",
+      };
+    revalidatePath("/[locale]/admin/alunos/[id]", "page");
+    revalidatePath("/[locale]/(student)/treino", "page");
+    revalidatePath("/[locale]/(student)/dashboard", "page");
+    return { success: true as const };
+  } catch {
+    return {
+      success: false as const,
+      message:
+        "Não foi possível salvar a sequência. Verifique seu acesso e tente novamente.",
     };
   }
 }

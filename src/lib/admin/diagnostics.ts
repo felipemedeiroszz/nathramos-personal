@@ -25,6 +25,20 @@ export async function checkAdminDatabase(db: any, actorId: string) {
     run: () => any;
   }> = [
     {
+      id: "manual_payment_provider",
+      label: "Tipo de pagamento manual",
+      migration: "000044_manual_payment_types.sql",
+      run: () =>
+        db.from("payments").select("id").eq("provider", "manual").limit(0),
+    },
+    {
+      id: "manual_payment_method",
+      label: "Forma de pagamento em dinheiro",
+      migration: "000044_manual_payment_types.sql",
+      run: () => db.from("payments").select("id").eq("method", "cash").limit(0),
+    },
+
+    {
       id: "monthly_progress",
       label: "Evolução mensal: peso e quatro fotos",
       migration: "000063_monthly_progress.sql",
@@ -237,10 +251,16 @@ export async function checkAdminDatabase(db: any, actorId: string) {
               migration: check.migration,
               ok: false,
               code: String(response.error.code || "UNKNOWN"),
-              kind: databaseFailureKind({
-                ...response.error,
-                status: response.status,
-              }),
+              kind:
+                response.error.code === "22P02" &&
+                ["manual_payment_provider", "manual_payment_method"].includes(
+                  check.id,
+                )
+                  ? "schema"
+                  : databaseFailureKind({
+                      ...response.error,
+                      status: response.status,
+                    }),
             };
           if (check.id === "base" && !response.data?.length)
             return {

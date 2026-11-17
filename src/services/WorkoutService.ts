@@ -464,6 +464,16 @@ export class WorkoutService {
       p_date: today,
     });
     const rows = checked<WorkoutSessionRow[]>(result, "start session");
+    if (rows[0]) {
+      // The scheduled cron retries if notification generation is temporarily unavailable.
+      try {
+        const { processWorkoutCycleReminders } =
+          await import("./WorkoutCycleNotificationService");
+        await processWorkoutCycleReminders(userId);
+      } catch {
+        console.warn("[workout-cycle] reminder_deferred_to_cron");
+      }
+    }
     return rows[0] || null;
   }
   static async completeSession(

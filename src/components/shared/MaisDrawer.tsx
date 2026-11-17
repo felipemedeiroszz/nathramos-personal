@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { MentorshipUnreadBadge } from "./MentorshipUnreadBadge";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 import {
@@ -70,6 +71,9 @@ export function MaisDrawer({
                     className={active ? "text-primary" : "text-zinc-500"}
                   />
                   {en ? item.en : item.pt}
+                  {item.path === "conversas" && (
+                    <MentorshipUnreadBadge side="student" locale={locale} />
+                  )}
                   <ArrowUpRight size={12} className="ml-auto text-zinc-600" />
                 </Link>
               );

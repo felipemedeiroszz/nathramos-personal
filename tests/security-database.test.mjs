@@ -12,7 +12,7 @@ before(async () => {
  dayId=(await db.query("insert into public.workout_days(program_id,week_number,day_of_week,name_pt,name_en) values($1,1,extract(isodow from current_date),'Dia','Day') returning id",[programId])).rows[0].id
  exerciseId=(await db.query("insert into public.exercises(name_pt,name_en,primary_muscle,equipment,difficulty) values('Agachamento','Squat','quads','body_weight','beginner') returning id")).rows[0].id
  workoutExerciseId=(await db.query("insert into public.workout_exercises(day_id,exercise_id,sets) values($1,$2,3) returning id",[dayId,exerciseId])).rows[0].id
- await db.query("insert into public.student_workout_kits(student_id,program_id,start_date,status) values($1,$2,current_date,'active')",[A,programId])
+ await db.query("insert into public.student_workout_kits(student_id,program_id,start_date,end_date,status) values($1,$2,current_date,current_date+30,'active')",[A,programId])
  await db.query("insert into public.water_intake_logs(user_id,logged_date,amount_ml) values($1,current_date,175),($2,current_date,300)",[A,B])
 })
 after(async()=>{if(db) await db.close()})
@@ -151,7 +151,7 @@ test('administrador marcado como removido não pode restaurar privilégios pelo 
 test('programa no kit segue calendário interno mesmo com filtro legado conflitante',async()=>{
  const kit=(await db.query("insert into workout_kits(name_pt,name_en,slug,created_by_id) values('Agenda','Schedule','schedule-regression',$1) returning id",[ADMIN])).rows[0].id
  await db.query("insert into workout_kit_items(kit_id,program_id,day_of_week) values($1,$2,7)",[kit,programId])
- await db.query("insert into student_workout_kits(student_id,kit_id,start_date,status) values($1,$2,'2026-01-01','active')",[B,kit])
+ await db.query("insert into student_workout_kits(student_id,kit_id,start_date,end_date,status) values($1,$2,'2026-01-01','2030-12-31','active')",[B,kit])
  const day=(await db.query('select day_of_week from workout_days where id=$1',[dayId])).rows[0].day_of_week
  const date=`2026-11-${String(1+day).padStart(2,'0')}`
  const session=(await db.query('select * from start_student_workout($1,$2,$3,$4::date)',[B,dayId,programId,date])).rows[0]

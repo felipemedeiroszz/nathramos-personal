@@ -35,6 +35,7 @@ export interface ChatMessageItem {
 }
 
 export interface MentorChatProps {
+  readOnly?: boolean;
   roomId: string;
   viewer: "coach" | "user";
   currentUserId: string;
@@ -73,6 +74,7 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 export function MentorChat({
+  readOnly = false,
   roomId,
   viewer,
   currentUserId,
@@ -176,7 +178,12 @@ export function MentorChat({
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void sync();
-        void markRoomReadAction(roomId, viewer).catch(() => {});
+        void markRoomReadAction(roomId, viewer)
+          .then((result) => {
+            if (result.success)
+              window.dispatchEvent(new Event("mentoring:unread-changed"));
+          })
+          .catch(() => {});
       }
     };
     const timer = setInterval(() => {
@@ -211,7 +218,12 @@ export function MentorChat({
             document.visibilityState === "visible" &&
             payload.new.sender_id !== currentUserId
           )
-            void markRoomReadAction(roomId, viewer).catch(() => {});
+            void markRoomReadAction(roomId, viewer)
+              .then((result) => {
+                if (result.success)
+                  window.dispatchEvent(new Event("mentoring:unread-changed"));
+              })
+              .catch(() => {});
         },
       )
       .subscribe((status: string) => {
@@ -239,7 +251,12 @@ export function MentorChat({
   useEffect(() => {
     let active = true;
     void (async () => {
-      await markRoomReadAction(roomId, viewer).catch(() => {});
+      await markRoomReadAction(roomId, viewer)
+        .then((result) => {
+          if (result.success)
+            window.dispatchEvent(new Event("mentoring:unread-changed"));
+        })
+        .catch(() => {});
       if (active) router.refresh();
     })();
     return () => {
@@ -295,6 +312,7 @@ export function MentorChat({
   );
 
   async function handleSend() {
+    if (readOnly) return;
     const content = draft.trim();
     if (!content || sendLock.current || content.length > 4000) return;
     sendLock.current = true;
@@ -494,6 +512,16 @@ export function MentorChat({
         </button>
       )}
 
+      {readOnly && (
+        <p
+          role="status"
+          className="border-t border-border bg-surface px-4 py-3 text-xs text-text-secondary"
+        >
+          {en
+            ? "Archived conversation. Your coach can reopen it to resume messaging."
+            : "Conversa arquivada. A treinadora pode reabrir para retomar o envio de mensagens."}
+        </p>
+      )}
       {/* Composer */}
       <div className="mentor-composer p-4 border-t border-border space-y-2 shrink-0">
         {errorMsg && (
@@ -519,7 +547,7 @@ export function MentorChat({
               type="button"
               aria-expanded={emojiOpen}
               aria-label={en ? "Choose emoji" : "Escolher emoji"}
-              disabled={sending}
+              disabled={sending || readOnly}
               onClick={() => setEmojiOpen(!emojiOpen)}
               className="grid h-11 w-10 place-items-center rounded-xl text-text-secondary transition hover:bg-primary/10 hover:text-primary"
             >
@@ -590,7 +618,7 @@ export function MentorChat({
             ref={inputRef}
             aria-label={t("placeholder")}
             maxLength={4000}
-            disabled={sending}
+            disabled={sending || readOnly}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -602,7 +630,10 @@ export function MentorChat({
             variant="primary"
             onClick={() => void handleSend()}
             disabled={
-              sending || draft.trim().length === 0 || draft.length > 4000
+              readOnly ||
+              sending ||
+              draft.trim().length === 0 ||
+              draft.length > 4000
             }
             aria-label={t("send")}
           >

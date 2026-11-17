@@ -104,17 +104,35 @@ export function StudentProfileHeader({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-          {showFinancialHistory && <Link href="#historico-financeiro" className="flex items-center gap-2 rounded-lg border border-yellow-400/20 px-4 py-2.5 text-xs text-yellow-400 hover:bg-yellow-400/5">
-            <CreditCard size={14} />{t("Histórico financeiro", "Payment history")}
-          </Link>}
-          <Link
-            href={`/${locale}/admin/historico?student=${encodeURIComponent(id)}`}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-2.5 text-xs text-zinc-300 transition hover:border-yellow-400/30 hover:text-yellow-400"
-          >
-            <History size={14} />
-            {t("Histórico de atribuições", "Assignment history")}
-            <ArrowUpRight size={13} />
-          </Link>
+            {showFinancialHistory && (
+              <form action="/api/admin/student-preview/start" method="post">
+                <input type="hidden" name="studentId" value={id} />
+                <input type="hidden" name="locale" value={locale} />
+                <button
+                  className="rounded-lg bg-yellow-400 px-4 py-2.5 text-xs font-semibold text-black"
+                  type="submit"
+                >
+                  {t("Visualizar como aluno", "View as student")}
+                </button>
+              </form>
+            )}
+            {showFinancialHistory && (
+              <Link
+                href={`/${locale}/admin/alunos/${id}?tab=billing#historico-financeiro`}
+                className="flex items-center gap-2 rounded-lg border border-yellow-400/20 px-4 py-2.5 text-xs text-yellow-400 hover:bg-yellow-400/5"
+              >
+                <CreditCard size={14} />
+                {t("Histórico financeiro", "Payment history")}
+              </Link>
+            )}
+            <Link
+              href={`/${locale}/admin/historico?student=${encodeURIComponent(id)}`}
+              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-2.5 text-xs text-zinc-300 transition hover:border-yellow-400/30 hover:text-yellow-400"
+            >
+              <History size={14} />
+              {t("Histórico de atribuições", "Assignment history")}
+              <ArrowUpRight size={13} />
+            </Link>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-5 py-3 sm:px-7">
@@ -136,9 +154,9 @@ export function StudentProfileHeader({
       >
         {[
           {
-            title: t("Treinos ativos", "Active workouts"),
+            title: t("Kits em programação", "Scheduled kits"),
             value: activeWorkouts,
-            note: `${activeWorkouts} / ${maxWorkouts} ${t("vagas em uso", "slots used")}`,
+            note: `${activeWorkouts} / ${maxWorkouts} ${t("períodos em uso", "periods used")}`,
             icon: Dumbbell,
             accent: true,
           },
