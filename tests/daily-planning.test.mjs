@@ -480,3 +480,51 @@ test("consulta real de treino respeita descanso, fim do ciclo, semanas vazias e 
   assert.equal((await service.getTodayPlans(id(9), "2026-11-09")).length, 1);
   assert.equal((await service.getTodayPlans(id(9), "2026-11-16")).length, 1);
 });
+
+test("plano escrito chega à rotina, respeita a atribuição e preserva orientações no histórico", async () => {
+  const tables = routineTables();
+  tables.diet_kit_items = [];
+  tables.student_diet_kits[0].kit.description_pt =
+    "Café da manhã\n* Ovos: 100 g\n\nOrientações\nTexto individual";
+  tables.student_daily_rules = [
+    {
+      kind: "diet",
+      assignment_id: id(1),
+      student_id: id(9),
+      effective_from: "2020-01-01",
+      rule: dailyRuleSchema.parse({ notes: "Orientação da programação" }),
+    },
+  ];
+  const { service, db } = loadRoutine(tables);
+  const data = await service.get(id(9));
+  assert.equal(data.diet.length, 0);
+  assert.equal(data.dietGuidance.length, 1);
+  assert.match(data.dietGuidance[0].text, /Ovos: 100 g/);
+  assert.match(data.dietGuidance[0].text, /Orientação da programação/);
+  assert.equal(data.waterGoal, null);
+  assert.deepEqual(db.calls[0].args.p_payload.dietGuidance, data.dietGuidance);
+  tables.student_day_prescriptions = [
+    {
+      user_id: id(9),
+      prescribed_date: "2020-01-02",
+      payload: {
+        diet: [],
+        supplements: [],
+        workouts: [],
+        dietGuidance: data.dietGuidance,
+      },
+    },
+  ];
+  tables.student_diet_kits = [];
+  const historical = await loadRoutine(tables).service.get(id(9), "2020-01-02");
+  assert.deepEqual(historical.dietGuidance, data.dietGuidance);
+  const fresh = routineTables();
+  fresh.diet_kit_items = [];
+  fresh.student_diet_kits[0].start_date = "2099-01-01";
+  fresh.student_diet_kits[0].kit.description_pt =
+    "Não pode aparecer antes do início";
+  assert.deepEqual(
+    (await loadRoutine(fresh).service.get(id(9))).dietGuidance,
+    [],
+  );
+});

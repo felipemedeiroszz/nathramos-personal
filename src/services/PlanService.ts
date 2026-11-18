@@ -1,11 +1,11 @@
-import { createServiceClientSSR } from "../lib/supabase/server"
-import type { PlanRow } from "../lib/supabase/types"
-import { AuditLogService } from "./AuditLogService"
-import { upsertPlanSchema, type UpsertPlanInput } from "../schemas/plans"
+import { createServiceClientSSR } from "../lib/supabase/server";
+import type { PlanRow } from "../lib/supabase/types";
+import { AuditLogService } from "./AuditLogService";
+import { upsertPlanSchema, type UpsertPlanInput } from "../schemas/plans";
 
 export class PlanService {
   private static async getSupabase() {
-    return createServiceClientSSR()
+    return createServiceClientSSR();
   }
 
   /** Recursos liberados para o plano único (acesso a tudo). */
@@ -23,59 +23,67 @@ export class PlanService {
     custom_exercises: true,
     coach_direct_access: true,
     has_referral_reward: true,
-  }
+  };
 
   static async list(opts?: { includeInactive?: boolean }): Promise<PlanRow[]> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       let q: any = supabase
         .from("plans")
         .select("*")
         .eq("is_deleted", false)
         .order("order_index", { ascending: true })
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (!opts?.includeInactive) {
-        q = q.eq("is_active", true)
+        q = q.eq("is_active", true);
       }
 
-      const { data, error } = await q
-      if (error) return []
-      return ((data as PlanRow[]) ?? []).map(plan => ({ ...plan, trial_days: 0 }))
+      const { data, error } = await q;
+      if (error) return [];
+      return ((data as PlanRow[]) ?? []).map((plan) => ({
+        ...plan,
+        trial_days: 0,
+      }));
     } catch {
-      return []
+      return [];
     }
   }
 
   /** Retorna o plano único (o primeiro plano não excluído). */
   static async getPrimary(): Promise<PlanRow | null> {
-    const plans = await this.list({ includeInactive: true })
-    return plans[0] ?? null
+    const plans = await this.list({ includeInactive: true });
+    return plans[0] ?? null;
+  }
+
+  /** Purchases never select a disabled plan; administration can still edit it through getPrimary. */
+  static async getCheckoutPlan(): Promise<PlanRow | null> {
+    return (await this.list())[0] ?? null;
   }
 
   static async getById(id: string): Promise<PlanRow | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("plans")
         .select("*")
         .eq("id", id)
         .eq("is_deleted", false)
-        .maybeSingle()
-      if (error) return null
-      return data ? { ...(data as PlanRow), trial_days: 0 } : null
+        .maybeSingle();
+      if (error) return null;
+      return data ? { ...(data as PlanRow), trial_days: 0 } : null;
     } catch {
-      return null
+      return null;
     }
   }
 
   static async upsert(
     input: UpsertPlanInput,
-    adminId?: string
+    adminId?: string,
   ): Promise<PlanRow | null> {
     try {
-      const parsed = upsertPlanSchema.parse(input)
-      const supabase = await this.getSupabase()
+      const parsed = upsertPlanSchema.parse(input);
+      const supabase = await this.getSupabase();
 
       const payload: Record<string, any> = {
         name_pt: parsed.name_pt,
@@ -110,7 +118,7 @@ export class PlanService {
         badge_en: parsed.badge_en ?? null,
         banners: parsed.banners ?? [],
         is_active: parsed.is_active,
-      }
+      };
 
       if (parsed.id) {
         const { data, error } = await supabase
@@ -118,8 +126,8 @@ export class PlanService {
           .update(payload as never)
           .eq("id", parsed.id)
           .select()
-          .single()
-        if (error || !data) return null
+          .single();
+        if (error || !data) return null;
 
         void AuditLogService.log({
           adminId,
@@ -127,8 +135,8 @@ export class PlanService {
           entity_type: "plan",
           entity_id: (data as PlanRow).id,
           details: { name: parsed.name_pt, price_cents: parsed.price_cents },
-        })
-        return data as PlanRow
+        });
+        return data as PlanRow;
       }
 
       const { data: last } = await supabase
@@ -136,15 +144,16 @@ export class PlanService {
         .select("order_index")
         .order("order_index", { ascending: false })
         .limit(1)
-        .maybeSingle()
-      payload.order_index = ((last as { order_index?: number } | null)?.order_index ?? -1) + 1
+        .maybeSingle();
+      payload.order_index =
+        ((last as { order_index?: number } | null)?.order_index ?? -1) + 1;
 
       const { data, error } = await supabase
         .from("plans")
         .insert(payload as never)
         .select()
-        .single()
-      if (error || !data) return null
+        .single();
+      if (error || !data) return null;
 
       void AuditLogService.log({
         adminId,
@@ -152,10 +161,10 @@ export class PlanService {
         entity_type: "plan",
         entity_id: (data as PlanRow).id,
         details: { name: parsed.name_pt, price_cents: parsed.price_cents },
-      })
-      return data as PlanRow
+      });
+      return data as PlanRow;
     } catch {
-      return null
+      return null;
     }
   }
 
@@ -165,9 +174,9 @@ export class PlanService {
    */
   static async savePrimary(
     input: UpsertPlanInput,
-    adminId?: string
+    adminId?: string,
   ): Promise<PlanRow | null> {
-    const existing = await this.getPrimary()
+    const existing = await this.getPrimary();
     return this.upsert(
       {
         ...input,
@@ -179,9 +188,9 @@ export class PlanService {
         stripe_product_id: existing?.stripe_product_id ?? null,
         asaas_plan_id: existing?.asaas_plan_id ?? null,
       },
-      adminId
-    )
+      adminId,
+    );
   }
 }
 
-export default PlanService
+export default PlanService;

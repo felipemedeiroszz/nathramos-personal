@@ -1,3 +1,5 @@
+import { paymentAvailability } from "@/lib/payments/availability";
+import { paymentSupportHref } from "@/lib/payments/support";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -28,25 +30,21 @@ export const metadata: Metadata = {
 const perkIcons = [RefreshCcw, ShieldCheck, Headphones];
 const perkKeys = ["noCommitment", "securePayment", "support"] as const;
 
-export default async function PlanosPage(
-  props: {
-    params: Promise<{ locale: string }>;
-    searchParams: Promise<{ checkout?: string }>;
-  }
-) {
+export default async function PlanosPage(props: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const searchParams = (await props.searchParams) ?? {};
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   setRequestLocale(locale);
 
   const t = await getTranslations("plans");
   const tn = await getTranslations("nav");
 
-  const plan = await PlanService.getPrimary();
+  const plan = await PlanService.getCheckoutPlan();
 
   const supabase = await createClientSSR();
   const {
@@ -89,6 +87,8 @@ export default async function PlanosPage(
   const cycleLabel = plan ? t(`cycle_${plan.billing_cycle_days}` as any) : "";
   const accent = plan?.highlight_hex ?? undefined;
   const isAvailable = Boolean(plan && plan.is_active);
+  const checkoutAvailable = paymentAvailability(plan, process.env).available;
+  const supportHref = checkoutAvailable ? "" : await paymentSupportHref(locale);
 
   return (
     <>
@@ -216,14 +216,32 @@ export default async function PlanosPage(
                         )}
                       </div>
 
-                      <PlanCheckoutButton
-                        planId={plan?.id ?? null}
-                        isAuthenticated={isAuthenticated}
-                        locale={locale}
-                        autoStart={autoStartCheckout}
-                        label={t("checkout.label")}
-                        unavailableLabel={t("checkout.unavailable")}
-                      />
+                      {checkoutAvailable ? (
+                        <PlanCheckoutButton
+                          planId={plan?.id ?? null}
+                          isAuthenticated={isAuthenticated}
+                          locale={locale}
+                          autoStart={autoStartCheckout}
+                          label={t("checkout.label")}
+                          unavailableLabel={t("checkout.unavailable")}
+                        />
+                      ) : (
+                        <Link
+                          href={supportHref}
+                          className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground"
+                        >
+                          {isPt
+                            ? "Atendimento e dúvidas"
+                            : "Support and questions"}
+                        </Link>
+                      )}
+                      {!checkoutAvailable && (
+                        <p className="text-xs text-text-secondary">
+                          {isPt
+                            ? "Contratação online indisponível no momento. Consulte o atendimento para começar."
+                            : "Online checkout is currently unavailable. Contact support to get started."}
+                        </p>
+                      )}
 
                       <ul className="space-y-3 pt-2">
                         {perkKeys.map((key, i) => {

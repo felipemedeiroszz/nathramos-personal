@@ -1,3 +1,4 @@
+import { parseDietWrittenPlan } from "@/lib/diet-written-plan";
 import { Droplets, Moon, Pill, Scale, Utensils } from "lucide-react";
 import type { RoutineData } from "@/services/StudentRoutineService";
 export function RoutineSummary({ data }: { data: RoutineData }) {
@@ -5,6 +6,16 @@ export function RoutineSummary({ data }: { data: RoutineData }) {
     t = (pt: string, eng: string) => (en ? eng : pt);
   const foodDone = data.diet.filter((i) => i.done).length,
     suppDone = data.supplements.filter((i) => i.done).length;
+  const writtenOnly = !data.diet.length && Boolean(data.dietGuidance?.length);
+  const writtenMeals =
+    data.dietGuidance?.reduce(
+      (sum, plan) =>
+        sum +
+        parseDietWrittenPlan(plan.text).filter(
+          (section) => section.kind === "meal",
+        ).length,
+      0,
+    ) || 0;
   const date = (key: string) =>
     new Date(`${key}T12:00:00Z`).toLocaleDateString(data.locale || "pt-BR", {
       day: "2-digit",
@@ -14,9 +25,22 @@ export function RoutineSummary({ data }: { data: RoutineData }) {
   const metrics = [
     {
       label: t("Alimentação", "Nutrition"),
-      value: `${foodDone}`,
-      suffix: `/ ${data.diet.length}`,
-      detail: t("alimentos registrados no dia", "food items logged on this day"),
+      value: writtenOnly
+        ? writtenMeals
+          ? String(writtenMeals)
+          : "—"
+        : `${foodDone}`,
+      suffix: writtenOnly
+        ? writtenMeals
+          ? t("refeições", "meals")
+          : ""
+        : `/ ${data.diet.length}`,
+      detail: writtenOnly
+        ? t(
+            "Plano alimentar disponível em Dieta",
+            "Meal plan available in Nutrition",
+          )
+        : t("alimentos registrados no dia", "food items logged on this day"),
       icon: Utensils,
       color: "#facc15",
       progress: data.diet.length ? (foodDone / data.diet.length) * 100 : null,

@@ -1,3 +1,4 @@
+import { dietGuidanceForAssignments } from "@/lib/diet-written-plan";
 import "server-only";
 import {
   dateKeySchema,
@@ -62,6 +63,7 @@ export interface RoutineData {
   timezone: string;
   firstName: string;
   locale: string;
+  dietGuidance?: { assignmentId: string; kit: string; text: string }[];
   diet: RoutineItem[];
   supplements: RoutineItem[];
   plannedNutrition: Nutrition;
@@ -90,13 +92,10 @@ export function checked<T>(
   operation: string,
 ): T {
   if (result.error) {
-    throw new DatabaseOperationError(
-      operation,
-      {
-        ...(result.error as { code?: string; status?: number }),
-        status: result.status ?? (result.error as { status?: number }).status,
-      },
-    );
+    throw new DatabaseOperationError(operation, {
+      ...(result.error as { code?: string; status?: number }),
+      status: result.status ?? (result.error as { status?: number }).status,
+    });
   }
   return result.data as T;
 }
@@ -300,6 +299,15 @@ export class StudentRoutineService {
     const logs = results[2].data as any[];
     const todayLogs = logs.filter((l) => l.logged_date === date);
     const en = profile.language === "en-US";
+    const dietGuidance = historical
+      ? snapshot?.dietGuidance || []
+      : dietGuidanceForAssignments(
+          dietAssignments.map((a) => ({
+            ...a,
+            notes: rules.get(`diet:${a.id}`)?.notes || a.notes,
+          })),
+          en,
+        );
     function build(
       kind: "diet" | "supplement",
       assignment: any,
@@ -407,6 +415,7 @@ export class StudentRoutineService {
           p_date: date,
           p_payload: {
             diet: withoutDone(diet),
+            dietGuidance,
             supplements: withoutDone(supplements),
             workouts,
             workoutState: workoutSchedule.state,
@@ -459,6 +468,7 @@ export class StudentRoutineService {
       firstName: profile.first_name || "",
       locale: profile.language,
       diet,
+      dietGuidance,
       supplements,
       plannedNutrition: sumNutrition(
         diet.flatMap((i: RoutineItem) => (i.nutrition ? [i.nutrition] : [])),

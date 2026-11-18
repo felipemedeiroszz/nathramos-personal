@@ -51,7 +51,14 @@ const button =
 export function PaymentCenter({
   locale,
   data,
+  checkout,
 }: {
+  checkout?: {
+    available: boolean;
+    cardAvailable: boolean;
+    pixAvailable: boolean;
+    supportHref: string;
+  };
   locale: string;
   data: Awaited<ReturnType<typeof studentBillingSummary>>;
 }) {
@@ -59,13 +66,20 @@ export function PaymentCenter({
     router = useRouter(),
     text = (pt: string, eng: string) => (en ? eng : pt);
   const { subscription: sub, access, payments, operations } = data;
+  const canCheckout = checkout?.available === true;
+  const supportHref = checkout?.supportHref || `/${locale}/faq`;
   const [busy, setBusy] = useState<string | null>(null),
     [message, setMessage] = useState(""),
     [selected, setSelected] = useState<any>(null),
     [confirm, setConfirm] = useState<{ kind: string; id: string } | null>(null);
-  useEffect(()=>{
-    setSelected((previous:any)=>previous ? payments.rows.find((payment:any)=>payment.id===previous.id)||null : null);
-  },[payments.rows]);
+  useEffect(() => {
+    setSelected((previous: any) =>
+      previous
+        ? payments.rows.find((payment: any) => payment.id === previous.id) ||
+          null
+        : null,
+    );
+  }, [payments.rows]);
   const money = (cents: number, currency = "BRL") =>
     new Intl.NumberFormat(locale, { style: "currency", currency }).format(
       cents / 100,
@@ -267,27 +281,51 @@ export function PaymentCenter({
                   )}
             </h2>
             <p className="mt-2 max-w-2xl text-text-secondary">
-              {manual ? text("Seu acesso foi liberado pela administração até o vencimento abaixo, sem renovação automática.", "Your access was granted by the administrator until the expiration below, with no automatic renewal.") : prepaid
+              {manual
                 ? text(
-                    "PIX é um pagamento único. Seu acesso termina no vencimento abaixo, sem cobrança automática e sem dias extras.",
-                    "PIX is a one-off payment. Access ends on the date below, without automatic renewal or extra days.",
+                    "Seu acesso foi liberado pela administração até o vencimento abaixo, sem renovação automática.",
+                    "Your access was granted by the administrator until the expiration below, with no automatic renewal.",
                   )
-                : recurring
+                : prepaid
                   ? text(
-                      "O cartão mantém uma assinatura recorrente. A renovação depende da aprovação da cobrança pelo banco.",
-                      "Card payments maintain a recurring subscription. Renewal depends on payment approval by your bank.",
+                      "PIX é um pagamento único. Seu acesso termina no vencimento abaixo, sem cobrança automática e sem dias extras.",
+                      "PIX is a one-off payment. Access ends on the date below, without automatic renewal or extra days.",
                     )
-                  : text(
-                      "Escolha PIX para um período avulso ou cartão para uma assinatura recorrente.",
-                      "Choose PIX for one period or card for a recurring subscription.",
-                    )}
+                  : recurring
+                    ? text(
+                        "O cartão mantém uma assinatura recorrente. A renovação depende da aprovação da cobrança pelo banco.",
+                        "Card payments maintain a recurring subscription. Renewal depends on payment approval by your bank.",
+                      )
+                    : !canCheckout
+                      ? text(
+                          "Sua conta está criada. A contratação online está indisponível no momento; consulte o atendimento para iniciar seu acompanhamento.",
+                          "Your account is ready. Online checkout is currently unavailable; contact support to start your membership.",
+                        )
+                      : checkout?.pixAvailable && !checkout.cardAvailable
+                        ? text(
+                            "Pague por PIX para contratar um período avulso, sem renovação automática.",
+                            "Pay with PIX for a one-off period without automatic renewal.",
+                          )
+                        : checkout?.cardAvailable && !checkout.pixAvailable
+                          ? text(
+                              "Contrate no cartão para iniciar uma assinatura recorrente.",
+                              "Use a card to start a recurring subscription.",
+                            )
+                          : text(
+                              "Escolha PIX para um período avulso ou cartão para uma assinatura recorrente.",
+                              "Choose PIX for one period or card for a recurring subscription.",
+                            )}
             </p>
           </div>
           <div className="min-w-[180px]">
             <p className="text-sm text-text-secondary">
               {text("Situação do acesso", "Access status")}
             </p>
-            <strong>{label(access.status)}</strong>
+            <strong>
+              {sub
+                ? label(access.status)
+                : text("Sem plano contratado", "No membership yet")}
+            </strong>
             <p className="mt-3 text-sm text-text-secondary">
               {prepaid
                 ? text("Acesso pago até", "Paid access until")
@@ -316,11 +354,13 @@ export function PaymentCenter({
                 {text("Período contratado", "Billing cycle")}
               </dt>
               <dd className="mt-1 font-semibold">
-                {manual ? text("Liberado manualmente", "Manually granted") : sub.billing_cycle_days === 30
-                  ? text("Mensal", "Monthly")
-                  : sub.billing_cycle_days === 365
-                    ? text("Anual", "Yearly")
-                    : `${sub.billing_cycle_days} ${text("dias", "days")}`}
+                {manual
+                  ? text("Liberado manualmente", "Manually granted")
+                  : sub.billing_cycle_days === 30
+                    ? text("Mensal", "Monthly")
+                    : sub.billing_cycle_days === 365
+                      ? text("Anual", "Yearly")
+                      : `${sub.billing_cycle_days} ${text("dias", "days")}`}
               </dd>
             </div>
             <div>
@@ -328,16 +368,21 @@ export function PaymentCenter({
                 {text("Renovação", "Renewal")}
               </dt>
               <dd className="mt-1 font-semibold">
-                {manual ? text("Consulte a administração", "Contact the administrator") : prepaid
-                  ? text("Novo pagamento necessário", "New payment required")
-                  : sub.cancel_at_period_end
-                    ? text("Desativada", "Disabled")
-                    : recurring
-                      ? text("Automática no cartão", "Automatic card charge")
-                      : text(
-                          "Consulte as condições do plano",
-                          "Check plan conditions",
-                        )}
+                {manual
+                  ? text(
+                      "Consulte a administração",
+                      "Contact the administrator",
+                    )
+                  : prepaid
+                    ? text("Novo pagamento necessário", "New payment required")
+                    : sub.cancel_at_period_end
+                      ? text("Desativada", "Disabled")
+                      : recurring
+                        ? text("Automática no cartão", "Automatic card charge")
+                        : text(
+                            "Consulte as condições do plano",
+                            "Check plan conditions",
+                          )}
               </dd>
             </div>
           </dl>
@@ -350,9 +395,15 @@ export function PaymentCenter({
               sub?.status === "expired") && (
               <Link
                 className={`${button} bg-primary text-primary-foreground`}
-                href={`/${locale}/assinatura/checkout`}
+                href={
+                  canCheckout ? `/${locale}/assinatura/checkout` : supportHref
+                }
               >
-                {text("Renovar ou assinar", "Renew or subscribe")}
+                {canCheckout
+                  ? sub
+                    ? text("Renovar ou assinar", "Renew or subscribe")
+                    : text("Contratar plano", "Get a membership")
+                  : text("Atendimento e dúvidas", "Support and questions")}
                 <ArrowRight size={16} />
               </Link>
             )}

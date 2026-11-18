@@ -12,7 +12,10 @@ import { cn } from "@/lib/utils";
 import { CheckoutSummary } from "./CheckoutSummary";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
+const stripePromise =
+  publishableKey && /^pk_(test|live)_/.test(publishableKey)
+    ? loadStripe(publishableKey)
+    : null;
 
 export interface CheckoutLabels {
   planSummary: string;

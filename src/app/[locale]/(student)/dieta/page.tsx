@@ -1,3 +1,4 @@
+import { DietWrittenPlan } from "@/components/shared/DietWrittenPlan";
 import { setRequestLocale } from "next-intl/server";
 import { Utensils } from "lucide-react";
 import { StudentPageHeader as PageHeader } from "@/components/student/StudentPageHeader";
@@ -6,16 +7,12 @@ import { StudentRoutineService } from "@/services/StudentRoutineService";
 import { DailyItemsClient } from "@/components/student/RoutineClients";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dieta" };
-export default async function Page(
-  props: {
-    params: Promise<{ locale: string }>;
-  }
-) {
+export default async function Page(props: {
+  params: Promise<{ locale: string }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   setRequestLocale(locale);
   const userId = await requireStudentPage();
@@ -32,12 +29,24 @@ export default async function Page(
         }
         icon={<Utensils size={22} />}
       />
-      <DailyItemsClient
-        items={data.diet}
-        kind="diet"
-        consumed={data.consumedNutrition}
-        planned={data.plannedNutrition}
-      />
+      {data.dietGuidance?.map((plan) => (
+        <section
+          key={plan.assignmentId}
+          className="space-y-3"
+          aria-label={plan.kit}
+        >
+          <h2 className="text-lg font-semibold">{plan.kit}</h2>
+          <DietWrittenPlan text={plan.text} locale={locale} />
+        </section>
+      ))}
+      {(data.diet.length > 0 || !data.dietGuidance?.length) && (
+        <DailyItemsClient
+          items={data.diet}
+          kind="diet"
+          consumed={data.consumedNutrition}
+          planned={data.plannedNutrition}
+        />
+      )}
     </div>
   );
 }

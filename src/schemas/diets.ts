@@ -156,8 +156,8 @@ export const upsertDietKitSchema = z.object({
     .trim()
     .min(1, { message: "Nome em inglês é obrigatório." }),
   slug: z.string().trim().optional().nullable(),
-  description_pt: z.string().trim().optional().nullable(),
-  description_en: z.string().trim().optional().nullable(),
+  description_pt: z.string().trim().max(30000).optional().nullable(),
+  description_en: z.string().trim().max(30000).optional().nullable(),
   short_desc_pt: z.string().trim().optional().nullable(),
   short_desc_en: z.string().trim().optional().nullable(),
   cover_image_url: z.string().url().optional().or(z.literal("")).nullable(),

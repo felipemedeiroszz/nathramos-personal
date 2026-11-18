@@ -1,11 +1,15 @@
 "use client";
+import { DietWrittenPlanEditor } from "./DietWrittenPlanEditor";
+import {
+  DIET_PLAN_EXAMPLE_PT,
+  DIET_PLAN_EXAMPLE_EN,
+} from "@/lib/diet-written-plan";
 import { useAsyncTransition } from "@/hooks/useAsyncTransition";
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -182,46 +186,50 @@ export function DietKitModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const tags = form.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean);
+      try {
+        const tags = form.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean);
 
-      const res = await saveDietKitAction({
-        kit: {
-          revision: kit?.revision,
-          id: form.id,
-          name_pt: form.name_pt,
-          name_en: form.name_en,
-          goal_pt: form.goal_pt || null,
-          goal_en: form.goal_en || null,
-          short_desc_pt: form.short_desc_pt || null,
-          short_desc_en: form.short_desc_en || null,
-          description_pt: form.description_pt || null,
-          description_en: form.description_en || null,
-          cover_image_url: form.cover_image_url || null,
-          tags,
-          is_published: form.is_published,
-          is_featured: form.is_featured,
-        },
-        items: items.map((item, index) => ({
-          id: item.id,
-          food_id: item.food_id,
-          quantity: item.quantity ? Number(item.quantity) : null,
-          unit: item.unit || null,
-          meal_type: item.meal_type,
-          time_of_day: item.time_of_day || null,
-          notes_pt: item.notes_pt || null,
-          notes_en: item.notes_en || null,
-          order_index: index,
-        })),
-      });
+        const res = await saveDietKitAction({
+          kit: {
+            revision: kit?.revision,
+            id: form.id,
+            name_pt: form.name_pt,
+            name_en: form.name_en,
+            goal_pt: form.goal_pt || null,
+            goal_en: form.goal_en || null,
+            short_desc_pt: form.short_desc_pt || null,
+            short_desc_en: form.short_desc_en || null,
+            description_pt: form.description_pt || null,
+            description_en: form.description_en || null,
+            cover_image_url: form.cover_image_url || null,
+            tags,
+            is_published: form.is_published,
+            is_featured: form.is_featured,
+          },
+          items: items.map((item, index) => ({
+            id: item.id,
+            food_id: item.food_id,
+            quantity: item.quantity ? Number(item.quantity) : null,
+            unit: item.unit || null,
+            meal_type: item.meal_type,
+            time_of_day: item.time_of_day || null,
+            notes_pt: item.notes_pt || null,
+            notes_en: item.notes_en || null,
+            order_index: index,
+          })),
+        });
 
-      if (res.success) {
-        setStatus({ type: "ok", msg: t("saved") });
-        onSaved?.();
-      } else {
-        setStatus({ type: "err", msg: res.message || t("saveError") });
+        if (res.success) {
+          setStatus({ type: "ok", msg: t("saved") });
+          onSaved?.();
+        } else {
+          setStatus({ type: "err", msg: res.message || t("saveError") });
+        }
+      } catch {
+        setStatus({ type: "err", msg: t("saveError") });
       }
     });
   }
@@ -317,27 +325,27 @@ export function DietKitModal({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">
-              {t("descPt")}
-            </label>
-            <Textarea
-              value={form.description_pt}
-              onChange={(e) => update("description_pt", e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-text">
-              {t("descEn")}
-            </label>
-            <Textarea
-              value={form.description_en}
-              onChange={(e) => update("description_en", e.target.value)}
-              rows={3}
-            />
-          </div>
+          <DietWrittenPlanEditor
+            pt={form.description_pt}
+            en={form.description_en}
+            locale={locale}
+            disabled={isPending}
+            onChange={(language, text) =>
+              update(
+                language === "pt-BR" ? "description_pt" : "description_en",
+                text,
+              )
+            }
+            onExample={() =>
+              setForm((previous) => ({
+                ...previous,
+                name_pt: previous.name_pt || "Plano alimentar diário",
+                name_en: previous.name_en || "Daily meal plan",
+                description_pt: DIET_PLAN_EXAMPLE_PT,
+                description_en: DIET_PLAN_EXAMPLE_EN,
+              }))
+            }
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">

@@ -70,6 +70,7 @@ export function StudentHome({
     path: string,
     label: string,
     icon: typeof Utensils,
+    guidanceName?: string,
   ) => {
     const Icon = icon;
     return (
@@ -85,7 +86,8 @@ export function StudentHome({
           <p className="mt-1 truncate text-xs font-medium text-zinc-200">
             {item
               ? item.name
-              : t("Consulte seu acompanhamento", "Check your coaching plan")}
+              : guidanceName ||
+                t("Consulte seu acompanhamento", "Check your coaching plan")}
           </p>
           <p className="mt-1 text-[10px] text-zinc-500">
             {item
@@ -141,8 +143,11 @@ export function StudentHome({
             {focus(
               nextMeal,
               "dieta",
-              t("Próxima refeição pendente", "Next pending meal"),
+              !data.diet.length && data.dietGuidance?.length
+                ? t("Seu plano alimentar", "Your meal plan")
+                : t("Próxima refeição pendente", "Next pending meal"),
               Utensils,
+              data.dietGuidance?.[0]?.kit,
             )}
             {focus(
               nextSupp,

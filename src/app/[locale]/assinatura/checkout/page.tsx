@@ -1,3 +1,5 @@
+import { paymentAvailability } from "@/lib/payments/availability";
+import { paymentSupportHref } from "@/lib/payments/support";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -19,18 +21,14 @@ export const metadata: Metadata = {
   title: "Checkout",
 };
 
-export default async function CheckoutPage(
-  props: {
-    params: Promise<{ locale: string }>;
-    searchParams?: Promise<{ method?: string }>;
-  }
-) {
+export default async function CheckoutPage(props: {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<{ method?: string }>;
+}) {
   const searchParams = (await props.searchParams) ?? {};
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   setRequestLocale(locale);
 
@@ -48,27 +46,22 @@ export default async function CheckoutPage(
 
   const access = await canAccessPlatform(user.id);
   if (access.allowed) {
-    redirect(`/${locale}/treinos`);
+    redirect(`/${locale}/treino`);
   }
 
-  const plan = await PlanService.getPrimary();
+  const plan = await PlanService.getCheckoutPlan();
 
   const profile = await ProfileService.getProfile(user.id);
   const pixNeedsDocument = !profile?.asaas_customer_id && !profile?.cpf;
   const isPt = locale === "pt-BR";
   const planName = plan ? (isPt ? plan.name_pt : plan.name_en) : "";
 
-  const cardAvailable = Boolean(
-    plan?.stripe_price_id &&
-    process.env.STRIPE_SECRET_KEY &&
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-  );
-  const pixAvailable = Boolean(
-    process.env.ASAAS_API_KEY && plan?.currency === "BRL",
-  );
-  const planAvailable = Boolean(
-    plan && plan.is_active && (cardAvailable || pixAvailable),
-  );
+  const {
+    cardAvailable,
+    pixAvailable,
+    available: planAvailable,
+  } = paymentAvailability(plan, process.env);
+  const supportHref = planAvailable ? "" : await paymentSupportHref(locale);
 
   const priceLabel = plan
     ? formatCurrency(plan.price_cents / 100, plan.currency, locale as Locale)
@@ -96,16 +89,18 @@ export default async function CheckoutPage(
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
                 <ShieldAlert size={24} className="text-primary" />
               </div>
+              <h2 className="text-lg font-semibold">
+                {isPt
+                  ? "Contratação online indisponível"
+                  : "Online checkout unavailable"}
+              </h2>
               <p className="text-text-secondary">
                 {isPt
-                  ? "Nenhuma forma de pagamento está disponível para este plano no momento. Consulte a central ou entre em contato com o atendimento."
-                  : "No payment method is available for this plan right now. Check your billing center or contact support."}
+                  ? "Sua conta foi criada, mas o pagamento online ainda não está disponível. Entre em contato com o atendimento para saber como contratar ou renovar seu acompanhamento."
+                  : "Your account has been created, but online payments are not currently available. Contact support to arrange your membership or renewal."}
               </p>
-              <a
-                className="block text-primary underline"
-                href={`/${locale}/assinatura`}
-              >
-                {isPt ? "Abrir central de pagamentos" : "Open billing center"}
+              <a className="block text-primary underline" href={supportHref}>
+                {isPt ? "Atendimento e dúvidas" : "Support and questions"}
               </a>
             </div>
           ) : (

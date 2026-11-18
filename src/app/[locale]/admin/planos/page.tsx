@@ -1,3 +1,4 @@
+import { PaymentSetupPanel } from "@/components/admin/billing/PaymentSetupPanel";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
@@ -13,16 +14,12 @@ export const metadata: Metadata = {
   title: "Admin | Planos",
 };
 
-export default async function AdminPlanosPage(
-  props: {
-    params: Promise<{ locale: (typeof locales)[number] }>;
-  }
-) {
+export default async function AdminPlanosPage(props: {
+  params: Promise<{ locale: (typeof locales)[number] }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -48,6 +45,7 @@ export default async function AdminPlanosPage(
         </p>
       </AdminPageHeader>
 
+      <PaymentSetupPanel plan={plan} locale={locale} />
       <AdminPlanoClient plan={plan} />
     </div>
   );
