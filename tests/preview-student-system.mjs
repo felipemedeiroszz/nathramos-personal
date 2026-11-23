@@ -145,8 +145,8 @@ const exercises = [
   {
     id: "workout-exercise",
     exercise_id: "exercise",
-    sets: 2,
-    reps: "10",
+    sets: 3,
+    reps: "12",
     weight_kg: 20,
     rest_seconds: 30,
     exercise: {
@@ -530,7 +530,9 @@ await writeFile(
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 const base = "file:///" + resolve(out, "index.html").replaceAll("\\", "/");
 try {
-  for (const width of [1440, 390])
+  for (const width of process.env.STUDENT_WIDTHS?.split(",").map(Number) || [
+    1440, 390,
+  ])
     for (const [key] of views.filter(
       (v) => !selected || selected.includes(v[0]),
     )) {
@@ -682,6 +684,16 @@ try {
           throw Error("Shopping payload");
       }
       if (key === "treino") {
+        await page
+          .getByRole("button", { name: "Concluir Série", exact: true })
+          .first()
+          .click();
+        if (
+          await page.evaluate(() =>
+            window.__actions.some((a) => a.name === "logWorkoutSetAction"),
+          )
+        )
+          throw Error("Blank repetitions must not be logged as zero");
         const reps = page.getByLabel(
           "Repetições realizadas · Agachamento · 1",
           { exact: true },
@@ -707,6 +719,25 @@ try {
           input.session_id !== "session"
         )
           throw Error("Workout payload");
+        await page
+          .locator('.student-set-entry[data-state="saved"]')
+          .first()
+          .waitFor();
+        if (
+          (await page
+            .locator(".student-exercise-facts dd")
+            .nth(1)
+            .innerText()) !== "12"
+        )
+          throw Error("Actual reps must not overwrite prescribed target");
+        await page.screenshot({
+          path: resolve(out, `treino-registrado-${width}.png`),
+          fullPage: true,
+        });
+        await page
+          .locator(".student-exercise-card")
+          .first()
+          .screenshot({ path: resolve(out, `execucao-treino-${width}.png`) });
       }
       if (key === "dashboard" && width === 390) {
         await page

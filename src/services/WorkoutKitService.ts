@@ -146,7 +146,9 @@ export class WorkoutKitService {
       const supabase = await this.getSupabase();
       const { data, error } = await supabase
         .from("workout_kit_items")
-        .select("*, program:workout_programs(*), exercise:exercises(*)")
+        .select(
+          "*, program:workout_programs(*), exercise:exercises(*), prescription:workout_exercises!source_kit_item_id(id,reps,sets)",
+        )
         .in("kit_id", kitIds)
         .order("order_index", { ascending: true });
       if (error) return [];
@@ -204,6 +206,30 @@ export class WorkoutKitService {
     } catch {
       return false;
     }
+  }
+  static async setItemRepetitions(
+    itemId: string,
+    repetitions: number,
+    expected?: string | null,
+  ) {
+    // The executable prescription already has a stable source_kit_item_id;
+    // keep its reps canonical rather than duplicating prescription fields.
+    if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 1000)
+      throw Error("Informe de 1 a 1000 repetições inteiras.");
+    const db: any = await this.getSupabase();
+    let query = db
+      .from("workout_exercises")
+      .update({ reps: String(repetitions) })
+      .eq("source_kit_item_id", itemId);
+    if (expected !== undefined)
+      query =
+        expected === null ? query.is("reps", null) : query.eq("reps", expected);
+    const result = await query.select("id,reps").maybeSingle();
+    if (result.error || !result.data)
+      throw Error(
+        "A prescrição mudou ou está indisponível. Recarregue o kit antes de salvar.",
+      );
+    return result.data;
   }
 
   static async reorderKitItems(

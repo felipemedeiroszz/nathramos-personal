@@ -1,4 +1,5 @@
 import { parseDietWrittenPlan } from "@/lib/diet-written-plan";
+import type { CSSProperties } from "react";
 import { Droplets, Moon, Pill, Scale, Utensils } from "lucide-react";
 import type { RoutineData } from "@/services/StudentRoutineService";
 export function RoutineSummary({ data }: { data: RoutineData }) {
@@ -86,18 +87,21 @@ export function RoutineSummary({ data }: { data: RoutineData }) {
   return (
     <section
       aria-label={t("Resumo da sua rotina", "Your routine summary")}
-      className="space-y-3"
+      className="student-routine-summary space-y-3"
     >
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metrics.map(
           ({ label, value, suffix, detail, icon: Icon, color, progress }) => (
             <article
               key={label}
-              className="min-w-0 rounded-2xl border border-white/[0.07] bg-surface p-4 sm:p-5"
+              className="student-metric-card min-w-0 rounded-2xl border border-white/[0.07] bg-surface p-4 sm:p-5"
+              style={{ "--metric-color": color } as CSSProperties}
             >
               <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-400">
                 <span>{label}</span>
-                <Icon size={16} style={{ color }} />
+                <span className="student-metric-icon">
+                  <Icon size={16} style={{ color }} />
+                </span>
               </div>
               <div className="my-4 flex flex-wrap items-baseline gap-1.5">
                 <strong className="text-[28px] font-semibold leading-none tracking-tight">

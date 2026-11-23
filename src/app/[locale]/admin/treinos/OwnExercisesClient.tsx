@@ -48,6 +48,8 @@ import {
   saveExerciseAction,
 } from "@/app/actions/workouts";
 import { getWorkoutLabels } from "@/lib/workoutLabels";
+import { ExerciseMedia } from "@/components/shared/ExerciseMedia";
+import { exerciseMediaSource } from "@/lib/exercise-media";
 import type { ExerciseRow } from "@/types";
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES, DIFFICULTY_LEVELS } from "@/types";
 
@@ -306,11 +308,11 @@ export function OwnExercisesClient({
                   key={ex.id}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface transition-colors duration-150 hover:border-primary/30"
                 >
-                  <div className="relative flex h-44 w-full items-center justify-center overflow-hidden bg-surface-secondary">
-                    {ex.gif_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={ex.gif_url}
+                  <div className="relative flex h-64 w-full items-center justify-center overflow-hidden bg-surface-secondary">
+                    {exerciseMediaSource(ex) ? (
+                      <ExerciseMedia
+                        src={exerciseMediaSource(ex)!}
+                        locale={localeCode}
                         alt={displayName(ex)}
                         loading="lazy"
                         className="h-full w-full object-contain"
@@ -506,6 +508,7 @@ function ExerciseDetailsModal({
   difficultyLabels,
   label,
 }: ExerciseDetailsModalProps) {
+  const locale = useLocale();
   if (!exercise) return null;
 
   const name = displayName(exercise);
@@ -532,10 +535,11 @@ function ExerciseDetailsModal({
 
       <ModalBody className="space-y-4">
         <div className="relative flex min-h-[220px] w-full items-center justify-center overflow-hidden rounded-xl bg-surface-secondary">
-          {exercise.gif_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={exercise.gif_url}
+          {exerciseMediaSource(exercise) ? (
+            <ExerciseMedia
+              autoPlay
+              src={exerciseMediaSource(exercise)!}
+              locale={locale}
               alt={name}
               className="max-h-80 w-full object-contain"
             />

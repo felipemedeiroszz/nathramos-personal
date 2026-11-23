@@ -54,6 +54,7 @@ import {
   reorderWorkoutKitItemsAction,
 } from "@/app/actions/workouts";
 import type { WorkoutKitRow, WorkoutKitItemWithSource } from "@/types";
+import { KitRepetitionsField } from "@/components/admin/workout/KitRepetitionsField";
 import type {
   KitExerciseOption,
   KitProgramOption,
@@ -563,6 +564,9 @@ export function AdminKitsClient({
                                       {label("Dia", "Day")}
                                     </TableHead>
                                     <TableHead className="w-[130px]">
+                                      {label("Repetições/série", "Reps/set")}
+                                    </TableHead>
+                                    <TableHead className="w-[130px]">
                                       {label("Origem", "Source")}
                                     </TableHead>
                                     <TableHead className="w-[120px] text-right">
@@ -574,9 +578,10 @@ export function AdminKitsClient({
                                   {kit.items.map((item, i) => {
                                     const isExercise =
                                       !item.program && !!item.exercise;
-                                    const weekday = !item.program_id && item.day_of_week
-                                      ? WEEKDAY_LABELS[item.day_of_week]
-                                      : null;
+                                    const weekday =
+                                      !item.program_id && item.day_of_week
+                                        ? WEEKDAY_LABELS[item.day_of_week]
+                                        : null;
                                     const originLabel = item.program
                                       ? label("Programa", "Program")
                                       : item.exercise?.source === "exercisedb"
@@ -615,6 +620,25 @@ export function AdminKitsClient({
                                           ) : (
                                             <span className="text-text-secondary text-xs">
                                               -
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell>
+                                          {isExercise ? (
+                                            <KitRepetitionsField
+                                              itemId={item.id}
+                                              value={
+                                                item.prescription?.reps ?? null
+                                              }
+                                              locale={locale}
+                                              onSaved={() => router.refresh()}
+                                            />
+                                          ) : (
+                                            <span className="text-xs text-text-secondary">
+                                              {label(
+                                                "Por exercício no programa",
+                                                "Per program exercise",
+                                              )}
                                             </span>
                                           )}
                                         </TableCell>

@@ -1,0 +1,26 @@
+Text-only Portuguese exercise localization, assembled 2026-11-23.
+
+Instructions: dverzolla/exercises-dataset, commit 0182380 (PR #64).
+https://github.com/hasaneyldrm/exercises-dataset/pull/64
+https://raw.githubusercontent.com/dverzolla/exercises-dataset/0182380/data/exercises.json
+Community machine translations (DeepL), licensed MIT. See exercise-portuguese.LICENSE.txt.
+The Portuguese steps are matched by exercise media ID or normalized English name.
+They are a localized description of the exercise, not a version-by-version
+translation of every changed sentence returned by the live API.
+
+Some exercise names: gugeldev/exercicios-bd-ptbr, exercises-ptbr-minimal.json.
+https://github.com/gugeldev/exercicios-bd-ptbr
+CC0: see exercise-names-portuguese.LICENSE.txt.
+Other names: local movement/equipment glossary and naming rules.
+Names with modifiers use a dash to distinguish movement, variation and equipment.
+
+No media was downloaded or redistributed in this bundle. Existing API media
+URLs and attribution remain unchanged. Original English text remains available
+in English locale. Unknown new exercises retain their original text until a
+matching translation is added; translations are not guessed for unknown IDs.
+
+Builder: scripts/build-exercise-portuguese.mjs (requires downloaded text source
+JSON files at artifacts/exercise-pt/translated.json and names.json).
+No translation API keys or extra runtime requests are required.
+Imported rows can be updated with scripts/backfill-exercise-portuguese.mjs;
+use --apply only to write. Locked or manually edited Portuguese is preserved.

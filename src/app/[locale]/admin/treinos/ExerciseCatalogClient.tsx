@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { exerciseContent, exerciseTerm } from "@/lib/exercise-language";
+import { ExerciseMedia } from "@/components/shared/ExerciseMedia";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -9,7 +11,13 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Modal, ModalHeader, ModalTitle, ModalClose, ModalBody } from "@/components/ui/Modal";
+import {
+  Modal,
+  ModalHeader,
+  ModalTitle,
+  ModalClose,
+  ModalBody,
+} from "@/components/ui/Modal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,6 +32,7 @@ import type { ExerciseDbExercise } from "@/lib/exercisedb";
 const PAGE_SIZE = 24;
 
 export interface ExerciseCatalogPageMeta {
+  availability?: "live" | "cached" | "offline";
   total: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
@@ -47,7 +56,12 @@ interface QueryState {
   equipment: string;
 }
 
-const EMPTY_QUERY: QueryState = { q: "", bodyPart: "", muscle: "", equipment: "" };
+const EMPTY_QUERY: QueryState = {
+  q: "",
+  bodyPart: "",
+  muscle: "",
+  equipment: "",
+};
 
 export function ExerciseCatalogClient({
   initialItems,
@@ -58,6 +72,7 @@ export function ExerciseCatalogClient({
   equipments,
 }: ExerciseCatalogClientProps) {
   const t = useTranslations("adminExerciseCatalog");
+  const locale = useLocale();
 
   const [query, setQuery] = useState<QueryState>(EMPTY_QUERY);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -72,7 +87,7 @@ export function ExerciseCatalogClient({
 
   const [selected, setSelected] = useState<ExerciseDbExercise | null>(null);
 
-  const skipFirstFetch = useRef(true);
+  const completedQuery = useRef(JSON.stringify(["", "", "", "", null, 0]));
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -84,10 +99,15 @@ export function ExerciseCatalogClient({
   }, [query.q]);
 
   useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
+    const signature = JSON.stringify([
+      debouncedSearch,
+      query.bodyPart,
+      query.muscle,
+      query.equipment,
+      afterCursor,
+      reloadToken,
+    ]);
+    if (completedQuery.current === signature) return;
 
     const controller = new AbortController();
     let cancelled = false;
@@ -104,21 +124,26 @@ export function ExerciseCatalogClient({
         if (query.equipment) params.set("equipment", query.equipment);
         if (afterCursor) params.set("after", afterCursor);
 
-        const response = await fetch(`/api/exercisedb/exercises?${params.toString()}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/exercisedb/exercises?${params.toString()}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
         const payload = await response.json().catch(() => null);
 
         if (cancelled) return;
 
         if (!response.ok) {
-          setItems([]);
           setError(payload?.code ?? "unavailable");
           return;
         }
 
         setItems(Array.isArray(payload?.items) ? payload.items : []);
+        completedQuery.current = signature;
         setMeta({
+          availability: payload?.availability,
           total: typeof payload?.total === "number" ? payload.total : 0,
           hasNextPage: payload?.hasNextPage === true,
           hasPreviousPage: payload?.hasPreviousPage === true,
@@ -127,7 +152,6 @@ export function ExerciseCatalogClient({
         });
       } catch (err) {
         if (cancelled || (err as Error)?.name === "AbortError") return;
-        setItems([]);
         setError("unavailable");
       } finally {
         if (!cancelled) setLoading(false);
@@ -140,7 +164,14 @@ export function ExerciseCatalogClient({
       cancelled = true;
       controller.abort();
     };
-  }, [debouncedSearch, query.bodyPart, query.muscle, query.equipment, afterCursor, reloadToken]);
+  }, [
+    debouncedSearch,
+    query.bodyPart,
+    query.muscle,
+    query.equipment,
+    afterCursor,
+    reloadToken,
+  ]);
 
   const updateFilter = (patch: Partial<QueryState>) => {
     setQuery((prev) => ({ ...prev, ...patch }));
@@ -211,7 +242,7 @@ export function ExerciseCatalogClient({
           <option value="">{t("filterBodyPart")}</option>
           {bodyParts.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {exerciseTerm(option, locale)}
             </option>
           ))}
         </Select>
@@ -225,7 +256,7 @@ export function ExerciseCatalogClient({
           <option value="">{t("filterMuscle")}</option>
           {muscles.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {exerciseTerm(option, locale)}
             </option>
           ))}
         </Select>
@@ -239,7 +270,7 @@ export function ExerciseCatalogClient({
           <option value="">{t("filterEquipment")}</option>
           {equipments.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {exerciseTerm(option, locale)}
             </option>
           ))}
         </Select>
@@ -261,7 +292,14 @@ export function ExerciseCatalogClient({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-text-secondary">
           {t("resultsCount", { count: meta.total })}
-          <span className="ml-1 opacity-70">· {t("totalAvailable", { total: meta.total })}</span>
+          <span className="ml-1 opacity-70">
+            ·{" "}
+            {meta.availability === "offline"
+              ? locale === "pt-BR"
+                ? `${meta.total} disponíveis na base local`
+                : `${meta.total} available locally`
+              : t("totalAvailable", { total: meta.total })}
+          </span>
         </p>
         {loading && (
           <span className="flex items-center gap-2 text-xs text-text-secondary">
@@ -271,13 +309,38 @@ export function ExerciseCatalogClient({
         )}
       </div>
 
+      {(meta.availability === "offline" ||
+        meta.availability === "cached" ||
+        (error && items.length > 0)) && (
+        <p
+          role="status"
+          className="rounded-xl border border-border/60 bg-surface p-3 text-sm text-text-secondary"
+        >
+          {locale === "pt-BR"
+            ? error
+              ? "Não foi possível atualizar. Exibindo os últimos resultados carregados."
+              : meta.availability === "offline"
+                ? "A API está temporariamente indisponível. Exibindo a base local de exercícios, com busca e filtros disponíveis."
+                : "Exibindo uma cópia em cache do catálogo."
+            : error
+              ? "Could not refresh. Showing the last loaded results."
+              : meta.availability === "offline"
+                ? "The API is temporarily unavailable. Showing the local exercise catalog with search and filters."
+                : "Showing a cached catalog copy."}
+        </p>
+      )}
       {error && items.length === 0 ? (
         <div className="rounded-2xl border border-border/60 bg-surface">
           <ErrorState
             title={t("errorTitle")}
             description={errorMessage ?? t("errorUnavailable")}
             action={
-              <Button type="button" variant="secondary" size="sm" onClick={retry}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={retry}
+              >
                 {t("retry")}
               </Button>
             }
@@ -286,7 +349,10 @@ export function ExerciseCatalogClient({
       ) : loading && items.length === 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="overflow-hidden rounded-2xl border border-border/60 bg-surface">
+            <div
+              key={index}
+              className="overflow-hidden rounded-2xl border border-border/60 bg-surface"
+            >
               <Skeleton className="h-44 w-full rounded-none" />
               <div className="space-y-3 p-4">
                 <Skeleton className="h-4 w-3/4" />
@@ -339,9 +405,14 @@ export function ExerciseCatalogClient({
         </Button>
       </div>
 
-      <p className="text-center text-xs text-text-secondary/70">{t("attribution")}</p>
+      <p className="text-center text-xs text-text-secondary/70">
+        {t("attribution")}
+      </p>
 
-      <ExerciseDetailsModal exercise={selected} onClose={() => setSelected(null)} />
+      <ExerciseDetailsModal
+        exercise={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }
@@ -353,7 +424,9 @@ interface ExerciseCardProps {
 
 function ExerciseCard({ exercise, onOpenDetails }: ExerciseCardProps) {
   const t = useTranslations("adminExerciseCatalog");
-  const displayName = exercise.name || t("unnamedExercise");
+  const locale = useLocale();
+  const displayName =
+    exerciseContent(exercise, locale).name || t("unnamedExercise");
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-surface transition-colors duration-150 hover:border-primary/30">
@@ -375,13 +448,19 @@ function ExerciseCard({ exercise, onOpenDetails }: ExerciseCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <h3 className="line-clamp-2 text-sm font-semibold capitalize text-text">{displayName}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold capitalize text-text">
+          {displayName}
+        </h3>
 
         {exercise.bodyParts.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {exercise.bodyParts.map((part) => (
-              <Badge key={part} variant="outline" className="px-2 py-0.5 text-[11px] capitalize">
-                {part}
+              <Badge
+                key={part}
+                variant="outline"
+                className="px-2 py-0.5 text-[11px] capitalize"
+              >
+                {exerciseTerm(part, locale)}
               </Badge>
             ))}
           </div>
@@ -391,7 +470,11 @@ function ExerciseCard({ exercise, onOpenDetails }: ExerciseCardProps) {
           <p className="line-clamp-2">
             <span className="font-semibold">{t("targetMuscles")}: </span>
             {exercise.targetMuscles.length > 0 ? (
-              <span className="capitalize">{exercise.targetMuscles.join(", ")}</span>
+              <span className="capitalize">
+                {exercise.targetMuscles
+                  .map((value) => exerciseTerm(value, locale))
+                  .join(", ")}
+              </span>
             ) : (
               <span className="italic opacity-80">{t("notProvided")}</span>
             )}
@@ -399,7 +482,11 @@ function ExerciseCard({ exercise, onOpenDetails }: ExerciseCardProps) {
           <p className="line-clamp-2">
             <span className="font-semibold">{t("equipments")}: </span>
             {exercise.equipments.length > 0 ? (
-              <span className="capitalize">{exercise.equipments.join(", ")}</span>
+              <span className="capitalize">
+                {exercise.equipments
+                  .map((value) => exerciseTerm(value, locale))
+                  .join(", ")}
+              </span>
             ) : (
               <span className="italic opacity-80">{t("notProvided")}</span>
             )}
@@ -425,8 +512,12 @@ interface ExerciseDetailsModalProps {
   onClose: () => void;
 }
 
-function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) {
+function ExerciseDetailsModal({
+  exercise,
+  onClose,
+}: ExerciseDetailsModalProps) {
   const t = useTranslations("adminExerciseCatalog");
+  const locale = useLocale();
   const [details, setDetails] = useState<ExerciseDbExercise | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -449,6 +540,7 @@ function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) 
     setLoading(true);
 
     fetch(`/api/exercisedb/exercises/${encodeURIComponent(exerciseId)}`, {
+      cache: "no-store",
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -477,7 +569,8 @@ function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) 
   if (!exercise) return null;
 
   const current = details ?? exercise;
-  const displayName = current.name || t("unnamedExercise");
+  const content = exerciseContent(current, locale);
+  const displayName = content.name || t("unnamedExercise");
 
   return (
     <Modal
@@ -496,8 +589,9 @@ function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) 
       <ModalBody className="space-y-4">
         <div className="relative flex min-h-[220px] w-full items-center justify-center overflow-hidden rounded-xl bg-surface-secondary">
           {current.gifUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ExerciseMedia
+              autoPlay
+              locale={locale}
               src={current.gifUrl}
               alt={t("imageAlt", { name: displayName })}
               className="max-h-80 w-full object-contain"
@@ -524,9 +618,21 @@ function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) 
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InfoBlock label={t("bodyPart")} values={current.bodyParts} capitalize />
-          <InfoBlock label={t("equipments")} values={current.equipments} capitalize />
-          <InfoBlock label={t("targetMuscles")} values={current.targetMuscles} capitalize />
+          <InfoBlock
+            label={t("bodyPart")}
+            values={current.bodyParts}
+            capitalize
+          />
+          <InfoBlock
+            label={t("equipments")}
+            values={current.equipments}
+            capitalize
+          />
+          <InfoBlock
+            label={t("targetMuscles")}
+            values={current.targetMuscles}
+            capitalize
+          />
           <InfoBlock
             label={t("secondaryMuscles")}
             values={current.secondaryMuscles}
@@ -535,20 +641,36 @@ function ExerciseDetailsModal({ exercise, onClose }: ExerciseDetailsModalProps) 
         </div>
 
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-text">{t("instructions")}</h4>
-          {current.instructions.length > 0 ? (
+          <h4 className="text-sm font-semibold text-text">
+            {t("instructions")}
+          </h4>
+          {locale === "pt-BR" && (
+            <p className="text-xs text-text-secondary">
+              {current.instructionsPt
+                ? "Instruções traduzidas automaticamente. Revise a execução antes de usar no kit."
+                : "Tradução ainda não disponível para este exercício. Exibindo as instruções originais."}
+            </p>
+          )}
+          {content.instructions.length > 0 ? (
             <ol className="space-y-2">
-              {current.instructions.map((step, index) => (
-                <li key={`${index}-${step.slice(0, 12)}`} className="flex gap-3">
+              {content.instructions.map((step, index) => (
+                <li
+                  key={`${index}-${step.slice(0, 12)}`}
+                  className="flex gap-3"
+                >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                     {index + 1}
                   </span>
-                  <p className="text-sm leading-relaxed text-text-secondary">{step}</p>
+                  <p className="text-sm leading-relaxed text-text-secondary">
+                    {step}
+                  </p>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="text-sm italic text-text-secondary/80">{t("notProvided")}</p>
+            <p className="text-sm italic text-text-secondary/80">
+              {t("notProvided")}
+            </p>
           )}
         </div>
       </ModalBody>
@@ -564,6 +686,7 @@ interface InfoBlockProps {
 
 function InfoBlock({ label, values, capitalize }: InfoBlockProps) {
   const t = useTranslations("adminExerciseCatalog");
+  const locale = useLocale();
 
   return (
     <div className="rounded-xl border border-border/60 bg-surface-secondary/40 p-3">
@@ -576,14 +699,20 @@ function InfoBlock({ label, values, capitalize }: InfoBlockProps) {
             <Badge
               key={value}
               variant="outline"
-              className={capitalize ? "px-2 py-0.5 text-[11px] capitalize" : "px-2 py-0.5 text-[11px]"}
+              className={
+                capitalize
+                  ? "px-2 py-0.5 text-[11px] capitalize"
+                  : "px-2 py-0.5 text-[11px]"
+              }
             >
-              {value}
+              {exerciseTerm(value, locale)}
             </Badge>
           ))}
         </div>
       ) : (
-        <p className="text-xs italic text-text-secondary/80">{t("notProvided")}</p>
+        <p className="text-xs italic text-text-secondary/80">
+          {t("notProvided")}
+        </p>
       )}
     </div>
   );

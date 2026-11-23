@@ -324,6 +324,9 @@ test("reordenação de treino é atômica, mantém versão e rejeita item de out
 test("ação de remover atribuição verifica carteira antes de usar service role", async () => {
   let called = false;
   const actions = loadTs("src/app/actions/workouts.ts", {
+    "@/services/AuditLogService": {
+      AuditLogService: { log: async () => true },
+    },
     "@/lib/auth/platform": {
       requireManagedRecord: async () => {
         throw new Error("Aluno fora da carteira");

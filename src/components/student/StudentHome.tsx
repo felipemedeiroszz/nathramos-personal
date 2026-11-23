@@ -103,8 +103,8 @@ export function StudentHome({
     );
   };
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+    <div className="student-home space-y-6">
+      <header className="student-home-welcome flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="student-eyebrow">
             {t("UM DIA DE CADA VEZ", "ONE DAY AT A TIME")}
@@ -126,7 +126,6 @@ export function StudentHome({
           {date}
         </span>
       </header>
-      <RoutineSummary data={{ ...data, locale }} />
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <TodayWorkoutCard locale={locale} userId={userId} />
         <article className="min-w-0 rounded-[20px] border border-white/[0.07] bg-surface p-5">
@@ -168,6 +167,7 @@ export function StudentHome({
           </div>
         </article>
       </section>
+      <RoutineSummary data={{ ...data, locale }} />
       <section className="grid gap-5 lg:grid-cols-2">
         <article className="min-w-0 rounded-[20px] border border-white/[0.07] bg-surface p-5 sm:p-6">
           <div className="flex items-center justify-between">

@@ -7,23 +7,33 @@ import { requireStudentPage } from "@/lib/auth/platform";
 import { WorkoutService } from "@/services/WorkoutService";
 import { StudentWorkoutExecutionClient } from "@/components/student/workout/StudentWorkoutExecutionClient";
 import { StartWorkoutButton } from "@/components/student/workout/StartWorkoutButton";
+import { AssignedContentPanel } from "@/components/student/AssignedContentPanel";
+import { StudentAssignedContentService } from "@/services/StudentAssignedContentService";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Treino" };
-export default async function Page(
-  props: {
-    params: Promise<{ locale: string }>;
-  }
-) {
+export default async function Page(props: {
+  params: Promise<{ locale: string }>;
+}) {
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   setRequestLocale(locale);
   const userId = await requireStudentPage();
-  const schedule = await WorkoutService.getDaySchedule(userId);
+  const date = await StudentAssignedContentService.today(userId);
+  const schedule = await WorkoutService.getDaySchedule(userId, date);
   const plans = schedule.plans;
+  const assigned = await StudentAssignedContentService.list(userId, "workout", {
+    date,
+    locale,
+    availableAssignmentIds: [
+      ...new Set(plans.map((plan) => plan.assignment.id)),
+    ],
+    availableDays: plans.map((plan) => ({
+      assignmentId: plan.assignment.id,
+      dayId: plan.day.id,
+    })),
+  });
   const views = await Promise.all(
     plans.map(async (plan) => {
       const exercises = await WorkoutService.applyStudentOverrides(
@@ -37,20 +47,21 @@ export default async function Page(
       if (session && !session.completed_at) {
         const logs = await WorkoutService.sessionLogs(userId, session.id);
         return (
-          <StudentWorkoutExecutionClient
-            key={session.id}
-            program={plan.program}
-            day={plan.day}
-            sessionId={session.id}
-            exercises={exercises}
-            initialLogs={logs}
-            guidance={plan.assignment.notes}
-            locale={locale}
-          />
+          <section key={session.id} id={`treino-dia-${plan.day.id}`}>
+            <StudentWorkoutExecutionClient
+              program={plan.program}
+              day={plan.day}
+              sessionId={session.id}
+              exercises={exercises}
+              initialLogs={logs}
+              guidance={plan.assignment.notes}
+              locale={locale}
+            />
+          </section>
         );
       }
       return (
-        <Card key={plan.day.id}>
+        <Card key={plan.day.id} id={`treino-dia-${plan.day.id}`}>
           <CardHeader>
             <CardTitle>
               {locale === "en-US"
@@ -59,8 +70,17 @@ export default async function Page(
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {plan.assignment.workout_time && <p className="text-sm text-text-secondary">{locale === "en-US" ? "Scheduled time" : "Horário programado"}: {plan.assignment.workout_time}</p>}
-            {plan.assignment.notes && <p className="whitespace-pre-wrap text-sm text-text-secondary">{plan.assignment.notes}</p>}
+            {plan.assignment.workout_time && (
+              <p className="text-sm text-text-secondary">
+                {locale === "en-US" ? "Scheduled time" : "Horário programado"}:{" "}
+                {plan.assignment.workout_time}
+              </p>
+            )}
+            {plan.assignment.notes && (
+              <p className="whitespace-pre-wrap text-sm text-text-secondary">
+                {plan.assignment.notes}
+              </p>
+            )}
             <p>
               {locale === "en-US" ? plan.day.name_en : plan.day.name_pt} ·{" "}
               {exercises.length} exercícios
@@ -94,12 +114,25 @@ export default async function Page(
         }
         icon={<Dumbbell size={22} />}
       />
-      {views}
+      <AssignedContentPanel items={assigned} locale={locale} kind="workout" />
+      <section id="conteudo-hoje" className="space-y-6">
+        {views}
+      </section>
       {!plans.length && (
         <Card>
           <CardContent className="p-6 space-y-3">
-            <p>{schedule.state === "rest" ? (locale === "en-US" ? "Rest scheduled by your coach." : "Descanso programado pelo personal.") : (locale === "en-US" ? "No workout scheduled for today." : "Nenhum treino programado para hoje.")}</p>
-            {schedule.notes && <p className="whitespace-pre-wrap text-sm">{schedule.notes}</p>}
+            <p>
+              {schedule.state === "rest"
+                ? locale === "en-US"
+                  ? "Rest scheduled by your coach."
+                  : "Descanso programado pelo personal."
+                : locale === "en-US"
+                  ? "No workout scheduled for today."
+                  : "Nenhum treino programado para hoje."}
+            </p>
+            {schedule.notes && (
+              <p className="whitespace-pre-wrap text-sm">{schedule.notes}</p>
+            )}
             <Link
               className="text-primary underline"
               href={`/${locale}/conversas`}

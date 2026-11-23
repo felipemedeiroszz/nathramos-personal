@@ -23,8 +23,12 @@ import {
   ModalBody,
   ModalFooter,
 } from "@/components/ui/Modal";
-import { addWorkoutKitItemAction } from "@/app/actions/workouts";
+import {
+  addWorkoutKitItemAction,
+  saveKitItemRepetitionsAction,
+} from "@/app/actions/workouts";
 import type { ExerciseDbExercise } from "@/lib/exercisedb";
+import { exerciseContent, exerciseTerm } from "@/lib/exercise-language";
 
 const CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F"] as const;
 
@@ -91,6 +95,8 @@ export function KitItemUpsertModal({
   );
   const [categoryLabel, setCategoryLabel] = useState("");
   const [dayOfWeek, setDayOfWeek] = useState("");
+  const [targetReps, setTargetReps] = useState("");
+  const [createdItemId, setCreatedItemId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [apiQuery, setApiQuery] = useState("");
@@ -107,6 +113,8 @@ export function KitItemUpsertModal({
     setApiExercise(null);
     setCategoryLabel("");
     setDayOfWeek("");
+    setTargetReps("");
+    setCreatedItemId(null);
     setErrorMsg(null);
     setApiQuery("");
     setDebouncedQuery("");
@@ -135,6 +143,7 @@ export function KitItemUpsertModal({
         const response = await fetch(
           `/api/exercisedb/exercises?${params.toString()}`,
           {
+            cache: "no-store",
             signal: controller.signal,
           },
         );
@@ -163,10 +172,15 @@ export function KitItemUpsertModal({
     };
   }, [isOpen, source, debouncedQuery]);
 
-  const canSubmit = (source === "program" || !!dayOfWeek) && (
-    (source === "program" && !!programId) ||
-    (source === "catalog" && !!exerciseId) ||
-    (source === "api" && !!apiExercise));
+  const canSubmit =
+    (source === "program" ||
+      (/^\d+$/.test(targetReps) &&
+        Number(targetReps) > 0 &&
+        Number(targetReps) <= 1000)) &&
+    (source === "program" || !!dayOfWeek) &&
+    ((source === "program" && !!programId) ||
+      (source === "catalog" && !!exerciseId) ||
+      (source === "api" && !!apiExercise));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -175,16 +189,34 @@ export function KitItemUpsertModal({
 
     startTransition(async () => {
       try {
-        const result = await addWorkoutKitItemAction({
-          kit_id: kitId,
-          category_label: categoryLabel || null,
-          day_of_week: source === "program" ? null : dayOfWeek ? Number(dayOfWeek) : null,
-          program_id: source === "program" ? programId : null,
-          exercise_id: source === "catalog" ? exerciseId : null,
-          api_exercise: source === "api" ? apiExercise : null,
-          order_index: nextOrder,
-        });
+        const result = createdItemId
+          ? await saveKitItemRepetitionsAction(
+              createdItemId,
+              Number(targetReps),
+            )
+          : await addWorkoutKitItemAction({
+              target_reps:
+                source === "program" ? undefined : Number(targetReps),
+              kit_id: kitId,
+              category_label: categoryLabel || null,
+              day_of_week:
+                source === "program"
+                  ? null
+                  : dayOfWeek
+                    ? Number(dayOfWeek)
+                    : null,
+              program_id: source === "program" ? programId : null,
+              exercise_id: source === "catalog" ? exerciseId : null,
+              api_exercise: source === "api" ? apiExercise : null,
+              order_index: nextOrder,
+            });
         if (!result?.success) {
+          if (
+            result &&
+            "createdItemId" in result &&
+            typeof result.createdItemId === "string"
+          )
+            setCreatedItemId(result.createdItemId);
           setErrorMsg(
             result?.message ??
               label("Erro ao adicionar treino.", "Failed to add workout."),
@@ -238,6 +270,7 @@ export function KitItemUpsertModal({
                 {label("Categoria", "Category")}
               </label>
               <Select
+                disabled={!!createdItemId}
                 value={categoryLabel}
                 onChange={(e) => setCategoryLabel(e.target.value)}
               >
@@ -256,23 +289,59 @@ export function KitItemUpsertModal({
                 {label("Dia da semana", "Day of week")}
               </label>
               {source === "program" ? (
-                <p className="text-sm text-text-secondary">{label("Segue os dias configurados dentro do programa.", "Uses the days configured inside the program.")}</p>
-              ) : <Select
-                required
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(e.target.value)}
-              >
-                <option value="">
-                  -- {label("Selecione um dia", "Select a day")} --
-                </option>
-                {Object.entries(WEEKDAY_LABELS).map(([value, names]) => (
-                  <option key={value} value={value}>
-                    {label(names.pt, names.en)}
+                <p className="text-sm text-text-secondary">
+                  {label(
+                    "Segue os dias configurados dentro do programa.",
+                    "Uses the days configured inside the program.",
+                  )}
+                </p>
+              ) : (
+                <Select
+                  disabled={!!createdItemId}
+                  required
+                  value={dayOfWeek}
+                  aria-label={label("Dia da semana", "Day of week")}
+                  onChange={(e) => setDayOfWeek(e.target.value)}
+                >
+                  <option value="">
+                    -- {label("Selecione um dia", "Select a day")} --
                   </option>
-                ))}
-              </Select>}
+                  {Object.entries(WEEKDAY_LABELS).map(([value, names]) => (
+                    <option key={value} value={value}>
+                      {label(names.pt, names.en)}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </div>
           </div>
+          {source !== "program" && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
+              <label
+                htmlFor="kit-target-reps"
+                className="block text-sm font-semibold"
+              >
+                {label("Repetições por série", "Repetitions per set")}
+              </label>
+              <Input
+                id="kit-target-reps"
+                type="number"
+                min={1}
+                max={1000}
+                step={1}
+                required
+                value={targetReps}
+                onChange={(event) => setTargetReps(event.target.value)}
+                placeholder={label("Ex.: 12", "E.g. 12")}
+              />
+              <p className="text-xs text-text-secondary">
+                {label(
+                  "Meta deste exercício. O aluno informará separadamente quantas repetições realizou em cada série.",
+                  "Target for this exercise. The student logs actual repetitions separately for each set.",
+                )}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <div className="inline-flex flex-wrap gap-1 rounded-lg bg-surface-secondary p-1">
@@ -280,6 +349,7 @@ export function KitItemUpsertModal({
                 <button
                   key={tab.value}
                   type="button"
+                  disabled={!!createdItemId}
                   onClick={() => setSource(tab.value)}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
                     source === tab.value
@@ -294,6 +364,7 @@ export function KitItemUpsertModal({
 
             {source === "program" && (
               <Select
+                disabled={!!createdItemId}
                 value={programId}
                 onChange={(e) => setProgramId(e.target.value)}
               >
@@ -310,7 +381,9 @@ export function KitItemUpsertModal({
 
             {source === "catalog" && (
               <Select
+                disabled={!!createdItemId}
                 value={exerciseId}
+                aria-label={label("Exercício", "Exercise")}
                 onChange={(e) => setExerciseId(e.target.value)}
               >
                 <option value="">
@@ -370,6 +443,7 @@ export function KitItemUpsertModal({
                       return (
                         <button
                           key={exercise.exerciseId}
+                          disabled={!!createdItemId}
                           type="button"
                           onClick={() => setApiExercise(exercise)}
                           className={`flex flex-col overflow-hidden rounded-xl border text-left transition-all ${
@@ -383,7 +457,7 @@ export function KitItemUpsertModal({
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={exercise.gifUrl}
-                                alt={exercise.name}
+                                alt={exerciseContent(exercise, locale).name}
                                 loading="lazy"
                                 className="h-full w-full object-contain"
                               />
@@ -396,14 +470,15 @@ export function KitItemUpsertModal({
                           </div>
                           <div className="space-y-1 p-2">
                             <p className="line-clamp-2 text-xs font-semibold capitalize text-text">
-                              {exercise.name || label("Sem nome", "Unnamed")}
+                              {exerciseContent(exercise, locale).name ||
+                                label("Sem nome", "Unnamed")}
                             </p>
                             {exercise.bodyParts.length > 0 && (
                               <Badge
                                 variant="outline"
                                 className="px-1.5 py-0.5 text-[10px] capitalize"
                               >
-                                {exercise.bodyParts[0]}
+                                {exerciseTerm(exercise.bodyParts[0], locale)}
                               </Badge>
                             )}
                           </div>
@@ -421,7 +496,7 @@ export function KitItemUpsertModal({
               <Dumbbell size={14} className="text-primary" />
               {label("Selecionado:", "Selected:")}{" "}
               <span className="font-semibold text-text capitalize">
-                {apiExercise.name}
+                {exerciseContent(apiExercise, locale).name}
               </span>
             </p>
           )}

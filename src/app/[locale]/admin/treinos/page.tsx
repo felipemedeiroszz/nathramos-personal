@@ -35,18 +35,14 @@ async function safe(t: any, key: string, fb: string) {
   return fb;
 }
 
-export default async function AdminTreinosPage(
-  props: {
-    params: Promise<{ locale: (typeof locales)[number] }>;
-    searchParams?: Promise<Record<string, string | undefined>>;
-  }
-) {
+export default async function AdminTreinosPage(props: {
+  params: Promise<{ locale: (typeof locales)[number] }>;
+  searchParams?: Promise<Record<string, string | undefined>>;
+}) {
   const searchParams = (await props.searchParams) ?? {};
   const params = await props.params;
 
-  const {
-    locale
-  } = params;
+  const { locale } = params;
 
   if (!locales.includes(locale)) notFound();
   setRequestLocale(locale);
@@ -91,6 +87,9 @@ export default async function AdminTreinosPage(
     ? exercisesResult.data.items
     : [];
   const catalogMeta = {
+    availability: exercisesResult.ok
+      ? exercisesResult.data.availability
+      : undefined,
     total: exercisesResult.ok ? exercisesResult.data.total : 0,
     hasNextPage: exercisesResult.ok ? exercisesResult.data.hasNextPage : false,
     hasPreviousPage: exercisesResult.ok

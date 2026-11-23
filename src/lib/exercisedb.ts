@@ -17,6 +17,21 @@
  * Nenhuma outra versão/rota da ExerciseDB é utilizada aqui.
  */
 
+import {
+  englishExerciseSearch,
+  portugueseExercise,
+} from "./exercise-portuguese";
+import { createExerciseRequestCache } from "./exercise-request-cache";
+import {
+  fallbackExercise,
+  fallbackExercisePage,
+  fallbackOptions,
+} from "./exercise-catalog-fallback";
+const sharedCache = globalThis as typeof globalThis & {
+  __exerciseRequestCache?: ReturnType<typeof createExerciseRequestCache>;
+};
+const requestCache = (sharedCache.__exerciseRequestCache ??=
+  createExerciseRequestCache());
 export const EXERCISEDB_BASE_URL = "https://oss.exercisedb.dev";
 
 const API_PATH = "/api/v1";
@@ -38,6 +53,8 @@ export interface ExerciseDbExercise {
   targetMuscles: string[];
   secondaryMuscles: string[];
   instructions: string[];
+  namePt?: string;
+  instructionsPt?: string[];
 }
 
 export interface ExerciseDbOption {
@@ -45,6 +62,7 @@ export interface ExerciseDbOption {
 }
 
 export interface ExerciseDbPage {
+  availability?: "live" | "cached" | "offline";
   items: ExerciseDbExercise[];
   total: number;
   hasNextPage: boolean;
@@ -62,7 +80,7 @@ export type ExerciseDbErrorCode =
   | "invalid_response";
 
 export type ExerciseDbResult<T> =
-  | { ok: true; data: T }
+  | { ok: true; data: T; cached?: boolean }
   | { ok: false; code: ExerciseDbErrorCode; status?: number };
 
 export interface ExerciseDbListParams {
@@ -136,7 +154,10 @@ function normalizeInstructions(value: unknown): string[] {
     const order = match ? Number(match[1]) : index + 1;
     const body = text.replace(STEP_PREFIX, "").trim();
     if (!body) return;
-    parsed.push({ order: Number.isFinite(order) ? order : index + 1, text: body });
+    parsed.push({
+      order: Number.isFinite(order) ? order : index + 1,
+      text: body,
+    });
   });
   parsed.sort((a, b) => a.order - b.order);
   return parsed.map((item) => item.text);
@@ -146,6 +167,7 @@ function normalizeExercise(value: unknown): ExerciseDbExercise | null {
   if (!isRecord(value)) return null;
   const exerciseId = cleanString(value.exerciseId);
   if (!exerciseId) return null;
+  const translated = portugueseExercise(exerciseId, cleanString(value.name));
   return {
     exerciseId,
     name: cleanString(value.name),
@@ -155,6 +177,9 @@ function normalizeExercise(value: unknown): ExerciseDbExercise | null {
     targetMuscles: toStringArray(value.targetMuscles),
     secondaryMuscles: toStringArray(value.secondaryMuscles),
     instructions: normalizeInstructions(value.instructions),
+    ...(translated
+      ? { namePt: translated.namePt, instructionsPt: translated.instructionsPt }
+      : {}),
   };
 }
 
@@ -175,7 +200,7 @@ function normalizeOptions(value: unknown): ExerciseDbOption[] {
 
 function buildUrl(
   path: string,
-  params?: Record<string, string | number | undefined | null>
+  params?: Record<string, string | number | undefined | null>,
 ): string {
   const url = new URL(`${EXERCISEDB_BASE_URL}${API_PATH}${path}`);
   if (params) {
@@ -189,10 +214,10 @@ function buildUrl(
   return url.toString();
 }
 
-async function requestJson(
+async function fetchJson(
   path: string,
   params: Record<string, string | number | undefined | null> | undefined,
-  revalidate: number
+  revalidate: number,
 ): Promise<ExerciseDbResult<Record<string, unknown>>> {
   try {
     const response = await fetch(buildUrl(path, params), {
@@ -202,7 +227,19 @@ async function requestJson(
     });
 
     if (response.status === 429) {
-      return { ok: false, code: "rate_limited", status: 429 };
+      const raw = response.headers?.get("retry-after");
+      const seconds =
+        raw && /^\d+$/.test(raw)
+          ? Number(raw)
+          : raw
+            ? Math.ceil((Date.parse(raw) - Date.now()) / 1000)
+            : 60;
+      return {
+        ok: false,
+        code: "rate_limited",
+        status: 429,
+        retryAfterSeconds: Number.isFinite(seconds) ? seconds : 60,
+      } as ExerciseDbResult<Record<string, unknown>>;
     }
     if (response.status === 404) {
       return { ok: false, code: "not_found", status: 404 };
@@ -217,13 +254,28 @@ async function requestJson(
     }
     return { ok: true, data: payload };
   } catch (error) {
-    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
       return { ok: false, code: "timeout" };
     }
     return { ok: false, code: "unavailable" };
   }
 }
 
+async function requestJson(
+  path: string,
+  params: Record<string, string | number | undefined | null> | undefined,
+  revalidate: number,
+): Promise<ExerciseDbResult<Record<string, unknown>>> {
+  return requestCache.request(buildUrl(path, params), revalidate, () =>
+    fetchJson(path, params, revalidate),
+  );
+}
+function canUseFallback(result: { code: ExerciseDbErrorCode }) {
+  return ["rate_limited", "unavailable", "timeout"].includes(result.code);
+}
 function normalizePage(payload: Record<string, unknown>): ExerciseDbPage {
   const items = Array.isArray(payload.data)
     ? payload.data
@@ -250,7 +302,7 @@ function normalizePage(payload: Record<string, unknown>): ExerciseDbPage {
  * GET /api/v1/exercises
  */
 export async function listExercises(
-  params: ExerciseDbListParams = {}
+  params: ExerciseDbListParams = {},
 ): Promise<ExerciseDbResult<ExerciseDbPage>> {
   const limit =
     typeof params.limit === "number" && Number.isFinite(params.limit)
@@ -260,7 +312,7 @@ export async function listExercises(
   const result = await requestJson(
     "/exercises",
     {
-      name: params.name,
+      name: englishExerciseSearch(params.name),
       bodyParts: params.bodyParts,
       targetMuscles: params.targetMuscles,
       secondaryMuscles: params.secondaryMuscles,
@@ -269,11 +321,20 @@ export async function listExercises(
       after: params.after,
       before: params.before,
     },
-    DATA_REVALIDATE_SECONDS
+    DATA_REVALIDATE_SECONDS,
   );
 
-  if (!result.ok) return result;
-  return { ok: true, data: normalizePage(result.data) };
+  if (!result.ok)
+    return canUseFallback(result)
+      ? { ok: true, data: fallbackExercisePage({ ...params, limit }) }
+      : result;
+  return {
+    ok: true,
+    data: {
+      ...normalizePage(result.data),
+      availability: result.cached ? "cached" : "live",
+    },
+  };
 }
 
 /**
@@ -281,7 +342,7 @@ export async function listExercises(
  * GET /api/v1/exercises/{exerciseId}
  */
 export async function getExercise(
-  exerciseId: string
+  exerciseId: string,
 ): Promise<ExerciseDbResult<ExerciseDbExercise>> {
   const id = cleanString(exerciseId);
   if (!id) return { ok: false, code: "invalid_request" };
@@ -289,10 +350,13 @@ export async function getExercise(
   const result = await requestJson(
     `/exercises/${encodeURIComponent(id)}`,
     undefined,
-    DATA_REVALIDATE_SECONDS
+    DATA_REVALIDATE_SECONDS,
   );
 
-  if (!result.ok) return result;
+  if (!result.ok) {
+    const fallback = canUseFallback(result) ? fallbackExercise(id) : null;
+    return fallback ? { ok: true, data: fallback } : result;
+  }
 
   const exercise = normalizeExercise(result.data.data);
   if (!exercise) return { ok: false, code: "invalid_response" };
@@ -300,24 +364,42 @@ export async function getExercise(
 }
 
 async function listOptions(
-  path: "/bodyparts" | "/muscles" | "/equipments"
+  path: "/bodyparts" | "/muscles" | "/equipments",
 ): Promise<ExerciseDbResult<ExerciseDbOption[]>> {
   const result = await requestJson(path, undefined, OPTIONS_REVALIDATE_SECONDS);
-  if (!result.ok) return result;
+  if (!result.ok) {
+    if (!canUseFallback(result)) return result;
+    return {
+      ok: true,
+      data: fallbackOptions(
+        path === "/bodyparts"
+          ? "bodyParts"
+          : path === "/muscles"
+            ? "targetMuscles"
+            : "equipments",
+      ),
+    };
+  }
   return { ok: true, data: normalizeOptions(result.data.data) };
 }
 
 /** GET /api/v1/bodyparts */
-export async function listBodyParts(): Promise<ExerciseDbResult<ExerciseDbOption[]>> {
+export async function listBodyParts(): Promise<
+  ExerciseDbResult<ExerciseDbOption[]>
+> {
   return listOptions("/bodyparts");
 }
 
 /** GET /api/v1/muscles */
-export async function listMuscles(): Promise<ExerciseDbResult<ExerciseDbOption[]>> {
+export async function listMuscles(): Promise<
+  ExerciseDbResult<ExerciseDbOption[]>
+> {
   return listOptions("/muscles");
 }
 
 /** GET /api/v1/equipments */
-export async function listEquipments(): Promise<ExerciseDbResult<ExerciseDbOption[]>> {
+export async function listEquipments(): Promise<
+  ExerciseDbResult<ExerciseDbOption[]>
+> {
   return listOptions("/equipments");
 }

@@ -1,4 +1,5 @@
 "use server";
+import { AuditLogService } from "@/services/AuditLogService";
 import {
   requireManagedStudent,
   requireManagedRecord,
@@ -231,6 +232,7 @@ export async function saveWorkoutKitAction(input: Record<string, any>) {
 }
 
 export async function addWorkoutKitItemAction(input: {
+  target_reps?: number;
   kit_id: string;
   category_label?: string | null;
   day_of_week?: number | null;
@@ -242,6 +244,16 @@ export async function addWorkoutKitItemAction(input: {
   await requireRole(["admin", "coach"], "/dashboard");
   try {
     await requireOwnedPrescription("workout_kits", input.kit_id);
+    if (
+      !input.program_id &&
+      (!Number.isInteger(input.target_reps) ||
+        Number(input.target_reps) < 1 ||
+        Number(input.target_reps) > 1000)
+    )
+      return {
+        success: false as const,
+        message: "Informe a meta de repetições do exercício (1 a 1000).",
+      };
     if (!input.program_id && !input.day_of_week) {
       return {
         success: false as const,
@@ -281,6 +293,18 @@ export async function addWorkoutKitItemAction(input: {
         message: "Falha ao adicionar treino ao kit.",
       };
     }
+    if (!input.program_id && input.target_reps !== undefined) {
+      try {
+        await WorkoutKitService.setItemRepetitions(item.id, input.target_reps);
+      } catch {
+        return {
+          success: false as const,
+          createdItemId: item.id,
+          message:
+            "O exercício foi incluído, mas a meta não foi salva. Tente salvar novamente para ajustar esse mesmo item.",
+        };
+      }
+    }
 
     revalidatePath("/[locale]/admin/kits/treinos", "page");
     return { success: true as const, item };
@@ -288,6 +312,34 @@ export async function addWorkoutKitItemAction(input: {
     return {
       success: false as const,
       message: e?.message ?? "Falha ao adicionar treino ao kit.",
+    };
+  }
+}
+
+export async function saveKitItemRepetitionsAction(
+  itemId: string,
+  repetitions: number,
+  expected?: string | null,
+) {
+  await requireRole(["admin", "coach"], "/dashboard");
+  try {
+    const actor = await requireOwnedKitItem(itemId);
+    await WorkoutKitService.setItemRepetitions(itemId, repetitions, expected);
+    await AuditLogService.log({
+      adminId: actor.userId,
+      action: "workout_kit.repetitions",
+      entity_type: "workout_kit_items",
+      entity_id: itemId,
+      details: { repetitions },
+    });
+    revalidatePath("/[locale]/admin/kits/treinos", "page");
+    revalidatePath("/[locale]/treino", "page");
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      message:
+        error instanceof Error ? error.message : "Falha ao salvar repetições.",
     };
   }
 }

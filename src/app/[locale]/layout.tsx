@@ -110,7 +110,7 @@ export default async function LocaleLayout(
   return (
     <html lang={locale} className="dark" suppressHydrationWarning>
       <body className={cn("min-h-dvh bg-background", inter.variable)}>
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           <LiveDataRefresh />
           {children}
         </NextIntlClientProvider>

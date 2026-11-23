@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  exerciseMediaUrl,
+  exerciseMediaPage,
+  youtubeVideoId,
+  exerciseMediaFields,
+} from "../lib/exercise-media";
 import type {
   MuscleGroupT,
   EquipmentT,
@@ -72,34 +78,57 @@ const exerciseSourceSchema = z.enum(
 
 const uuidSchema = z.string().uuid({ message: "ID inválido." });
 
-export const upsertExerciseSchema = z.object({
-  source: exerciseSourceSchema.default("exercisedb"),
-  name_pt: z
-    .string()
-    .trim()
-    .min(1, { message: "Nome em português é obrigatório." }),
-  name_en: z
-    .string()
-    .trim()
-    .min(1, { message: "Nome em inglês é obrigatório." }),
-  description_pt: z.string().trim().default(""),
-  description_en: z.string().trim().default(""),
-  instructions_pt: z.array(z.string()).default([]),
-  instructions_en: z.array(z.string()).default([]),
-  primary_muscle: muscleGroupSchema,
-  secondary_muscles: z.array(muscleGroupSchema).default([]),
-  equipment: equipmentSchema.default("body_weight"),
-  difficulty: difficultySchema.default("beginner"),
-  gif_url: z.string().url().optional().or(z.literal("")).nullable(),
-  video_url: z.string().url().optional().or(z.literal("")).nullable(),
-  thumbnail_url: z.string().url().optional().or(z.literal("")).nullable(),
-  calories_per_min: z.coerce.number().positive().optional().nullable(),
-  tags: z.array(z.string()).default([]),
-  translation_locked: z.boolean().default(false),
-  is_published: z.boolean().default(true),
-  external_id: z.string().trim().optional().nullable(),
-  id: uuidSchema.optional(),
-});
+export const upsertExerciseSchema = z
+  .object({
+    source: exerciseSourceSchema.default("exercisedb"),
+    name_pt: z
+      .string()
+      .trim()
+      .min(1, { message: "Nome em português é obrigatório." }),
+    name_en: z
+      .string()
+      .trim()
+      .min(1, { message: "Nome em inglês é obrigatório." }),
+    description_pt: z.string().trim().default(""),
+    description_en: z.string().trim().default(""),
+    instructions_pt: z.array(z.string()).default([]),
+    instructions_en: z.array(z.string()).default([]),
+    primary_muscle: muscleGroupSchema,
+    secondary_muscles: z.array(muscleGroupSchema).default([]),
+    equipment: equipmentSchema.default("body_weight"),
+    difficulty: difficultySchema.default("beginner"),
+    gif_url: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          !value || (!!exerciseMediaUrl(value) && !exerciseMediaPage(value)),
+        { message: "Use uma URL direta e pública de GIF, imagem ou MP4." },
+      )
+      .transform((value) => (value ? exerciseMediaUrl(value)! : ""))
+      .optional()
+      .nullable(),
+    video_url: z
+      .string()
+      .trim()
+      .refine((value) => !value || !!exerciseMediaUrl(value), {
+        message: "Use uma URL HTTP ou HTTPS para o vídeo.",
+      })
+      .optional()
+      .nullable(),
+    thumbnail_url: z.string().url().optional().or(z.literal("")).nullable(),
+    calories_per_min: z.coerce.number().positive().optional().nullable(),
+    tags: z.array(z.string()).default([]),
+    translation_locked: z.boolean().default(false),
+    is_published: z.boolean().default(true),
+    external_id: z.string().trim().optional().nullable(),
+    id: uuidSchema.optional(),
+  })
+  .transform((value) =>
+    youtubeVideoId(value.gif_url) || youtubeVideoId(value.video_url)
+      ? { ...value, ...exerciseMediaFields(value.gif_url, value.video_url) }
+      : value,
+  );
 export type UpsertExerciseInput = z.infer<typeof upsertExerciseSchema>;
 
 export const upsertWorkoutCategorySchema = z.object({
@@ -237,6 +266,7 @@ export const upsertWorkoutKitItemSchema = z
     exercise_id: uuidSchema.optional().nullable(),
     category_label: kitCategoryLabelSchema.optional().nullable(),
     day_of_week: kitDayOfWeekSchema.optional().nullable(),
+    target_reps: z.coerce.number().int().min(1).max(1000).optional(),
     order_index: z.coerce.number().int().default(0),
     notes_pt: z.string().trim().optional().nullable(),
     notes_en: z.string().trim().optional().nullable(),
@@ -244,10 +274,18 @@ export const upsertWorkoutKitItemSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.exercise_id && !data.day_of_week) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione o dia da semana do exercício.", path: ["day_of_week"] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecione o dia da semana do exercício.",
+        path: ["day_of_week"],
+      });
     }
     if (data.program_id && data.exercise_id) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione apenas um programa ou exercício.", path: ["program_id"] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecione apenas um programa ou exercício.",
+        path: ["program_id"],
+      });
     }
     if (!data.program_id && !data.exercise_id) {
       ctx.addIssue({
@@ -292,7 +330,10 @@ export const logWorkoutSetSchema = z.object({
   workout_exercise_id: uuidSchema.optional().nullable(),
   exercise_id: uuidSchema,
   set_number: z.coerce.number().int().min(1).default(1),
-  reps_done: z.coerce.number().int().nonnegative().default(0),
+  reps_done: z.preprocess(
+    (value) => (typeof value === "string" && !value.trim() ? undefined : value),
+    z.coerce.number().int().nonnegative().max(10000),
+  ),
   weight_kg: z.coerce.number().nonnegative().optional().nullable(),
   rpe: z.coerce.number().min(1).max(10).optional().nullable(),
   duration_sec: z.coerce.number().int().nonnegative().optional().nullable(),

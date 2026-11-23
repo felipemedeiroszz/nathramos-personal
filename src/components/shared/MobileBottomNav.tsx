@@ -27,7 +27,7 @@ export function MobileBottomNav({ locale }: { locale: string }) {
     <>
       <nav
         className="student-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#101215]/95 px-2 backdrop-blur-xl md:hidden"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
+        style={{ paddingBottom: "8px" }}
         aria-label={en ? "Main navigation" : "Navegação principal"}
       >
         <div className="mx-auto grid h-[68px] max-w-lg grid-cols-5 items-center gap-1">

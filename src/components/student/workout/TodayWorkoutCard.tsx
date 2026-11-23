@@ -47,7 +47,7 @@ export function TodayWorkoutCard({
     load,
   );
   return (
-    <article className="relative flex min-h-[310px] min-w-0 flex-col overflow-hidden rounded-[20px] border border-yellow-400/15 bg-gradient-to-br from-yellow-400/[0.07] via-surface to-surface p-5 sm:p-7">
+    <article className="student-today-workout relative flex min-h-[310px] min-w-0 flex-col overflow-hidden rounded-[20px] border border-yellow-400/15 bg-gradient-to-br from-yellow-400/[0.07] via-surface to-surface p-5 sm:p-7">
       <div
         className="pointer-events-none absolute -right-10 top-6 rotate-[-25deg] text-yellow-300/[0.035]"
         aria-hidden="true"

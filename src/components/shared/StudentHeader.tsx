@@ -26,7 +26,7 @@ export function StudentHeader({
         pathname.startsWith(`/${locale}/${i.path}/`),
     );
   return (
-    <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between gap-3 border-b border-white/[0.06] bg-[#0d0f11]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="student-topbar sticky top-0 z-30 flex h-[72px] items-center justify-between gap-3 border-b border-white/[0.06] bg-[#0d0f11]/95 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <Link
           href={`/${locale}/dashboard`}

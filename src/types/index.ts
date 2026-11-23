@@ -25,7 +25,8 @@ export type PaymentStatus =
 
 export type PaymentProvider = "stripe" | "asaas" | "manual";
 
-export type PaymentMethod = "credit_card" | "pix" | "boleto" | "bank_transfer" | "cash";
+export type PaymentMethod =
+  "credit_card" | "pix" | "boleto" | "bank_transfer" | "cash";
 
 export type NotificationType =
   | "system"
@@ -336,6 +337,7 @@ export interface WorkoutKitItemRow {
 
 /** Item do kit com a origem resolvida (programa de treino ou exercício). */
 export interface WorkoutKitItemWithSource extends WorkoutKitItemRow {
+  prescription?: { id: string; reps: string | null; sets: number } | null;
   program?: WorkoutProgramRow | null;
   exercise?: ExerciseRow | null;
 }
@@ -803,7 +805,24 @@ export interface ExamRow {
   deleted_at?: string | null;
 }
 
-export type StudentEbook = Pick<EbookRow, "id" | "title_pt" | "title_en" | "slug" | "summary_pt" | "summary_en" | "cover_url" | "pages_count" | "language" | "is_free" | "price_cents" | "currency" | "categories_pt" | "categories_en" | "author"> & { accessible: boolean; has_content: boolean };
+export type StudentEbook = Pick<
+  EbookRow,
+  | "id"
+  | "title_pt"
+  | "title_en"
+  | "slug"
+  | "summary_pt"
+  | "summary_en"
+  | "cover_url"
+  | "pages_count"
+  | "language"
+  | "is_free"
+  | "price_cents"
+  | "currency"
+  | "categories_pt"
+  | "categories_en"
+  | "author"
+> & { accessible: boolean; has_content: boolean };
 
 // Ebook types
 export interface EbookRow {

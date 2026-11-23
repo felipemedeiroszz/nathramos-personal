@@ -1,4 +1,7 @@
 "use client";
+import { ExerciseMedia } from "@/components/shared/ExerciseMedia";
+import { ExerciseSetTracker } from "./ExerciseSetTracker";
+import { exerciseMediaSource, exerciseMediaKind } from "@/lib/exercise-media";
 import { mergeWorkoutSets } from "@/lib/live/workout";
 import { notifyDataChanged } from "@/lib/live/events";
 
@@ -69,7 +72,6 @@ export function StudentWorkoutExecutionClient({
   const tMuscle = useTranslations("muscleGroups");
   const tEquip = useTranslations("equipments");
   const tDiff = useTranslations("difficultyLevels");
-  const tCommon = useTranslations("common");
   const workoutLabels = getWorkoutLabels(locale);
   const labelAliases: Record<string, string> = {
     quadriceps: "quads",
@@ -124,9 +126,7 @@ export function StudentWorkoutExecutionClient({
           weight_kg: String(
             initialLogs.find(
               (l) => l.workout_exercise_id === wex.id && l.set_number === i,
-            )?.weight_kg ??
-              wex.weight_kg ??
-              "",
+            )?.weight_kg ?? "",
           ),
           logged: initialLogs.some(
             (l) =>
@@ -168,10 +168,30 @@ export function StudentWorkoutExecutionClient({
     const s = (setsByExercise[wex.id] || [])[idx];
     if (!s || s.logged) return;
 
-    const repsNum = Math.max(0, Number(s.reps_done.replace(",", ".")) || 0);
+    if (!/^\d+$/.test(s.reps_done.trim()) || Number(s.reps_done) > 10000) {
+      setToast({
+        type: "err",
+        msg:
+          locale === "en-US"
+            ? "Enter the repetitions you performed as a whole number."
+            : "Informe quantas repetições você realizou, usando um número inteiro.",
+      });
+      return;
+    }
+    const repsNum = Number(s.reps_done);
     const weightNum = s.weight_kg
       ? Number(s.weight_kg.replace(",", "."))
-      : (wex.weight_kg ?? null);
+      : null;
+    if (weightNum !== null && (!Number.isFinite(weightNum) || weightNum < 0)) {
+      setToast({
+        type: "err",
+        msg:
+          locale === "en-US"
+            ? "Enter a valid non-negative weight."
+            : "Informe uma carga válida, igual ou maior que zero.",
+      });
+      return;
+    }
     const set_number = idx + 1;
 
     startTransition(async () => {
@@ -349,7 +369,7 @@ export function StudentWorkoutExecutionClient({
           </CardContent>
         </Card>
       ) : (
-        exercises.map((wex) => {
+        exercises.map((wex, exerciseIndex) => {
           const ex = wex.exercise;
           const exName = ex
             ? locale === "pt-BR"
@@ -360,7 +380,9 @@ export function StudentWorkoutExecutionClient({
           const primary = ex?.primary_muscle ?? "";
           const equipment = ex?.equipment ?? "";
           const difficulty = ex?.difficulty ?? "";
-          const imgUrl = ex?.gif_url || ex?.thumbnail_url || null;
+          const imgUrl = exerciseMediaSource(ex);
+          const video =
+            imgUrl && ["youtube", "video"].includes(exerciseMediaKind(imgUrl));
 
           return (
             <Card
@@ -368,11 +390,17 @@ export function StudentWorkoutExecutionClient({
               className="student-exercise-card overflow-hidden p-0"
             >
               <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-start border-b border-border">
-                <div className="w-full sm:w-40 shrink-0">
-                  <div className="aspect-video w-full sm:h-24 rounded-xl bg-gradient-to-br from-primary/15 to-surface-secondary flex items-center justify-center overflow-hidden">
+                <div
+                  className={`w-full ${video ? "sm:w-80" : "sm:w-56"} shrink-0`}
+                >
+                  <div
+                    className={`${video ? "min-h-[232px]" : "aspect-video sm:h-40"} w-full rounded-xl bg-gradient-to-br from-primary/15 to-surface-secondary flex items-center justify-center overflow-hidden`}
+                  >
                     {imgUrl ? (
-                      <img
+                      <ExerciseMedia
+                        autoPlay
                         src={imgUrl}
+                        locale={locale}
                         alt={exName}
                         className="w-full h-full object-contain"
                         loading="lazy"
@@ -383,6 +411,11 @@ export function StudentWorkoutExecutionClient({
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
+                  <p className="student-exercise-number">
+                    {locale === "en-US" ? "EXERCISE" : "EXERCÍCIO"}{" "}
+                    {String(exerciseIndex + 1).padStart(2, "0")} /{" "}
+                    {String(exercises.length).padStart(2, "0")}
+                  </p>
                   <h3 className="text-base sm:text-lg font-bold text-text mb-2">
                     {exName}
                   </h3>
@@ -407,15 +440,28 @@ export function StudentWorkoutExecutionClient({
                           tryTranslate(tDiff, difficulty)}
                       </Badge>
                     )}
-                    {wex.sets && (
-                      <Badge variant="outline">{wex.sets} séries</Badge>
-                    )}
-                    {wex.reps && (
-                      <Badge variant="outline">
-                        {tWorkout("reps")}: {wex.reps}
-                      </Badge>
-                    )}
                   </div>
+                  <dl className="student-exercise-facts">
+                    <div>
+                      <dt>{locale === "en-US" ? "Sets" : "Séries"}</dt>
+                      <dd>{sets.length}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {locale === "en-US"
+                          ? "Reps per set"
+                          : "Repetições por série"}
+                      </dt>
+                      <dd>{wex.reps || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>{locale === "en-US" ? "Rest" : "Descanso"}</dt>
+                      <dd>
+                        {wex.rest_seconds ?? 60}
+                        <small>s</small>
+                      </dd>
+                    </div>
+                  </dl>
                   {(wex.notes_pt || wex.notes_en) && (
                     <div className="mt-3 rounded-xl border border-border bg-surface-secondary/40 p-3">
                       <div className="flex items-start gap-2">
@@ -437,115 +483,22 @@ export function StudentWorkoutExecutionClient({
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="student-set-table w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-text-secondary text-xs">
-                      <th className="text-left font-semibold px-4 sm:px-5 py-3 w-20">
-                        {tWorkout("setNumber")}
-                      </th>
-                      <th className="text-left font-semibold px-4 sm:px-5 py-3">
-                        {tWorkout("doneReps")}
-                      </th>
-                      <th className="text-left font-semibold px-4 sm:px-5 py-3">
-                        {tWorkout("weight")}
-                      </th>
-                      <th className="text-left font-semibold px-4 sm:px-5 py-3 w-36">
-                        {tCommon("actions")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sets.map((s, i) => (
-                      <tr
-                        key={s.logKey}
-                        className={cn(
-                          "border-b border-border last:border-0 transition-colors",
-                          s.logged ? "bg-primary/5" : "",
-                        )}
-                      >
-                        <td className="px-4 sm:px-5 py-3 font-semibold text-text">
-                          {i + 1}
-                        </td>
-                        <td className="px-4 sm:px-5 py-3">
-                          {s.logged ? (
-                            <span className="font-medium text-text">
-                              {s.reps_done || "-"}
-                            </span>
-                          ) : (
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={s.reps_done}
-                              aria-label={`${tWorkout("doneReps")} · ${exName} · ${i + 1}`}
-                              placeholder={wex.reps || tWorkout("enterReps")}
-                              onChange={(e) =>
-                                updateSet(wex.id, i, {
-                                  reps_done: e.target.value,
-                                })
-                              }
-                              className="h-11 min-w-[72px] text-sm max-w-[140px]"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 sm:px-5 py-3">
-                          {s.logged ? (
-                            <span className="font-medium text-text">
-                              {s.weight_kg ? `${s.weight_kg} kg` : "-"}
-                            </span>
-                          ) : (
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={s.weight_kg}
-                              aria-label={`${tWorkout("weight")} · ${exName} · ${i + 1}`}
-                              placeholder={
-                                wex.weight_kg != null
-                                  ? String(wex.weight_kg)
-                                  : tWorkout("enterWeight")
-                              }
-                              onChange={(e) =>
-                                updateSet(wex.id, i, {
-                                  weight_kg: e.target.value,
-                                })
-                              }
-                              className="h-11 min-w-[72px] text-sm max-w-[140px]"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 sm:px-5 py-3">
-                          {s.logged ? (
-                            <Badge variant="success">
-                              <Check size={12} className="mr-1" />
-                              {tWorkout("completed")}
-                            </Badge>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="primary"
-                              size="sm"
-                              className="h-9 whitespace-nowrap text-xs"
-                              title={tWorkout("completeSet")}
-                              onClick={() => logSet(wex, i)}
-                              disabled={isPending}
-                            >
-                              {isPending ? (
-                                <Loader2
-                                  size={14}
-                                  className="mr-1 animate-spin"
-                                />
-                              ) : (
-                                <Check size={14} className="mr-1" />
-                              )}
-                              {tWorkout("completeSet")}
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ExerciseSetTracker
+                sets={sets}
+                targetReps={wex.reps ?? null}
+                referenceWeight={wex.weight_kg ?? null}
+                name={exName}
+                locale={locale}
+                busy={isPending}
+                labels={{
+                  actualReps: tWorkout("doneReps"),
+                  weight: tWorkout("weight"),
+                  complete: tWorkout("completeSet"),
+                  completed: tWorkout("completed"),
+                }}
+                onChange={(index, patch) => updateSet(wex.id, index, patch)}
+                onLog={(index) => logSet(wex, index)}
+              />
             </Card>
           );
         })

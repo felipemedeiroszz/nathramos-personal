@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/Modal";
 import { uploadExerciseAssetAction } from "@/app/actions/workouts";
 import { getWorkoutLabels } from "@/lib/workoutLabels";
+import { ExerciseMedia } from "@/components/shared/ExerciseMedia";
+import {
+  exerciseMediaPage,
+  exerciseMediaUrl,
+  exerciseMediaFields,
+  exerciseMediaSource,
+  youtubeVideoId,
+} from "@/lib/exercise-media";
 import type { ExerciseRow } from "@/types";
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES, DIFFICULTY_LEVELS } from "@/types";
 
@@ -74,6 +82,20 @@ export function ExerciseUpsertModal({
   const [uploading, setUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(
+      () =>
+        setPreviewUrl(
+          exerciseMediaSource({
+            gif_url: form.gif_url,
+            video_url: form.video_url,
+          }) || "",
+        ),
+      350,
+    );
+    return () => clearTimeout(timer);
+  }, [form.gif_url, form.video_url]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -143,6 +165,18 @@ export function ExerciseUpsertModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    if (
+      form.gif_url.trim() &&
+      (!exerciseMediaUrl(form.gif_url) || exerciseMediaPage(form.gif_url))
+    ) {
+      setErrorMsg(
+        label(
+          "Use um link do YouTube (incluindo Shorts) ou o endereço direto e público do GIF, imagem ou MP4.",
+          "Use a YouTube link (including Shorts) or a public direct GIF, image or MP4 URL.",
+        ),
+      );
+      return;
+    }
     startTransition(async () => {
       const payload: Record<string, any> = {
         ...form,
@@ -158,8 +192,7 @@ export function ExerciseUpsertModal({
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        gif_url: form.gif_url || null,
-        video_url: form.video_url || null,
+        ...exerciseMediaFields(form.gif_url, form.video_url),
         thumbnail_url: form.thumbnail_url || null,
       };
       if (!payload.id) delete payload.id;
@@ -194,7 +227,7 @@ export function ExerciseUpsertModal({
     <Modal
       isOpen={isOpen}
       onClose={() => {
-        if (!isPending) onClose();
+        if (!busy) onClose();
       }}
       className="max-w-4xl max-h-[90vh] overflow-y-auto"
     >
@@ -204,7 +237,7 @@ export function ExerciseUpsertModal({
             ? label("Editar Exercício", "Edit Exercise")
             : label("Criar Exercício", "Create Exercise")}
         </ModalTitle>
-        <ModalClose disabled={isPending} onClick={onClose} />
+        <ModalClose disabled={busy} onClick={onClose} />
       </ModalHeader>
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-5">
@@ -235,14 +268,18 @@ export function ExerciseUpsertModal({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-text">
-              {label("Mídia (GIF / Imagem)", "Media (GIF / Image)")}
+              {label(
+                "Mídia (GIF, imagem ou YouTube)",
+                "Media (GIF, image or YouTube)",
+              )}
             </label>
             <div className="relative flex min-h-[180px] items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-secondary">
-              {form.gif_url ? (
+              {exerciseMediaSource(form) ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={form.gif_url}
+                  <ExerciseMedia
+                    src={previewUrl}
+                    locale={locale}
+                    loading="eager"
                     alt={label(
                       "Pré-visualização do exercício",
                       "Exercise preview",
@@ -251,7 +288,13 @@ export function ExerciseUpsertModal({
                   />
                   <button
                     type="button"
-                    onClick={() => update("gif_url", "")}
+                    onClick={() =>
+                      setForm((previous) => ({
+                        ...previous,
+                        gif_url: "",
+                        video_url: "",
+                      }))
+                    }
                     className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white transition-colors hover:bg-black/80"
                     title={label("Remover mídia", "Remove media")}
                   >
@@ -290,6 +333,10 @@ export function ExerciseUpsertModal({
               </Button>
               <Input
                 type="url"
+                aria-label={label(
+                  "URL do GIF, imagem, MP4 ou YouTube",
+                  "GIF, image, MP4 or YouTube URL",
+                )}
                 value={form.gif_url}
                 onChange={(e) => update("gif_url", e.target.value)}
                 placeholder={label(
@@ -301,10 +348,18 @@ export function ExerciseUpsertModal({
             </div>
             <p className="text-xs text-text-secondary">
               {label(
-                "GIF, PNG, JPG, WEBP ou MP4 · até 20MB.",
-                "GIF, PNG, JPG, WEBP or MP4 · up to 20MB.",
+                "Aceita links do YouTube, Shorts ou URLs diretas de GIF, PNG, JPG, WEBP e MP4. Para anexar um arquivo: até 20MB.",
+                "Accepts YouTube, Shorts or direct GIF, PNG, JPG, WEBP and MP4 URLs. File uploads: up to 20MB.",
               )}
             </p>
+            {youtubeVideoId(form.gif_url || form.video_url) && (
+              <p role="status" className="text-xs text-primary">
+                {label(
+                  "Vídeo do YouTube identificado. Será salvo como vídeo do exercício.",
+                  "YouTube video detected. It will be saved as the exercise video.",
+                )}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -434,6 +489,7 @@ export function ExerciseUpsertModal({
               <Input
                 type="url"
                 value={form.video_url}
+                aria-label={label("URL do vídeo", "Video URL")}
                 onChange={(e) => update("video_url", e.target.value)}
                 placeholder="https://..."
               />

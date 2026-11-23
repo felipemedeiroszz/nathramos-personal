@@ -32,7 +32,7 @@ export function StudentPageHeader({
         icon && (
           <div
             aria-hidden="true"
-            className="hidden h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.02] text-zinc-500 sm:flex"
+            className="student-page-icon flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.02] text-zinc-500"
           >
             {icon}
           </div>
