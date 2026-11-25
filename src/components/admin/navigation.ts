@@ -104,6 +104,14 @@ export const adminNavigation: AdminNavGroup[] = [
         coach: true,
       },
       {
+        key: "cardio",
+        path: "cardios",
+        pt: "Cardio",
+        en: "Cardio",
+        icon: Activity,
+        coach: true,
+      },
+      {
         key: "foods",
         path: "alimentos",
         pt: "Alimentos",

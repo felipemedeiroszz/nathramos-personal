@@ -1,3 +1,4 @@
+import { StudentCardioSummary } from "@/components/admin/workout/StudentCardioSummary";
 import { assignmentPhase, followingDate } from "@/lib/workout-schedule";
 import { getZonedParts } from "@/lib/notifications/time";
 import { WorkoutPeriodEditor } from "@/components/admin/workout/WorkoutScheduleModal";
@@ -679,6 +680,7 @@ export default async function AdminAlunoDetalhePage(props: {
 
         {selectedTab === "workouts" && (
           <section className="mt-4">
+            <StudentCardioSummary studentId={id} locale={locale} />
             <Card className="min-w-0 border-0 bg-transparent p-1 shadow-none sm:p-2">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

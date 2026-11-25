@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { getAdminDataPage } from "@/lib/admin/data-page";
 import { AdminDataControls } from "@/components/admin/AdminDataControls";
@@ -111,6 +112,14 @@ export default async function AdminTreinosPage(props: {
         <p className="text-sm md:text-base text-text-secondary">{subtitle}</p>
       </AdminPageHeader>
 
+      <Link
+        href={`/${locale}/admin/cardios`}
+        className="inline-flex rounded-xl border border-border px-4 py-2 text-sm font-semibold"
+      >
+        {locale === "en-US"
+          ? "Manage cardio activities"
+          : "Gerenciar modalidades de cardio"}
+      </Link>
       <AdminTreinosTabs
         defaultTab={defaultTab}
         ownCatalogContent={

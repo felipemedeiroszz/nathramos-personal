@@ -1,3 +1,5 @@
+import { CardioPanel } from "@/components/student/workout/CardioPanel";
+import { CardioService } from "@/services/CardioService";
 import Link from "next/link";
 import { setRequestLocale } from "next-intl/server";
 import { Dumbbell } from "lucide-react";
@@ -13,6 +15,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Treino" };
 export default async function Page(props: {
   params: Promise<{ locale: string }>;
+  searchParams?: Promise<{ day?: string }>;
 }) {
   const params = await props.params;
 
@@ -20,9 +23,13 @@ export default async function Page(props: {
 
   setRequestLocale(locale);
   const userId = await requireStudentPage();
+  const cardio = await CardioService.student(userId);
   const date = await StudentAssignedContentService.today(userId);
   const schedule = await WorkoutService.getDaySchedule(userId, date);
-  const plans = schedule.plans;
+  const plans = await WorkoutService.getAvailablePlans(userId, date);
+  const selectedDay = (await props.searchParams)?.day;
+  const selectedPlan =
+    plans.find((plan) => plan.day.id === selectedDay) || plans[0];
   const assigned = await StudentAssignedContentService.list(userId, "workout", {
     date,
     locale,
@@ -35,7 +42,7 @@ export default async function Page(props: {
     })),
   });
   const views = await Promise.all(
-    plans.map(async (plan) => {
+    (selectedPlan ? [selectedPlan] : []).map(async (plan) => {
       const exercises = await WorkoutService.applyStudentOverrides(
         userId,
         await WorkoutService.listDayExercises(plan.day.id),
@@ -49,6 +56,7 @@ export default async function Page(props: {
         return (
           <section key={session.id} id={`treino-dia-${plan.day.id}`}>
             <StudentWorkoutExecutionClient
+              cardio={cardio}
               program={plan.program}
               day={plan.day}
               sessionId={session.id}
@@ -85,6 +93,23 @@ export default async function Page(props: {
               {locale === "en-US" ? plan.day.name_en : plan.day.name_pt} ·{" "}
               {exercises.length} exercícios
             </p>
+            <details className="rounded-xl border border-border p-4">
+              <summary className="cursor-pointer font-semibold">
+                {locale === "en-US"
+                  ? "View exercises"
+                  : "Visualizar exercícios"}
+              </summary>
+              <ul className="mt-3 space-y-3">
+                {exercises.map((item) => (
+                  <li key={item.id}>
+                    {locale === "en-US"
+                      ? item.exercise?.name_en
+                      : item.exercise?.name_pt}{" "}
+                    · {item.sets} × {item.reps || "—"}
+                  </li>
+                ))}
+              </ul>
+            </details>
             {session?.completed_at ? (
               <p className="text-primary font-semibold">
                 Treino concluído hoje.
@@ -118,6 +143,7 @@ export default async function Page(props: {
       <section id="conteudo-hoje" className="space-y-6">
         {views}
       </section>
+      <CardioPanel data={cardio} locale={locale} />
       {!plans.length && (
         <Card>
           <CardContent className="p-6 space-y-3">

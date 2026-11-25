@@ -231,7 +231,7 @@ export class WorkoutMetricsService {
           const volume = list.reduce((acc, l) => {
             const w = Number(l.weight_kg) || 0
             const r = Number(l.reps_done) || 0
-            return acc + w * r
+            return acc + w * r + (l.drop_steps || []).reduce((sum,step)=>sum+Number(step.weight_kg)*Number(step.reps_done),0)
           }, 0)
           return {
             exercise_id: exId,
@@ -252,7 +252,7 @@ export class WorkoutMetricsService {
           let maxR: number | null = null
           let maxVolSet: number | null = null
           let recordDate: string | null = null
-          for (const l of list) {
+          for (const l of list.flatMap(log => [log, ...(log.drop_steps || []).map(step => ({...log,...step,drop_steps:[]}))])) {
             const w = Number(l.weight_kg)
             const r = Number(l.reps_done)
             if (w > 0 && (maxW === null || w > maxW)) {
@@ -339,7 +339,7 @@ export class WorkoutMetricsService {
 
       let maxW: number | null = null
       let maxR: number | null = null
-      const points: ExerciseProgressPoint[] = logsList.map((l) => {
+      const points: ExerciseProgressPoint[] = logsList.flatMap(log => [log, ...(log.drop_steps || []).map(step => ({...log,...step,drop_steps:[]}))]).map((l) => {
         const w = Number(l.weight_kg)
         const r = Number(l.reps_done)
         if (w > 0 && (maxW === null || w > maxW)) maxW = w

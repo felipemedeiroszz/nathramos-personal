@@ -1,4 +1,5 @@
 "use server";
+import { cardioLogSchema } from "@/lib/cardio";
 import { AuditLogService } from "@/services/AuditLogService";
 import {
   requireManagedStudent,
@@ -75,6 +76,7 @@ export async function logWorkoutSetAction(input: {
   weight_kg?: number | null;
   completed?: boolean;
   failure_at_end?: boolean;
+  drop_steps?: { reps_done: number; weight_kg: number }[];
 }) {
   const { userId } = await requirePlatformUser();
   const parsed = logWorkoutSetSchema.parse(input);
@@ -88,6 +90,11 @@ export async function logWorkoutSetAction(input: {
 
 export async function completeWorkoutSessionAction(params: {
   sessionId: string;
+  cardio?: {
+    status: "done" | "skipped";
+    activity_id?: string | null;
+    duration_min?: number | null;
+  };
   feeling?: number;
   rpe?: number;
   notes?: string;
@@ -97,6 +104,7 @@ export async function completeWorkoutSessionAction(params: {
   const parsed = z
     .object({
       sessionId: z.string().uuid(),
+      cardio: cardioLogSchema.optional(),
       feeling: z.number().int().min(1).max(5).optional(),
       rpe: z.number().min(1).max(10).optional(),
       notes: z.string().max(4000).optional(),
@@ -109,6 +117,7 @@ export async function completeWorkoutSessionAction(params: {
     userId,
     parsed.data.sessionId,
     {
+      cardio: parsed.data.cardio,
       feeling: params.feeling,
       rpe: params.rpe,
       notes: params.notes,

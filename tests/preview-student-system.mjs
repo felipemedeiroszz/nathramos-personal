@@ -415,6 +415,39 @@ views.push([
   "StartWorkoutButton",
   { dayId: "day", programId: "program" },
 ]);
+const cardioFixture = {
+  today: "2026-11-25",
+  weekday: 3,
+  activities: [
+    {
+      id: "cardio-swim",
+      name_pt: "Natação",
+      name_en: "Swimming",
+      is_active: true,
+    },
+    {
+      id: "cardio-run",
+      name_pt: "Corrida",
+      name_en: "Running",
+      is_active: true,
+    },
+  ],
+  plans: [{ weekday: 3, activity_id: "cardio-swim", target_minutes: 20 }],
+  logs: [],
+};
+views.find((v) => v[0] === "treino")[3].cardio = cardioFixture;
+views.push([
+  "cardio",
+  "src/components/student/workout/CardioPanel.tsx",
+  "CardioPanel",
+  { data: cardioFixture, locale: "pt-BR" },
+]);
+views.push([
+  "admin-cardio",
+  "src/components/admin/workout/CardioCatalog.tsx",
+  "CardioCatalog",
+  { activities: cardioFixture.activities, locale: "pt-BR" },
+]);
 const selected = process.env.STUDENT_VIEWS?.split(",");
 const actions = new Map();
 for (const file of globSync("src/**/*.tsx")) {
@@ -701,6 +734,17 @@ try {
         const fallback = page.locator("input[aria-label]").first();
         await ((await reps.count()) ? reps : fallback).fill("10");
         await page.locator("input[aria-label]").nth(1).fill("20");
+        const firstSet = page.locator(".student-set-entry").first();
+        await firstSet
+          .getByRole("button", { name: "+ Drop set", exact: true })
+          .click();
+        await firstSet
+          .getByLabel("Drop 1 · repetições · Agachamento · 1", { exact: true })
+          .fill("12");
+        await firstSet
+          .getByLabel("Drop 1 · kg · Agachamento · 1", { exact: true })
+          .fill("15");
+        await firstSet.getByRole("checkbox").check();
         await page
           .getByRole("button", { name: "Concluir Série", exact: true })
           .first()
@@ -714,6 +758,9 @@ try {
               .args[0],
         );
         if (
+          input.drop_steps?.[0]?.reps_done !== 12 ||
+          input.drop_steps?.[0]?.weight_kg !== 15 ||
+          !input.failure_at_end ||
           input.reps_done !== 10 ||
           input.weight_kg !== 20 ||
           input.session_id !== "session"
@@ -738,6 +785,67 @@ try {
           .locator(".student-exercise-card")
           .first()
           .screenshot({ path: resolve(out, `execucao-treino-${width}.png`) });
+      }
+      if (key === "treino") {
+        await page.getByLabel("Sim, fiz", { exact: true }).check();
+        await page.getByLabel("Minutos realizados", { exact: true }).fill("25");
+        await page
+          .getByRole("button", {
+            name: "Finalizar sessao de treino",
+            exact: true,
+          })
+          .click();
+        await page.waitForFunction(() =>
+          window.__actions.some(
+            (a) => a.name === "completeWorkoutSessionAction",
+          ),
+        );
+        const payload = await page.evaluate(
+          () =>
+            window.__actions.find(
+              (a) => a.name === "completeWorkoutSessionAction",
+            ).args[0],
+        );
+        if (
+          payload.cardio.status !== "done" ||
+          payload.cardio.duration_min !== 25 ||
+          payload.cardio.activity_id !== "cardio-swim"
+        )
+          throw Error("Completion cardio payload");
+      }
+      if (key === "cardio") {
+        await page
+          .getByRole("button", { name: "Salvar planejamento", exact: true })
+          .click();
+        await page.waitForFunction(() =>
+          window.__actions.some((a) => a.name === "saveCardioPlanAction"),
+        );
+        await page
+          .getByRole("button", { name: "Fiz cardio", exact: true })
+          .click();
+        await page.waitForFunction(() =>
+          window.__actions.some((a) => a.name === "saveCardioLogAction"),
+        );
+        await page
+          .getByRole("button", { name: "Pulei o cardio", exact: true })
+          .click();
+        const inputs = await page.evaluate(() =>
+          window.__actions
+            .filter((a) => a.name === "saveCardioLogAction")
+            .map((a) => a.args[0]),
+        );
+        if (inputs[0].status !== "done" || inputs[1].status !== "skipped")
+          throw Error("Cardio status payloads");
+      }
+      if (key === "admin-cardio") {
+        await page
+          .getByLabel("Nome em português", { exact: true })
+          .fill("Remo");
+        await page.getByLabel("Nome em inglês", { exact: true }).fill("Rowing");
+        await page.getByRole("button", { name: "Salvar", exact: true }).click();
+        await page.waitForFunction(() =>
+          window.__actions.some((a) => a.name === "saveCardioActivityAction"),
+        );
       }
       if (key === "dashboard" && width === 390) {
         await page

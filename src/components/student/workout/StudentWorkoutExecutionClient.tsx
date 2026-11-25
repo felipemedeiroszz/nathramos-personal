@@ -1,4 +1,5 @@
 "use client";
+import type { CardioData } from "@/lib/cardio";
 import { ExerciseMedia } from "@/components/shared/ExerciseMedia";
 import { ExerciseSetTracker } from "./ExerciseSetTracker";
 import { exerciseMediaSource, exerciseMediaKind } from "@/lib/exercise-media";
@@ -50,9 +51,12 @@ export interface StudentWorkoutExecutionClientProps {
   locale?: string;
   initialLogs?: ExerciseSetLogRow[];
   guidance?: string | null;
+  cardio?: CardioData;
 }
 
 type SetState = {
+  failure_at_end?: boolean;
+  drop_steps?: { reps_done: string; weight_kg: string }[];
   reps_done: string;
   weight_kg: string;
   logged: boolean;
@@ -67,6 +71,7 @@ export function StudentWorkoutExecutionClient({
   locale = "pt-BR",
   initialLogs = [],
   guidance,
+  cardio,
 }: StudentWorkoutExecutionClientProps) {
   const tWorkout = useTranslations("workout");
   const tMuscle = useTranslations("muscleGroups");
@@ -110,13 +115,36 @@ export function StudentWorkoutExecutionClient({
   const [notes, setNotes] = useState<string>("");
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const todayCardio = cardio?.logs.find((l) => l.performed_on === cardio.today);
+  const plannedCardio = cardio?.plans.find((p) => p.weekday === cardio.weekday);
+  const [cardioStatus, setCardioStatus] = useState<"" | "done" | "skipped">(
+    todayCardio?.status || "",
+  );
+  const [cardioActivity, setCardioActivity] = useState(
+    todayCardio?.activity_id ||
+      plannedCardio?.activity_id ||
+      cardio?.activities.find((a) => a.is_active)?.id ||
+      "",
+  );
+  const [cardioMinutes, setCardioMinutes] = useState(
+    String(todayCardio?.duration_min || plannedCardio?.target_minutes || 20),
+  );
+  const [duration, setDuration] = useState("");
 
   const initialSets = useMemo(() => {
     const map: Record<string, SetState[]> = {};
     for (const wex of exercises) {
       const list: SetState[] = [];
       for (let i = 1; i <= Math.max(1, wex.sets || 0); i++) {
+        const saved = initialLogs.find(
+          (l) => l.workout_exercise_id === wex.id && l.set_number === i,
+        );
         list.push({
+          failure_at_end: saved?.failure_at_end || false,
+          drop_steps: (saved?.drop_steps || []).map((d) => ({
+            reps_done: String(d.reps_done),
+            weight_kg: String(d.weight_kg),
+          })),
           reps_done:
             initialLogs
               .find(
@@ -192,6 +220,30 @@ export function StudentWorkoutExecutionClient({
       });
       return;
     }
+    const drops = (s.drop_steps || []).map((d) => ({
+      reps_done: Number(d.reps_done),
+      weight_kg: Number(d.weight_kg.replace(",", ".")),
+    }));
+    if (
+      (s.drop_steps || []).some(
+        (d, i) =>
+          !/^\d+$/.test(d.reps_done.trim()) ||
+          !d.weight_kg.trim() ||
+          !Number.isFinite(drops[i].weight_kg) ||
+          drops[i].weight_kg < 0 ||
+          drops[i].weight_kg > 100000 ||
+          drops[i].reps_done > 10000,
+      )
+    ) {
+      setToast({
+        type: "err",
+        msg:
+          locale === "en-US"
+            ? "Enter valid reps and weight for each drop."
+            : "Informe repetições e carga válidas em cada etapa do drop set.",
+      });
+      return;
+    }
     const set_number = idx + 1;
 
     startTransition(async () => {
@@ -203,7 +255,8 @@ export function StudentWorkoutExecutionClient({
         reps_done: repsNum,
         weight_kg: weightNum != null && !isNaN(weightNum) ? weightNum : null,
         completed: true,
-        failure_at_end: false,
+        failure_at_end: !!s.failure_at_end,
+        drop_steps: drops,
       });
 
       if (res.success) {
@@ -227,10 +280,39 @@ export function StudentWorkoutExecutionClient({
 
   const completeSession = async () => {
     if (completing || saving.current) return;
+    if (
+      cardio &&
+      !cardio.unavailable &&
+      (!cardioStatus ||
+        (cardioStatus === "done" &&
+          (!cardioActivity ||
+            !/^\d+$/.test(cardioMinutes) ||
+            Number(cardioMinutes) < 1 ||
+            Number(cardioMinutes) > 1440)))
+    ) {
+      setToast({
+        type: "err",
+        msg:
+          locale === "en-US"
+            ? "Record whether you did cardio and enter valid minutes."
+            : "Informe se fez ou pulou o cardio e preencha os minutos realizados.",
+      });
+      return;
+    }
     setCompleting(true);
     startTransition(async () => {
       const res = await completeWorkoutSessionAction({
         sessionId,
+        duration_min: duration ? Number(duration) : undefined,
+        cardio:
+          cardio && !cardio.unavailable && cardioStatus
+            ? {
+                status: cardioStatus,
+                activity_id: cardioStatus === "done" ? cardioActivity : null,
+                duration_min:
+                  cardioStatus === "done" ? Number(cardioMinutes) : null,
+              }
+            : undefined,
         feeling: feeling > 0 ? feeling : undefined,
         rpe: rpe ? Math.min(10, Math.max(1, Number(rpe) || 0)) : undefined,
         notes: notes || undefined,
@@ -579,7 +661,8 @@ export function StudentWorkoutExecutionClient({
                 min={0}
                 step={1}
                 placeholder="Ex.: 45"
-                defaultValue={day.est_minutes || undefined}
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
               />
             </div>
           </div>
@@ -596,6 +679,73 @@ export function StudentWorkoutExecutionClient({
             />
           </div>
 
+          {cardio && !cardio.unavailable && (
+            <fieldset className="rounded-xl border border-border p-4 space-y-3">
+              <legend className="px-2 font-semibold">
+                {locale === "en-US" ? "Did you do cardio?" : "Fez cardio hoje?"}
+              </legend>
+              <div className="flex flex-wrap gap-4">
+                {(["done", "skipped"] as const).map((status) => (
+                  <label key={status} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`cardio-${sessionId}`}
+                      value={status}
+                      checked={cardioStatus === status}
+                      onChange={() => setCardioStatus(status)}
+                    />
+                    {status === "done"
+                      ? locale === "en-US"
+                        ? "Yes, I did"
+                        : "Sim, fiz"
+                      : locale === "en-US"
+                        ? "No, I skipped"
+                        : "Não, pulei"}
+                  </label>
+                ))}
+              </div>
+              {cardioStatus === "done" && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm">
+                    {locale === "en-US" ? "Activity" : "Modalidade"}
+                    <select
+                      className="w-full rounded-xl bg-surface-secondary p-3"
+                      value={cardioActivity}
+                      onChange={(e) => setCardioActivity(e.target.value)}
+                    >
+                      <option value="">
+                        {locale === "en-US" ? "Select" : "Selecione"}
+                      </option>
+                      {cardio.activities
+                        .filter((a) => a.is_active)
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {locale === "en-US" ? a.name_en : a.name_pt}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    {locale === "en-US"
+                      ? "Actual minutes"
+                      : "Minutos realizados"}
+                    <Input
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={cardioMinutes}
+                      onChange={(e) => setCardioMinutes(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+              <p className="text-xs text-text-secondary">
+                {locale === "en-US"
+                  ? "This updates today’s cardio record. You can also plan your week below."
+                  : "Este registro atualiza o cardio de hoje. Você também pode planejar sua semana abaixo."}
+              </p>
+            </fieldset>
+          )}
           <Button
             type="button"
             variant="primary"

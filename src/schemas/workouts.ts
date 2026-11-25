@@ -340,6 +340,15 @@ export const logWorkoutSetSchema = z.object({
   distance_km: z.coerce.number().nonnegative().optional().nullable(),
   completed: z.boolean().default(true),
   failure_at_end: z.boolean().default(false),
+  drop_steps: z
+    .array(
+      z.object({
+        reps_done: z.number().int().min(0).max(10000),
+        weight_kg: z.number().min(0).max(100000),
+      }),
+    )
+    .max(10)
+    .default([]),
 });
 export type LogWorkoutSetInput = z.infer<typeof logWorkoutSetSchema>;
 

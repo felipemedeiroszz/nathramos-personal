@@ -570,10 +570,9 @@
 }
 .student-set-entry {
   display: grid;
-  grid-template-columns: minmax(145px, 1fr) minmax(95px, 0.85fr) minmax(
-      95px,
-      0.85fr
-    ) auto;
+  grid-template-columns:
+    minmax(145px, 1fr) minmax(95px, 0.85fr) minmax(95px, 0.85fr)
+    auto;
   align-items: center;
   gap: 16px;
   padding: 16px;
@@ -961,4 +960,11 @@
   .student-shell .student-set-table [data-ui="button"] svg {
     margin: 0;
   }
+}
+
+.student-shell .student-drop-section {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--color-border, #333);
+  padding-top: 12px;
+  min-width: 0;
 }

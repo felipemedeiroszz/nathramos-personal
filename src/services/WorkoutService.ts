@@ -451,7 +451,7 @@ export class WorkoutService {
   ): Promise<WorkoutSessionRow | null> {
     const today = (await this.localToday(userId)).dateKey;
     if (scheduledDate && scheduledDate !== today) return null;
-    const plans = await this.getTodayPlans(userId);
+    const plans = await this.getAvailablePlans(userId);
     if (!plans.some((p) => p.day.id === dayId && p.program.id === programId))
       return null;
     const db = await this.getSupabase();
@@ -480,6 +480,12 @@ export class WorkoutService {
     userId: string,
     sessionId: string,
     params?: {
+      cardio?: {
+        status: "done" | "skipped";
+        activity_id: string | null;
+        duration_min: number | null;
+        notes: string;
+      };
       feeling?: number;
       rpe?: number;
       notes?: string;
@@ -504,6 +510,16 @@ export class WorkoutService {
   ): Promise<ExerciseSetLogRow | null> {
     const parsed = logWorkoutSetSchema.parse(input);
     const db = await this.getSupabase();
+    // An older RPC silently ignores unknown JSON fields. Check the new column
+    // before writing a drop set, so a pending migration cannot discard its steps.
+    if (parsed.drop_steps.length) {
+      const readiness = await (db as any)
+        .from("exercise_sets_log")
+        .select("drop_steps")
+        .limit(0);
+      if (readiness.error)
+        throw new Error("Drop sets indisponíveis. Aplique a migração 000067.");
+    }
     const rows = checked<ExerciseSetLogRow[]>(
       await (db.rpc as any)("log_student_workout_set", {
         p_user_id: userId,
@@ -561,6 +577,7 @@ export class WorkoutService {
   static async getTodayPlans(
     userId: string,
     dateOverride?: string,
+    allDays = false,
   ): Promise<
     Array<{
       assignment: any;
@@ -656,10 +673,11 @@ export class WorkoutService {
       const rule =
         rules.get(`workout:${assignment.id}`) || defaultRule("workout");
       if (
-        (rule.on_date
+        !allDays &&
+        ((rule.on_date
           ? rule.on_date !== local.dateKey
           : !rule.weekdays.includes(local.weekday)) ||
-        rule.rest_weekdays.includes(local.weekday)
+          rule.rest_weekdays.includes(local.weekday))
       )
         continue;
       if (assignment.kit_id && (!assignment.kit || assignment.kit.is_deleted))
@@ -678,13 +696,16 @@ export class WorkoutService {
           program.total_weeks,
           rule.repeat_cycle,
         );
-        if (!rule.repeat_cycle && week > program.total_weeks) continue;
-        const selected = selectWorkoutDays(
-          days.filter((d) => d.program_id === program.id),
-          assignment.kit?.generated_program_id === program.id ? 1 : week,
-          local.weekday,
-          rule.fallback_week_one,
-        );
+        if (!allDays && !rule.repeat_cycle && week > program.total_weeks)
+          continue;
+        const selected = allDays
+          ? days.filter((d) => d.program_id === program.id)
+          : selectWorkoutDays(
+              days.filter((d) => d.program_id === program.id),
+              assignment.kit?.generated_program_id === program.id ? 1 : week,
+              local.weekday,
+              rule.fallback_week_one,
+            );
         for (const day of selected) {
           if (seen.has(day.id)) continue;
           seen.add(day.id);
@@ -707,6 +728,18 @@ export class WorkoutService {
       }
     }
     return plans;
+  }
+  static async getAvailablePlans(userId: string, date?: string) {
+    const local = date || (await this.localToday(userId)).dateKey;
+    const weekday = weekdayOf(local);
+    return (await this.getTodayPlans(userId, local, true)).sort(
+      (a, b) =>
+        ((a.day.day_of_week - weekday + 7) % 7) -
+          ((b.day.day_of_week - weekday + 7) % 7) ||
+        a.day.week_number - b.day.week_number ||
+        a.day.order_index - b.day.order_index ||
+        a.day.id.localeCompare(b.day.id),
+    );
   }
   static async getDaySchedule(userId: string, date?: string) {
     const day = date || (await this.localToday(userId)).dateKey;

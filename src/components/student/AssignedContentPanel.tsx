@@ -115,8 +115,12 @@ export function AssignedContentPanel({
         </h2>
         <p className="text-sm text-text-secondary">
           {en
-            ? "Your full schedule. Only content scheduled for today can be opened."
-            : "Sua programação completa. Apenas o conteúdo liberado para hoje pode ser aberto."}
+            ? kind === "workout"
+              ? "Choose any workout in your current cycle. Today’s workout comes first."
+              : "Your full schedule. Only content scheduled for today can be opened."
+            : kind === "workout"
+              ? "Escolha qualquer treino do ciclo atual. O de hoje aparece primeiro; os dias são uma orientação."
+              : "Sua programação completa. Apenas o conteúdo liberado para hoje pode ser aberto."}
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -155,7 +159,7 @@ export function AssignedContentPanel({
                     {day.available ? (
                       <a
                         className="block rounded-xl border border-primary/40 p-3 text-sm text-primary"
-                        href={`#treino-dia-${day.id}`}
+                        href={`?day=${day.id}#treino-dia-${day.id}`}
                       >
                         {day.name} · {names[day.weekday - 1]} ·{" "}
                         {en ? "Week" : "Semana"} {day.week} —{" "}

@@ -3,6 +3,8 @@ import { Check, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 export interface ExerciseSetEntry {
+  failure_at_end?: boolean;
+  drop_steps?: { reps_done: string; weight_kg: string }[];
   reps_done: string;
   weight_kg: string;
   logged: boolean;
@@ -150,6 +152,97 @@ export function ExerciseSetTracker({
                 </Button>
               </>
             )}
+            <div className="student-drop-section">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={!!set.failure_at_end}
+                  disabled={busy || set.logged}
+                  onChange={(e) =>
+                    onChange(index, { failure_at_end: e.target.checked })
+                  }
+                />
+                {en ? "To failure" : "Até a falha"}
+              </label>
+              {(set.drop_steps || []).map((drop, dropIndex) => (
+                <div
+                  key={dropIndex}
+                  className="mt-3 flex flex-wrap items-end gap-3"
+                >
+                  <strong className="text-sm">Drop {dropIndex + 1}</strong>
+                  <label className="min-w-0 flex-1 text-xs">
+                    {en ? "Reps done" : "Repetições feitas"}
+                    <Input
+                      aria-label={`Drop ${dropIndex + 1} · ${en ? "reps" : "repetições"} · ${name} · ${index + 1}`}
+                      inputMode="numeric"
+                      value={drop.reps_done}
+                      disabled={busy || set.logged}
+                      onChange={(e) =>
+                        onChange(index, {
+                          drop_steps: set.drop_steps!.map((d, i) =>
+                            i === dropIndex
+                              ? { ...d, reps_done: e.target.value }
+                              : d,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="min-w-0 flex-1 text-xs">
+                    {en ? "Weight (kg)" : "Carga (kg)"}
+                    <Input
+                      aria-label={`Drop ${dropIndex + 1} · kg · ${name} · ${index + 1}`}
+                      inputMode="decimal"
+                      value={drop.weight_kg}
+                      disabled={busy || set.logged}
+                      onChange={(e) =>
+                        onChange(index, {
+                          drop_steps: set.drop_steps!.map((d, i) =>
+                            i === dropIndex
+                              ? { ...d, weight_kg: e.target.value }
+                              : d,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  {!set.logged && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        onChange(index, {
+                          drop_steps: set.drop_steps!.filter(
+                            (_, i) => i !== dropIndex,
+                          ),
+                        })
+                      }
+                    >
+                      {en ? "Remove" : "Remover"}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!set.logged && (set.drop_steps?.length || 0) < 10 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  disabled={busy}
+                  onClick={() =>
+                    onChange(index, {
+                      drop_steps: [
+                        ...(set.drop_steps || []),
+                        { reps_done: "", weight_kg: "" },
+                      ],
+                    })
+                  }
+                >
+                  + Drop set
+                </Button>
+              )}
+            </div>
           </div>
         ))}
       </div>

@@ -161,6 +161,16 @@ export class StudentAssignedContentService {
           .filter((day) => eligible.has(day.program_id))
           .sort(
             (a, b) =>
+              (kind === "workout"
+                ? ((a.day_of_week -
+                    new Date(`${context.date}T12:00:00Z`).getUTCDay() +
+                    7) %
+                    7) -
+                  ((b.day_of_week -
+                    new Date(`${context.date}T12:00:00Z`).getUTCDay() +
+                    7) %
+                    7)
+                : 0) ||
               a.week_number - b.week_number ||
               a.day_of_week - b.day_of_week ||
               a.order_index - b.order_index ||

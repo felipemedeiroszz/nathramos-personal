@@ -277,6 +277,7 @@ export interface WorkoutSessionRow {
 }
 
 export interface ExerciseSetLogRow {
+  drop_steps?: { reps_done: number; weight_kg: number }[];
   id: number;
   session_id: string;
   workout_exercise_id?: string | null;

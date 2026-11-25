@@ -134,7 +134,7 @@ test("all own assignments survive pagination without leaking another student's l
     ),
   );
 });
-test("a direct request cannot start a workout that today's scheduler did not release", async () => {
+test("a direct request cannot start an unassigned workout or forge the execution date", async () => {
   const { WorkoutService } = loadTs("src/services/WorkoutService.ts", {
     "@/lib/auth/platform": {},
     "../lib/supabase/server": {},
@@ -142,7 +142,7 @@ test("a direct request cannot start a workout that today's scheduler did not rel
     "./AuditLogService": { AuditLogService: {} },
   });
   WorkoutService.localToday = async () => ({ dateKey: date });
-  WorkoutService.getTodayPlans = async () => [
+  WorkoutService.getAvailablePlans = async () => [
     { day: { id: "today" }, program: { id: "program" } },
   ];
   WorkoutService.getSupabase = async () => {
@@ -262,7 +262,7 @@ test("locked assignment controls have no navigation or executable action; only t
   );
   assert(html.includes("Kit futuro"));
   assert(html.includes("01/12/2026"));
-  assert(html.includes('href="#treino-dia-today-day"'));
+  assert(html.includes('href="?day=today-day#treino-dia-today-day"'));
   assert(!html.includes('href="#treino-dia-tomorrow-day"'));
   assert.equal((html.match(/disabled=""/g) || []).length, 2);
 });
